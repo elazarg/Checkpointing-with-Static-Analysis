@@ -49,13 +49,8 @@ f ::= \langle i \rangle \mid \langle s \rangle \mid \langle i, s \rangle
 $\Gamma$ maps names to types, and $\Delta$ maps type variables to bounds.
 
 \paragraph{Subtyping.}  
-Subtyping supports:
-\begin{itemize}
-\item Reflexivity and transitivity.
-\item Union decomposition.
-\item Record width/depth subtyping.
-\item Structural subtyping for protocol classes.
-\end{itemize}
+Subtyping supports reflexivity and transitivity, union decomposition, record width/depth subtyping and structural subtyping for protocol classes.
+
 There is \emph{no} nominal subtyping rule between arbitrary classes; two distinct non‐protocol classes are unrelated unless one is a union containing the other.
 
 \begin{figure*}[t]
@@ -88,16 +83,12 @@ R_1 \sqcup R_2 = \{f : R_1(f) \sqcup R_2(f) \mid f \in \mathsf{dom}(R_1) \cap \m
 R_1 \sqcap R_2 = \{f : R_1(f) \sqcap R_2(f) \mid f \in \mathsf{dom}(R_1) \cup \mathsf{dom}(R_2)\}
 \]
 
-\begin{figure}[t]
-\centering
+Otherwise it is a straightforward union:
 \[
 \tau \sqcup \tau = \tau
 \quad\quad
 \tau_1 \sqcup \tau_2 = \tau_1 + \tau_2 \ \text{if unrelated}
 \]
-\caption{Join operation for types (meet analogous).}
-\label{fig:typeops}
-\end{figure}
 
 \paragraph{Unification.}  
 Unification $\Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta$ computes substitutions $\theta : \mathcal{V} \to \mathcal{T}$, supports variadic parameters, instantiation, functions, and records.  
@@ -123,28 +114,12 @@ For functions, unification \emph{requires} side effects to be equal; they are no
 \[
 \frac{\forall f_i \in \mathsf{common}(R_1, R_2).\ \Delta \vdash R_1(f_i) \doteq R_2(f_i) \leadsto \theta_i}{\Delta \vdash R_1 \doteq R_2 \leadsto \bigcup_i \theta_i} \quad \text{(Record)}
 \]
-\caption{Unification rules, matching the implementation (function unification requires equal effects).}
+\caption{Unification rules (function unification requires equal effects).}
 \label{fig:unification}
 \end{figure*}
 
 \paragraph{Name Resolution.}  
-Name resolution proceeds by lexical environment, then parent scope, then module‐local entries in the global module map $\mathcal{M}$, then builtins; otherwise it fails.
-
-\begin{figure*}[t]
-\centering
-\[
-\mathsf{resolve}(n, \Gamma) =
-\begin{cases}
-\Gamma(n) & \text{if } n \in \Gamma \\
-\mathsf{resolve}(n, \Gamma_{\mathsf{parent}}) & \text{if parent exists} \\
-\mathcal{M}[\mathsf{current\_module}](n) & \text{if module-local} \\
-\mathcal{M}[\text{builtins}](n) & \text{if builtin} \\
-\mathsf{error} & \text{otherwise}
-\end{cases}
-\]
-\caption{Name resolution strategy.}
-\label{fig:nameres}
-\end{figure*}
+Name resolution proceeds by current function (we only analyze standalone functions, so class-scope is irrelevant), then module‐local entries in the global module map $\mathcal{M}$, then builtins; otherwise it fails.
 
 \subsection{Dynamic Semantics}
 

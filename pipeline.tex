@@ -16,8 +16,8 @@
 \node[below] at (framework.north) {\textbf{Analysis Framework}};
 
 % Three analyses inside framework
-\node[analysis, below=1.5cm of bytecode] (liveness) {Liveness\\(backward)};
-\node[analysis, below left=0.5cm and 0.1cm of liveness] (type) {Type\\Analysis};
+\node[analysis, below=1.5cm of bytecode] (liveness) {Liveness};
+\node[analysis, below left=0.5cm and 0.1cm of liveness] (type) {Type};
 \node[analysis, below right=0.5cm and 0.1cm of liveness] (pointer) {Pointer\\+ Dirty};
 
 % Reduced product
@@ -44,4 +44,3 @@
 \draw[arrow] (pointer) -- (product);
 
 \end{tikzpicture}
-\caption{Overview of our analysis pipeline. Python source is compiled to bytecode, translated to our register-based IR, then analyzed through three interacting analyses (liveness, type, and pointer+dirty tracking) combined in a reduced product domain. The intersection of live and dirty variables determines the minimal checkpoint set, which drives source-level instrumentation.}

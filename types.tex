@@ -1,23 +1,4 @@
 
-% \begin{align*}
-% \tau & ::=  \texttt{ref}(\rho) \\
-%      &      \mid \texttt{const}(c) \\
-%      &      \mid \texttt{overload}(\overline{f})  \\
-%      &      \mid \texttt{union}(\overline{\tau})  \\
-%      &      \mid \texttt{module}(\overline{m}) \quad \text{(fields)} \\
-%      &      \mid \texttt{protocol}(\overline{m}, \overline{\alpha}) \quad \text{(fields, generics)} \\
-%      &      \mid \texttt{class}(s,\overline{m}, \overline{\alpha}) \quad \text{(name, fields, generics)} \\
-%      &      \mid \alpha \quad \text{(type variable)}\\
-%      &      \mid \texttt{type}(\tau) \quad \text{(class type)} \\
-%      &      \mid \tau[\overline{\tau}] \quad \text{(generic instantiation)} \\
-%      &      \mid \texttt{any} \\
-% m & ::= \langle s, \tau \rangle \\
-% f & ::= \langle m, \tau, \sigma, \overline{\alpha} \rangle \quad \text{(parameters, return, side-effect, generics)} \\
-% \sigma & ::= \textbf{pure} \mid \textbf{new} \mid \textbf{update} \mid \textbf{points-to-args} \\
-% \end{align*}
-% \caption{\label{typesdefs}}
-% \end{figure}
-
 \begin{align*}
 \tau \;::=&\; \texttt{ref}(\rho)
   \\ &  \mid \texttt{const}(c)
