@@ -60,42 +60,126 @@ Our \textbf{Type Analysis} system assigns a precise semantic type to every varia
 \end{itemize}
 This detailed type information is fundamental for distinguishing between immutable data (which cannot be "dirty") and mutable state, providing the foundational basis for tracking all heap changes. While our system supports more complex features like union types and overloaded functions (Appendix~\ref{appendix:typesystem}), these core elements are most impactful for our analysis goals.
 
-\subsection{Pointer and Dirty Analysis}
-
-The \textbf{Pointer and Dirty Analysis} component provides a detailed understanding of how variables refer to objects in memory and which parts of that memory have been modified. It constructs an abstract representation of the program's heap based on the following concepts:
+\paragraph{Heap-indexed maps.}
+We use three primary abstract maps over the set of abstract objects~$\mathcal{O}$.
+Let $\mathcal{F}$ be the set of abstract field identifiers, consisting of
+all possible attribute names plus the wildcard~\texttt{*} denoting collection
+elements. In our simplified aliasing model, \emph{all} element accesses
+into lists, tuples, NumPy arrays, and other sequence-like containers are
+represented by the wildcard~\texttt{*}, rather than distinct integer indices.
+This means the analysis does not distinguish between different positions
+within the same collection.
+Let $\mathcal{T}$ be the type lattice from \S\ref{sec:typesystem}.
 
 \begin{itemize}
-    \item \textbf{Abstract Objects:} Instead of tracking specific, concrete memory addresses, we represent runtime objects as \emph{abstract objects}. These abstract objects serve as symbolic placeholders for actual memory locations. They can represent values allocated at a particular program point (e.g., a list created at line 5), objects passed as function parameters, immutable values (like a constant integer), or special global/local scope objects. Immutability is determined statically by type rules: built-in scalars, tuples of immutable types, pure functions, and certain type objects are classified as immutable, while containers and most user classes are not. Immutable objects are mapped to canonical abstract objects and never marked dirty, eliminating spurious heap updates in the pointer/dirty analysis.
-    \item \textbf{Pointer Graph:} The analysis builds a graph where variables and abstract objects are nodes, and directed edges represent "points-to" relationships. This graph reveals \emph{aliasing}, which occurs when multiple variables or fields point to the same abstract object. Understanding aliasing is crucial because a modification through one reference implies a modification visible through all its aliases.
-    \item \textbf{Field-Sensitivity:} A key feature is \emph{field-sensitivity}. This means the analysis tracks updates to individual fields or elements within a composite data structure (like an array or object with attributes), rather than treating the entire object as changed whenever any part is modified. For example, if you modify \texttt{arr[0]}, the analysis can precisely distinguish this from an update to \texttt{arr[1]}, preventing over-approximation and unnecessary checkpointing.
-    \item \textbf{Dirty Tracking:} As the program executes abstractly, any abstract object whose internal fields are modified is marked as \emph{dirty}. This "dirty bit" is then propagated through any aliasing relationships identified in the pointer graph. Importantly, if an object is identified as immutable by the Type Analysis, it can never be marked dirty. This mechanism directly identifies precisely which state has changed and therefore needs to be considered for persistence.
+    \item \textbf{Pointer graph}:
+    \[
+        G : \mathcal{O} \to (\mathcal{F} \to 2^{\mathcal{O}})
+    \]
+    where $G[o][f]$ is the set of abstract objects that field $f \in \mathcal{F}$ of object~$o$
+    may point to.  
+
+    \item \textbf{Type map}:
+    \[
+        T : \mathcal{O} \to \mathcal{T}
+    \]
+    where $T[o]$ is the abstract type of object~$o$.
+
+    \item \textbf{Dirty map}:
+    \[
+        D : \mathcal{O} \to 2^{\mathcal{F}}
+    \]
+    where $D[o]$ is the set of fields of object~$o$ that have been (abstractly) written since
+    the last checkpoint boundary.  
+    A nonempty $D[o]$ means $o$ is ``dirty,'' but dirtiness is tracked \emph{per-field}.
 \end{itemize}
-This comprehensive understanding of memory layout, aliasing, and mutation patterns is indispensable for our checkpointing strategy.
+
+Here $2^X$ denotes the powerset of~$X$, i.e., the set of all subsets of~$X$.
+
+\subsection{Pointer and Dirty Analysis}
+
+The \textbf{Pointer and Dirty Analysis} component provides a detailed understanding
+of how variables refer to objects in memory and which parts of that memory have been modified.
+It operates over the heap-indexed maps $G$, $T$, and $D$ defined above:
+
+\begin{itemize}
+    \item \textbf{Abstract Objects:}
+    We represent runtime objects as elements of $\mathcal{O}$, rather than tracking
+    concrete memory addresses. These can correspond to allocations at specific program
+    points, function parameters, immutable values, or special scope objects such as
+    \texttt{LOCALS} and \texttt{GLOBALS}.  
+    Immutability is determined statically from $T[o]$ (the type of~$o$): 
+    built-in scalars, tuples of immutable types, pure functions, and certain type objects
+    are classified as immutable, while containers and most user classes are not.
+    Immutable objects are mapped to canonical representatives and never appear in $D$
+    (the set of dirtied fields), eliminating spurious updates.
+
+    \item \textbf{Pointer Graph:}
+    $G[o][f]$ is the set of objects that field~$f$ of~$o$ may point to.
+    This graph encodes aliasing: if two variables map via $G$ to a common object,
+    a modification through one is visible through the other.
+
+    \item \textbf{Field-Sensitivity:}
+    Because $G$ is defined over individual fields $f \in \mathcal{F}$, 
+    the analysis can distinguish updates to different fields or collection elements.
+    For example, if $f = \texttt{*}$ (wildcard), then $G[o][\texttt{*}]$ denotes
+    all objects that may be stored in collection~$o$.
+
+    \item \textbf{Dirty Tracking:}
+    $D[o]$ is the set of fields of object~$o$ that have been written since the last
+    checkpoint. When a field~$f$ is updated, $f$ is added to $D[o]$, and this information
+    is propagated through all aliases in $G$.
+    If $T[o]$ is immutable, then $D[o]$ is always empty.
+\end{itemize}
+
+By explicitly tracking $G$ (pointer relationships), $T$ (types), and $D$ (dirtied fields),
+we obtain a precise view of memory layout, aliasing, and mutation patterns,
+which is indispensable for our checkpointing strategy.
 
 \subsection{Interactions between Analyses}
 
-The power of our framework stems from the continuous interaction and refinement among the Liveness, Type, and Pointer/Dirty analyses within the reduced product domain. Information flows between these components, enabling more precise results than if they operated independently:
+The power of our framework comes from the continuous interaction and refinement among
+Liveness Analysis, Type Analysis, and Pointer/Dirty Analysis within the reduced product domain.
+Information flows between these components as follows:
 
 \begin{itemize}
-    \item \emph{Type $\rightarrow$ Dirty:} The Type Analysis identifies immutable types. The Pointer and Dirty Analysis uses this information to ensure that objects of immutable types are never marked dirty, even if they appear in an assignment target.
-    \item \emph{Dirty $\rightarrow$ Liveness:} If an object is marked as dirty, but the Liveness Analysis determines it is no longer used, it can be excluded from the checkpoint set.
-    \item \emph{Liveness $\rightarrow$ Pointer:} When the Liveness Analysis determines a variable is dead, the Pointer Analysis can safely remove any heap edges originating from that variable. This prunes the abstract heap, reducing aliasing noise and improving the precision of subsequent pointer analysis steps.
-    \item \emph{Pointer $\rightarrow$ Type:} For dynamic dispatches (e.g., method calls on an object whose exact type is not immediately known), the Pointer Analysis can narrow down the set of possible receiver objects. This information feeds back into the Type Analysis to refine the resolved type, leading to more accurate effect annotations and more precise tracking of mutations.
+    \item \emph{Type $\rightarrow$ Dirty:}
+    If $T[o]$ indicates that object~$o$ is immutable, then $D[o]$ remains empty, even if $o$ appears on the left-hand side of an assignment. This prevents immutable objects from being spuriously marked dirty.
+
+    \item \emph{Dirty $\rightarrow$ Liveness:}
+    If $D[o] \neq \varnothing$ (some fields of~$o$ are dirty) but the Liveness Analysis shows that no live variable can reach~$o$ through $G$ at a given program point, then $o$ can be excluded from the checkpoint set.
+
+    \item \emph{Liveness $\rightarrow$ Pointer:}
+    When a variable~$v$ is dead, all edges $G[o_v][f]$ for $f \in \mathcal{F}$ are removed, where $o_v$ are the abstract objects referenced by~$v$.
+
+    \item \emph{Pointer $\rightarrow$ Type:}
+    For dynamic dispatches such as method calls on variable~$v$, the possible receiver objects $o \in G[o_v][f]$ constrain the possible types $T[o]$.
+    This narrowing refines effect annotations (e.g., whether a method updates a field) and thus leads to more accurate updates to $D$.
 \end{itemize}
-These synergistic feedbacks prevent each domain from making overly conservative approximations, which would otherwise inflate the computed checkpoint set and diminish the effectiveness of our transformations.
+
+By exchanging information through $G$ (pointer graph), $T$ (type map), and $D$ (dirty map),
+each domain avoids overly conservative approximations that would otherwise inflate
+the computed checkpoint set in Equation~\eqref{eq:checkpointset}.
 
 \subsection{Checkpoint Minimization}
-
-Naïvely checkpointing every live variable at loop end wastes space and time on data that is either unchanged or easily recomputed. Our key observation is that only variables \emph{both} live and dirty need to be saved:
-\[
-\mathsf{CheckpointSet} = \mathsf{Live} \cap \mathsf{Dirty}.
-\]
+Naïvely checkpointing every live variable at loop end wastes space and time on data
+that is either unchanged or easily recomputed. Our key observation is that only
+variables \emph{both} live and dirty need to be saved:
+\begin{equation}
+    \label{eq:checkpointset}
+    \mathsf{CheckpointSet} \;=\; \mathsf{Live} \;\cap\; \mathsf{Dirty}.
+\end{equation}
 Here:
 \begin{enumerate}
-    \item \textbf{Live} comes from liveness analysis: variables (and reachable heap) used in later iterations.
-    \item \textbf{Dirty} comes from pointer/dirty analysis: variables whose reachable heap has been modified since the last checkpoint.
+    \item \textbf{Live} comes from liveness analysis: variables (and reachable heap)
+    used in later iterations.
+    \item \textbf{Dirty} comes from pointer/dirty analysis: variables whose reachable heap
+    has been modified since the last checkpoint.
 \end{enumerate}
-In the implementation, the dirty set is computed at loop end by identifying dirty roots via alias-closure over the pointer graph, then intersected with the live set at loop entry. This ensures that objects whose last use occurs before the loop boundary, even if dirtied, are excluded.
+In the implementation, the dirty set is computed at loop end by identifying dirty roots
+via alias-closure over the pointer graph, then intersected with the live set at loop entry.
+This ensures that objects whose last use occurs before the loop boundary, even if dirtied,
+are excluded.
 
 \paragraph{Example (K-Means).}
 In each iteration of the K-Means clustering algorithm:
@@ -104,7 +188,11 @@ In each iteration of the K-Means clustering algorithm:
     \item \texttt{points}: input data, never modified $\Rightarrow$ live but not dirty.
     \item \texttt{centroids}: updated and used in the next iteration $\Rightarrow$ live and dirty.
 \end{itemize}
-The intersection singles out \texttt{centroids} as the only array to persist, eliminating large transient data from checkpoints.
+In our notation, if $o_c$ is the abstract object for \texttt{centroids}, then
+$o_c \in \mathsf{Live}$ and $D[o_c] \neq \varnothing$, so it appears in
+$\mathsf{CheckpointSet}$ by Equation~\eqref{eq:checkpointset}.
+The intersection therefore singles out \texttt{centroids} as the only array to persist,
+eliminating large transient data from checkpoints.
 
 \subsection{Instrumentation and Execution}
 

@@ -1,136 +1,140 @@
 \section{Type System}
 \label{appendix:typesystem}
 \section*{Appendix: Type System Formalization}
-This appendix provides a formal specification of the complete type system used in our analysis framework, building on the simpler overview demonstrated in the main paper (\autoref{sec:typesystem}). When combined with the pointer analysis detailed in \autoref{appendix:pointer}, this system enables precise modeling of dynamic behaviors in scientific Python code, such as array mutations in NumPy or side effects in SciPy simulations. The full implementation is available in \texttt{type_system.py}.
+
+This appendix specifies the type system implemented in \texttt{type\_system.py}.  
+It is designed to support precise static modeling of scientific Python code (e.g.\ NumPy, SciPy) while avoiding complexity unnecessary for the code bases we target.  
+Notably, the system does \emph{not} implement nominal subtyping between user classes, even though class hierarchies are recorded. This is intentional: nominal subtyping in Python is subtle, and was not needed for our analyses.
 
 \subsection{Syntax}
 
-\paragraph{Types.} The set of type expressions $\mathcal{T}$ is defined by:
+Type expressions $\mathcal{T}$ cover constants, variables (ordinary and variadic), unions, records, classes, modules, polymorphic functions, overloads, instantiations, and literal values.  
+Record types $R$ map field keys $f$ to types, where keys can carry both positional and nominal components.  
+Effects $\epsilon$ annotate callable types with allocation, mutation, and property metadata.
+
+\begin{figure}[t]
+\centering
 \[
 \begin{aligned}
-\tau ::= \;& c \mid X \mid X^* \mid \ell \mid \tau_1 + \tau_2 \\
-&\mid R \mid f : \tau \\
+\tau ::= \;& c \mid X \mid X^* \mid \ell \mid \tau_1 + \tau_2 \mid R \mid f : \tau \\
 &\mid \mathsf{class}(C, R, \overline{\tau}, \overline{X}, \mathsf{protocol}?) \\
+&\mid \mathsf{module}(M) \\
 &\mid \forall \overline{X}.R \xrightarrow{\epsilon} \tau \mid \{\varphi_1, \ldots, \varphi_n\} \\
-&\mid \tau\langle\overline{\tau}\rangle \mid \tau.\ell \\
-R ::= \;& \{f_1 : \tau_1, \ldots, f_n : \tau_n\}
+&\mid \tau\langle\overline{\tau}\rangle
 \end{aligned}
 \]
+\[
+R ::= \{f_1 : \tau_1, \ldots, f_n : \tau_n\}
+\quad\quad
+f ::= \langle i \rangle \mid \langle s \rangle \mid \langle i, s \rangle
+\]
+\[
+\epsilon = (\mathsf{new} : \mathbb{B},\; \mathsf{method} : \mathbb{B},\; \mathsf{update} : \tau^?,\; \mathsf{pointsToArgs} : \mathbb{B})
+\]
+\caption{Syntax of types, records, field keys, and effects. $c$ ranges over qualified constants; $\ell$ over literal types; $X^*$ denotes variadic type variables.}
+\label{fig:syntax}
+\end{figure}
 
-where:
-\begin{itemize}
-\item $c$ ranges over type constants (qualified names like \texttt{builtins.int})
-\item $X, X^*$ are type variables (ordinary and variadic)  
-\item $\ell$ are literal types with values from $\mathbb{Z} \cup \mathbb{S} \cup \mathbb{B} \cup \{\mathsf{None}\} \cup \ldots$
-\item $\tau_1 + \tau_2$ is union type
-\item $R$ is record type with field entries $f_i$
-\item $f : \tau$ is a field entry (row)
-\item $\mathsf{class}(C, R, \overline{\tau}, \overline{X}, \mathsf{protocol}?)$ defines class $C$ with member record $R$, supertypes $\overline{\tau}$, type parameters $\overline{X}$, and optional protocol flag
-\item $\forall \overline{X}.R \xrightarrow{\epsilon} \tau$ is polymorphic function type with parameter record $R$, effect $\epsilon$, and return type $\tau$
-\item $\{\varphi_1, \ldots, \varphi_n\}$ is overloaded function type
-\item $\tau\langle\overline{\tau}\rangle$ is type instantiation
-\item $\tau.\ell$ is delayed attribute access
-\end{itemize}
-
-\paragraph{Field Keys.} Field keys $f \in \mathsf{FieldKey}$ support both positional and nominal access:
-\[f ::= \langle i \rangle \mid \langle s \rangle \mid \langle i, s \rangle\]
-where $i \in \mathbb{N}$ is a positional index and $s \in \mathbb{S}$ is a field name.
-
-\paragraph{Effects.} Effect annotations $\epsilon \in \mathcal{E}$ are tuples:
-\[\epsilon = (\mathsf{new} : \mathbb{B}, \mathsf{method} : \mathbb{B}, \mathsf{update} : \tau^?, \mathsf{alias} : \mathbb{B}, \mathsf{property} : \mathbb{B})\]
-where $\tau^?$ denotes an optional type for mutation targets.
-
-\paragraph{Examples.}
+\paragraph{Examples.}  
 \begin{itemize}
 \item Function \texttt{def f(x: int, y: str = "d")} has type:
  \[\forall \{\}.\{\langle 0, \text{x} \rangle : \mathsf{int}, \langle 1, \text{y} \rangle : \mathsf{str}\} \xrightarrow{\epsilon_\mathsf{pure}} \mathsf{None}\]
-\item Generic \texttt{list[int]} is represented as $\mathsf{list}\langle\mathsf{int}\rangle$
-\item Class with both position and name: \texttt{class Point} has record $\{\langle 0, \text{x} \rangle : \mathsf{int}, \langle 1, \text{y} \rangle : \mathsf{int}\}$
+\item Generic \texttt{list[int]} is $\mathsf{list}\langle\mathsf{int}\rangle$.
+\item Class \texttt{Point} with fields \texttt{x: int, y: int} has record $\{\langle 0, \text{x} \rangle : \mathsf{int}, \langle 1, \text{y} \rangle : \mathsf{int}\}$.
 \end{itemize}
 
 \subsection{Static Semantics}
 
-\paragraph{Type Environment.} Let $\Gamma$ map names to types and $\Delta$ map type variables to their bounds.
+\paragraph{Type Environment.}  
+$\Gamma$ maps names to types, and $\Delta$ maps type variables to bounds.
 
-\paragraph{Subtyping.} The subtype relation $\Gamma \vdash \tau_1 <: \tau_2$ is defined by:
+\paragraph{Subtyping.}  
+Subtyping supports:
+\begin{itemize}
+\item Reflexivity and transitivity.
+\item Union decomposition.
+\item Record width/depth subtyping.
+\item Structural subtyping for protocol classes.
+\end{itemize}
+There is \emph{no} nominal subtyping rule between arbitrary classes; two distinct non‐protocol classes are unrelated unless one is a union containing the other.
 
+\begin{figure*}[t]
+\centering
 \[
 \frac{}{\Gamma \vdash \tau <: \tau} \quad \text{(Refl)}
-\]
-
-\[
+\qquad
 \frac{\Gamma \vdash \tau_1 <: \tau_2 \quad \Gamma \vdash \tau_2 <: \tau_3}{\Gamma \vdash \tau_1 <: \tau_3} \quad \text{(Trans)}
 \]
-
 \[
 \frac{\forall i. \Gamma \vdash \tau_i <: \tau}{\Gamma \vdash (\tau_1 + \cdots + \tau_n) <: \tau} \quad \text{(Union-Sub)}
 \]
-
 \[
-\frac{\mathsf{dom}(R_2) \subseteq \mathsf{dom}(R_1) \quad \forall f \in \mathsf{dom}(R_2). \Gamma \vdash R_1(f) <: R_2(f)}{\Gamma \vdash R_1 <: R_2} \quad \text{(Record-Sub)}
+\frac{\mathsf{dom}(R_2) \subseteq \mathsf{dom}(R_1) \quad \forall f \in \mathsf{dom}(R_2).\ \Gamma \vdash R_1(f) <: R_2(f)}{\Gamma \vdash R_1 <: R_2} \quad \text{(Record-Sub)}
+\]
+\[
+\frac{\mathsf{protocol} = \mathsf{true} \quad \Gamma \vdash R_1 <: R_2}{\Gamma \vdash \mathsf{class}(C_1, R_1, \ldots, \mathsf{true}) <: \mathsf{class}(C_2, R_2, \ldots)} \quad \text{(Protocol)}
+\]
+\caption{Implemented subtyping rules.}
+\label{fig:subtyping}
+\end{figure*}
+
+\paragraph{Type Operations.}  
+Joins $\sqcup$ compute least upper bounds; meets $\sqcap$ compute greatest lower bounds.  
+For records:  
+\[
+R_1 \sqcup R_2 = \{f : R_1(f) \sqcup R_2(f) \mid f \in \mathsf{dom}(R_1) \cap \mathsf{dom}(R_2)\}
+\]
+\[
+R_1 \sqcap R_2 = \{f : R_1(f) \sqcap R_2(f) \mid f \in \mathsf{dom}(R_1) \cup \mathsf{dom}(R_2)\}
 \]
 
-For classes:
+\begin{figure}[t]
+\centering
 \[
-\frac{\mathsf{protocol} = \mathsf{false} \quad C_2 \in \mathsf{supers}^*(C_1)}{\Gamma \vdash \mathsf{class}(C_1, \ldots) <: \mathsf{class}(C_2, \ldots)} \quad \text{(Nominal)}
+\tau \sqcup \tau = \tau
+\quad\quad
+\tau_1 \sqcup \tau_2 = \tau_1 + \tau_2 \ \text{if unrelated}
 \]
+\caption{Join operation for types (meet analogous).}
+\label{fig:typeops}
+\end{figure}
 
-\[
-\frac{\mathsf{protocol} = \mathsf{true} \quad \Gamma \vdash R_1 <: R_2}{\Gamma \vdash \mathsf{class}(C_1, R_1, \ldots, \mathsf{true}) <: \mathsf{class}(C_2, R_2, \ldots)} \quad \text{(Structural)}
-\]
+\paragraph{Unification.}  
+Unification $\Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta$ computes substitutions $\theta : \mathcal{V} \to \mathcal{T}$, supports variadic parameters, instantiation, functions, and records.  
+For functions, unification \emph{requires} side effects to be equal; they are not joined at this stage.
 
-\paragraph{Type Operations.}
-
-\emph{Join} $\tau_1 \sqcup \tau_2$ computes least upper bound:
-\[
-\begin{aligned}
-\tau \sqcup \tau &= \tau \\
-\tau_1 \sqcup \tau_2 &= \tau_1 + \tau_2 \quad \text{if unrelated} \\
-R_1 \sqcup R_2 &= \{f : \tau \mid f \in \mathsf{dom}(R_1) \cap \mathsf{dom}(R_2), \tau = R_1(f) \sqcup R_2(f)\}
-\end{aligned}
-\]
-
-\emph{Meet} $\tau_1 \sqcap \tau_2$ computes greatest lower bound:
-\[
-\begin{aligned}
-R_1 \sqcap R_2 &= \{f : \tau \mid f \in \mathsf{dom}(R_1) \cup \mathsf{dom}(R_2), \tau = R_1(f) \sqcap R_2(f)\}
-\end{aligned}
-\]
-
-\paragraph{Unification.} We define the unification judgment $\Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta$ where $\theta : \mathcal{V} \to \mathcal{T}$ is a substitution:
-
+\begin{figure*}[t]
+\centering
 \[
 \frac{X \notin \mathsf{dom}(\theta) \quad X \notin \mathsf{FV}(\tau)}{\Delta \vdash X \doteq \tau \leadsto \theta[X \mapsto \tau]} \quad \text{(Var-L)}
 \]
-
 \[
 \frac{\Delta \vdash \overline{\tau_1} \doteq \overline{\tau_2} \leadsto \theta}{\Delta \vdash c\langle\overline{\tau_1}\rangle \doteq c\langle\overline{\tau_2}\rangle \leadsto \theta} \quad \text{(Inst)}
 \]
-
 \[
 \frac{X \notin \mathsf{dom}(\theta) \quad \Delta \vdash \overline{\tau_1} \doteq \overline{\tau_2} \leadsto \theta'}{\Delta \vdash X\langle\overline{\tau_1}\rangle \doteq c\langle\overline{\tau_2}\rangle \leadsto \theta[X \mapsto c] \cup \theta'} \quad \text{(Inst-Var)}
 \]
-
-\[
-\frac{\Delta \vdash R_1 \doteq R_2 \leadsto \theta_1 \quad \Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta_2 \quad \epsilon_1 \sqcup_\mathcal{E} \epsilon_2 \text{ defined}}{\Delta \vdash (R_1 \xrightarrow{\epsilon_1} \tau_1) \doteq (R_2 \xrightarrow{\epsilon_2} \tau_2) \leadsto \theta_1 \cup \theta_2} \quad \text{(Fun)}
-\]
-
-For records, unification finds a matching between fields:
-\[
-\frac{\forall f_i \in \mathsf{common}(R_1, R_2). \Delta \vdash R_1(f_i) \doteq R_2(f_i) \leadsto \theta_i}{\Delta \vdash R_1 \doteq R_2 \leadsto \bigcup_i \theta_i} \quad \text{(Record)}
-\]
-
-For variadic variables $X^*$:
 \[
 \frac{X^* \notin \mathsf{dom}(\theta) \quad X^* \notin \mathsf{FV}(\tau_1, \ldots, \tau_n)}{\Delta \vdash X^* \doteq (\tau_1, \ldots, \tau_n) \leadsto \theta[X^* \mapsto (\tau_1, \ldots, \tau_n)]} \quad \text{(Var-Star)}
 \]
-
-\paragraph{Implementation Note.} The unification algorithm produces intermediate matching objects that track bound/unbound parameters separately, enabling sophisticated partial application and overload resolution. The rules above abstract over these implementation details while preserving the essential semantics.
-
-\paragraph{Name Resolution.} Let $\mathcal{M}$ be the global module environment. Resolution $\mathsf{resolve}(n, \Gamma)$ proceeds:
-
 \[
-\mathsf{resolve}(n, \Gamma) = \begin{cases}
+\frac{\Delta \vdash R_1 \doteq R_2 \leadsto \theta_1 \quad \Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta_2 \quad \epsilon_1 = \epsilon_2}{\Delta \vdash (R_1 \xrightarrow{\epsilon_1} \tau_1) \doteq (R_2 \xrightarrow{\epsilon_2} \tau_2) \leadsto \theta_1 \cup \theta_2} \quad \text{(Fun)}
+\]
+\[
+\frac{\forall f_i \in \mathsf{common}(R_1, R_2).\ \Delta \vdash R_1(f_i) \doteq R_2(f_i) \leadsto \theta_i}{\Delta \vdash R_1 \doteq R_2 \leadsto \bigcup_i \theta_i} \quad \text{(Record)}
+\]
+\caption{Unification rules, matching the implementation (function unification requires equal effects).}
+\label{fig:unification}
+\end{figure*}
+
+\paragraph{Name Resolution.}  
+Name resolution proceeds by lexical environment, then parent scope, then module‐local entries in the global module map $\mathcal{M}$, then builtins; otherwise it fails.
+
+\begin{figure*}[t]
+\centering
+\[
+\mathsf{resolve}(n, \Gamma) =
+\begin{cases}
 \Gamma(n) & \text{if } n \in \Gamma \\
 \mathsf{resolve}(n, \Gamma_{\mathsf{parent}}) & \text{if parent exists} \\
 \mathcal{M}[\mathsf{current\_module}](n) & \text{if module-local} \\
@@ -138,53 +142,54 @@ For variadic variables $X^*$:
 \mathsf{error} & \text{otherwise}
 \end{cases}
 \]
+\caption{Name resolution strategy.}
+\label{fig:nameres}
+\end{figure*}
 
 \subsection{Dynamic Semantics}
 
-\paragraph{Overload Resolution.} For overload $\{\varphi_1, \ldots, \varphi_n\}$ and arguments $\overline{\tau}$:
+Dynamic semantics covers overload resolution, attribute/index access, and effect composition.
 
+\paragraph{Overload Resolution.}  
+Overloads are resolved by unifying parameters against argument types; all matching alternatives’ return types are joined.
+
+\paragraph{Attribute and Index Access.}  
+There is no dedicated $\tau.\ell$ syntax form; attribute/index access is an \emph{operation} performed by the interpreter:  
+\begin{itemize}
+\item If $\tau$ has a matching field in its record or class members, that type is returned.
+\item Otherwise, if it has a \texttt{\_\_getitem\_\_} method, that method is applied to the index type.
+\end{itemize}
+
+\paragraph{Effects.}  
+Effects join pointwise: $\epsilon_1 \sqcup_{\mathcal{E}} \epsilon_2$ 
+takes the disjunction of each Boolean component and the optional join $\sqcup^?$ of their \texttt{update} types, where
 \[
-\mathsf{resolve}(\{\varphi_1, \ldots, \varphi_n\}, \overline{\tau}) = \bigsqcup\{\mathsf{return}(\varphi_i) \mid \mathsf{unify}(\mathsf{params}(\varphi_i), \overline{\tau}) \text{ succeeds}\}
-\]
-
-\paragraph{Attribute Access.} The access operation $\mathsf{access}(\tau, \tau')$ is defined:
-
-\[
-\frac{R = \mathsf{members}(\tau) \quad \tau' = s \quad f = \langle s \rangle \text{ or } f = \langle i, s \rangle \quad f \in \mathsf{dom}(R)}{\mathsf{access}(\tau, \tau') = R(f)} \quad \text{(Field)}
-\]
-
-\[
-\frac{\mathsf{access}(\tau, \text{\_\_getitem\_\_}) = \varphi \quad \tau' \in \mathsf{IndexTypes} \quad \mathsf{call}(\varphi, \tau') = \tau''}{\mathsf{access}(\tau, \tau') = \tau''} \quad \text{(Index)}
-\]
-
-where $\mathsf{IndexTypes} = \{\mathsf{int}, \mathsf{str}, \mathsf{slice}\} \cup \{\ell \mid \ell \text{ literal}\}$.
-
-\paragraph{Effect System.} Effects compose via pointwise join $\sqcup_\mathcal{E}$:
-
-\[
-\begin{aligned}
-\epsilon_1 \sqcup_\mathcal{E} \epsilon_2 = (&\epsilon_1.\mathsf{new} \lor \epsilon_2.\mathsf{new}, \\
-&\epsilon_1.\mathsf{method} \lor \epsilon_2.\mathsf{method}, \\
-&\epsilon_1.\mathsf{update} \sqcup^? \epsilon_2.\mathsf{update}, \\
-&\epsilon_1.\mathsf{alias} \lor \epsilon_2.\mathsf{alias}, \\
-&\epsilon_1.\mathsf{property} \lor \epsilon_2.\mathsf{property})
-\end{aligned}
-\]
-
-where the optional type join $\sqcup^?$ is defined as:
-\[
-\tau_1^? \sqcup^? \tau_2^? = \begin{cases}
-\tau_1 \sqcup \tau_2 & \text{if both } \tau_1, \tau_2 \text{ defined} \\
+\tau_1^? \sqcup^? \tau_2^? =
+\begin{cases}
+\tau_1 \sqcup \tau_2 & \text{if both defined} \\
 \tau_i & \text{if only } \tau_i \text{ defined} \\
 \bot & \text{if neither defined}
 \end{cases}
 \]
+The `property` concept is separate from effects: properties are modeled as functions with a dedicated \texttt{property} flag.
 
-\paragraph{Integration with Analysis.} The type system provides semantic foundations for:
+\begin{figure*}[t]
+\centering
+\textbf{Overload resolution:}
+\[
+\mathsf{resolve}(\{\varphi_1, \ldots, \varphi_n\}, \overline{\tau}) =
+\bigsqcup\{\mathsf{return}(\varphi_i) \mid \mathsf{unify}(\mathsf{params}(\varphi_i), \overline{\tau}) \ \text{succeeds}\}
+\]
+\caption{Dynamic semantics: overload resolution (attribute/index access is operational).}
+\label{fig:dynamic}
+\end{figure*}
+
+\paragraph{Integration with Analysis.}  
+The type system supports:
 \begin{itemize}
-\item \textbf{Heap Shape}: Record types $R$ determine object layout in pointer analysis
-\item \textbf{Effect Tracking}: Effect annotations $\epsilon$ guide mutation and aliasing analysis  
-\item \textbf{Dynamic Resolution}: Access operations $\tau.\ell$ resolve attribute lookups during abstract interpretation
-\item \textbf{Allocation Sites}: Functions with $\epsilon.\mathsf{new} = \mathsf{true}$ create fresh heap locations
-\item \textbf{Row Polymorphism}: Field keys with both positional and nominal components enable precise modeling of Python's parameter passing semantics
+\item Heap shape modeling via record types $R$
+\item Effect‐guided mutation and aliasing reasoning
+\item Attribute and index resolution during abstract interpretation
+\item Allocation site identification from $\epsilon.\mathsf{new}$
+\item Row polymorphism for precise parameter passing semantics
 \end{itemize}
