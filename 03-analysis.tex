@@ -44,6 +44,7 @@ Our static analysis framework is built upon three core analyses: Liveness Analys
 \textbf{Liveness Analysis} is a classical dataflow analysis performed backward through the program's control flow graph. Its primary role is to identify which variables (and the data they refer to) might be read or used in the future before they are overwritten. This "liveness" information is critical for discerning which parts of the program's state are truly relevant at any given point, particularly at loop boundaries. By identifying data that is no longer live, we can safely discard it for optimization purposes, such as reducing checkpoint size.
 
 \subsection{Type Analysis}
+\label{sec:typesystem}
 
 Our \textbf{Type Analysis} system assigns a precise semantic type to every variable and abstract object in the program. Unlike simple type checkers, our system is designed to capture subtle aspects of Python's dynamic typing behavior in a static context. Key features that enhance its precision and utility include:
 
@@ -64,7 +65,7 @@ This detailed type information is fundamental for distinguishing between immutab
 The \textbf{Pointer and Dirty Analysis} component provides a detailed understanding of how variables refer to objects in memory and which parts of that memory have been modified. It constructs an abstract representation of the program's heap based on the following concepts:
 
 \begin{itemize}
-    \item \textbf{Abstract Objects:} Instead of tracking specific, concrete memory addresses, we represent runtime objects as \emph{abstract objects}. These abstract objects serve as symbolic placeholders for actual memory locations. They can represent values allocated at a particular program point (e.g., a list created at line 5), objects passed as function parameters, immutable values (like a constant integer), or special global/local scope objects.
+    \item \textbf{Abstract Objects:} Instead of tracking specific, concrete memory addresses, we represent runtime objects as \emph{abstract objects}. These abstract objects serve as symbolic placeholders for actual memory locations. They can represent values allocated at a particular program point (e.g., a list created at line 5), objects passed as function parameters, immutable values (like a constant integer), or special global/local scope objects. Immutability is determined statically by type rules: built-in scalars, tuples of immutable types, pure functions, and certain type objects are classified as immutable, while containers and most user classes are not. Immutable objects are mapped to canonical abstract objects and never marked dirty, eliminating spurious heap updates in the pointer/dirty analysis.
     \item \textbf{Pointer Graph:} The analysis builds a graph where variables and abstract objects are nodes, and directed edges represent "points-to" relationships. This graph reveals \emph{aliasing}, which occurs when multiple variables or fields point to the same abstract object. Understanding aliasing is crucial because a modification through one reference implies a modification visible through all its aliases.
     \item \textbf{Field-Sensitivity:} A key feature is \emph{field-sensitivity}. This means the analysis tracks updates to individual fields or elements within a composite data structure (like an array or object with attributes), rather than treating the entire object as changed whenever any part is modified. For example, if you modify \texttt{arr[0]}, the analysis can precisely distinguish this from an update to \texttt{arr[1]}, preventing over-approximation and unnecessary checkpointing.
     \item \textbf{Dirty Tracking:} As the program executes abstractly, any abstract object whose internal fields are modified is marked as \emph{dirty}. This "dirty bit" is then propagated through any aliasing relationships identified in the pointer graph. Importantly, if an object is identified as immutable by the Type Analysis, it can never be marked dirty. This mechanism directly identifies precisely which state has changed and therefore needs to be considered for persistence.
@@ -94,6 +95,7 @@ Here:
     \item \textbf{Live} comes from liveness analysis: variables (and reachable heap) used in later iterations.
     \item \textbf{Dirty} comes from pointer/dirty analysis: variables whose reachable heap has been modified since the last checkpoint.
 \end{enumerate}
+In the implementation, the dirty set is computed at loop end by identifying dirty roots via alias-closure over the pointer graph, then intersected with the live set at loop entry. This ensures that objects whose last use occurs before the loop boundary, even if dirtied, are excluded.
 
 \paragraph{Example (K-Means).}
 In each iteration of the K-Means clustering algorithm:

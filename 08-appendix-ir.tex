@@ -2,7 +2,7 @@
 \label{appendix:ir}
 
 \subsection{Overview}
-Our analysis operates on a three-address code (TAC) intermediate representation derived from CPython bytecode. The IR makes data flow explicit through named variables, enabling direct application of the type system (Appendix~\ref{appendix:typesystem}) and pointer analysis (Appendix~\ref{appendix:pointeranalysis}) without simulating Python's operand stack.
+Our analysis operates on a three-address code (TAC) intermediate representation derived from CPython bytecode. The IR makes data flow explicit through named variables, enabling direct application of the type system (Appendix~\ref{appendix:typesystem}) and pointer analysis (Appendix~\ref{appendix:pointer}) without simulating CPython's operand stack.
 
 \subsection{Syntax}
 
@@ -14,7 +14,6 @@ i ::= \;& \mathsf{Assign}(\sigma, e)
 \mid \mathsf{For}(\sigma, v, \ell) \\
 &\mid \mathsf{Return}(v)
 \mid \mathsf{Raise}(v)
-\mid \mathsf{Del}(\overline{v})
 \mid \mathsf{Nop}
 \end{aligned}
 \]
@@ -35,7 +34,7 @@ e ::= \;& v \mid c
 
 \paragraph{Assignment Targets.} Target signatures $\sigma \in \mathcal{S}$ support destructuring:
 \[
-\sigma ::= v \mid (\sigma_1, \ldots, \sigma_n) \mid \mathsf{Attr}(v, f) \mid \mathsf{Subscr}(v_1, v_2) \mid \bot
+\sigma ::= v \mid (\sigma_1, \ldots, \sigma_n) \mid \mathsf{Attr}(v, f) \mid \mathsf{Subscr}(v_1, v_2)
 \]
 
 \paragraph{Variables.} Variables $v \in \mathcal{V}$ are partitioned into:
@@ -114,7 +113,7 @@ Each TAC instruction $i$ induces a transfer function:
 \[
 \llbracket i \rrbracket : \Sigma \to \Sigma
 \]
-where $\Sigma = (G, T, D)$ is the typed pointer state (Appendix~\ref{appendix:pointeranalysis}).
+where $\Sigma = (G, T, D)$ is the typed pointer state (Appendix~\ref{appendix:pointer}).
 
 \subsection{Properties}
 

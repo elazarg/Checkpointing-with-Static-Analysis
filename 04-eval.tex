@@ -1,7 +1,7 @@
 
 
-\newcommand{\VMDIFF}[0]{\textDelta VM}
-\newcommand{\PROCDIFF}[0]{\textDelta Proc}
+\newcommand{\VMDIFF}[0]{{\textDelta VM}}
+\newcommand{\PROCDIFF}[0]{{\textDelta Proc}}
 
 
 \begin{table*}
@@ -51,7 +51,7 @@ All benchmarks use fixed data and identical loop structure across checkpointing 
   \item \textbf{\VMDIFF}: VM-level checkpointing based on snapshots and 64-byte memory diffing between iterations. The checkpoints are taken by triggering QEMU memory dumps via QMP commands over TCP.
 \end{itemize}
 
-We omit the first iteration of each benchmark (since no diff can be computed). We also omit the final two iterations, which introduce irregularities in the \PROCDIFF and \VMDIFF baselines.
+We omit the first iteration of each benchmark (since no diff can be computed). We also omit the final two iterations, which introduce irregularities in the {\PROCDIFF} and {\VMDIFF} baselines.
 
 \paragraph{Notes on Overhead Accounting}
 The use of TCP to trigger VM-level checkpoints may introduce a nontrivial fixed overhead per snapshot, including QEMU internals and I/O latency. While the precise size impact of this mechanism is difficult to isolate, we partially control for such effects by comparing deltas between consecutive snapshots rather than absolute snapshot sizes. In contrast, the analysis-based and LocalVars Python checkpoints use direct pickle serialization. Thus, while our VM-level measurements reflect realistic system-level behavior, they may slightly overestimate true memory diffs compared to language-level checkpointing.
@@ -64,7 +64,7 @@ For the noploop benchmark, our analysis incurs a fixed overhead (iterator) that 
 the minimal state changes, making process-level diffing more efficient. This 
 represents a limitation for programs with very small persistent state.
 
-The \texttt{pivoter} benchmark---a recursive clique enumeration kernel --- maintains small internal state (e.g., recursion depth and adjacency buffers) that is genuinely required to resume computation. Our system’s performance is nearly identical to the process-level memory diff, suggesting that it is near-optimal in this case; in contrast, LocalVarsly checkpointing all local variables leads to 10x memory overhead. The \texttt{noploop} benchmark confirms the lower bound: our instrumentation adds minor overhead (e.g., iterator state), while process-level diffing captures the true minimal footprint. Comparing \texttt{\PROCDIFF} results between \texttt{pivoter} and \texttt{noploop} reveals that process snapshots can be highly efficient in simple cases, adding as little as 23 bytes of overhead.
+The \texttt{pivoter} benchmark---a recursive clique enumeration kernel --- maintains small internal state (e.g., recursion depth and adjacency buffers) that is genuinely required to resume computation. Our system’s performance is nearly identical to the process-level memory diff, suggesting that it is near-optimal in this case; in contrast, naively checkpointing all local variables leads to 10x memory overhead. The \texttt{noploop} benchmark confirms the lower bound: our instrumentation adds minor overhead (e.g., iterator state), while process-level diffing captures the true minimal footprint. Comparing \texttt{\PROCDIFF} results between \texttt{pivoter} and \texttt{noploop} reveals that process snapshots can be highly efficient in simple cases, adding as little as 23 bytes of overhead.
 
 By contrast, in \texttt{kmeans}, the difference is driven by transient arrays such as gradients, distances, and cluster metrics, all of which are allocated per iteration and dead by the loop's end. The \texttt{omp} benchmark benefits even more dramatically: while it uses large working arrays and regression buffers, these are reused rather than persisted, and are excluded from checkpoints by the dirty-pointer analysis.
 
