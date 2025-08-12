@@ -1,0 +1,108 @@
+\section{Pointer Analysis}
+\label{appendix:pointer}
+
+This appendix specifies the abstract domain and transfer functions for the pointer component of the analysis.  
+The pointer analysis tracks \emph{abstract heap locations} reachable from local and global variables, together with the type of each location and a set of ``dirty'' fields indicating mutations.  
+When combined with the type system in Appendix~\ref{appendix:typesystem}, this enables precise modelling of Python's object aliasing, updates, and allocation behavior.
+
+\subsection{Abstract Domain}
+
+\paragraph{Abstract Objects.}
+An abstract object $o \in \mathcal{O}$ is one of:
+\[
+o ::= \mathsf{Loc}(\ell) \mid \mathsf{Param}(p) \mid \mathsf{Imm}(\tau) \mid \mathsf{Scope}(s)
+\]
+where:
+\begin{itemize}
+\item $\mathsf{Loc}(\ell)$ is an allocation site, identified by a control-flow location $\ell$;
+\item $\mathsf{Param}(p)$ is a distinguished object for a function parameter $p$;
+\item $\mathsf{Imm}(\tau)$ is an immutable value of type $\tau$;
+\item $\mathsf{Scope}(s)$ is a symbolic object for special scopes (\texttt{locals}, \texttt{globals}).
+\end{itemize}
+
+We write $\mathsf{LOCALS}$ and $\mathsf{GLOBALS}$ for the distinguished scope objects.
+
+\paragraph{Pointer Graph.}
+The pointer component is a mapping:
+\[
+G \in \mathcal{P} = \mathcal{O} \to (\mathsf{Field} \to 2^{\mathcal{O}})
+\]
+where $\mathsf{Field}$ are field keys (TAC variables, attribute names, or the special \texttt{"*"} for element collections).  
+$G[o][f]$ is the set of objects pointed to from field $f$ of object $o$.
+
+\paragraph{Type Map.}
+The type component maps each object to a type expression:
+\[
+T \in \mathcal{T}\mathsf{Map} = \mathcal{O} \to \mathcal{T}
+\]
+where $\mathcal{T}$ is the set of types from Appendix~\ref{appendix:typesystem}.  
+Types abstract the runtime value of each object and are used for attribute resolution and effect tracking.
+
+\paragraph{Dirty Map.}
+The dirty component maps each object to the set of fields possibly updated since the last checkpoint:
+\[
+D \in \mathcal{D}\mathsf{Map} = \mathcal{O} \to 2^{\mathsf{Field}}
+\]
+
+\paragraph{Typed Pointer State.}
+The full abstract state is:
+\[
+\Sigma = (G, T, D) \in \mathcal{P} \times \mathcal{T}\mathsf{Map} \times \mathcal{D}\mathsf{Map}
+\]
+with pointwise partial order, join, and bottom element.
+
+\subsection{Semantics}
+
+\paragraph{Expression Evaluation.}
+Given a pre-state $\Sigma_{\mathit{in}}$ and an expression $e$ in TAC form, the \texttt{expr} function returns:
+\[
+\mathsf{expr}(\Sigma_{\mathit{in}}, e, \ell) = (O, \tau, D')
+\]
+where:
+\begin{itemize}
+\item $O \subseteq \mathcal{O}$ is the set of objects to which $e$ may evaluate;
+\item $\tau \in \mathcal{T}$ is the type of $e$ (via $\mathcal{T}$, using type system operations such as attribute access, subscripting, and function application);
+\item $D'$ are additional dirty entries from side effects of evaluating $e$.
+\end{itemize}
+
+Evaluation cases:
+\begin{itemize}
+\item \emph{Variable}: returns $\Sigma_{\mathit{in}}.G[\mathsf{LOCALS}, v]$ and its type.
+\item \emph{Attribute}: resolves the attribute type $\tau' = \mathsf{access}(\tau, f)$, possibly adds $\ell$ as a fresh location if the attribute allocates, and returns the pointed set.
+\item \emph{Subscript}: similar, using element type.
+\item \emph{Call}: partially applies the function type to argument types to obtain a return type and side effect, updates dirty map if \texttt{update} effect is present, and adds fresh location if \texttt{new} is true.
+\item \emph{Const}: produces $\mathsf{Imm}(\tau)$.
+\end{itemize}
+
+\paragraph{Assignments.}
+For TAC \texttt{lhs = expr}, the analysis:
+\begin{enumerate}
+\item Evaluates \texttt{expr} to $(O, \tau, D')$;
+\item Updates the dirty map with $D'$;
+\item Updates $G$ to point \texttt{lhs} to $O$;
+\item Updates $T$ to map $O$ to $\tau$.
+\end{enumerate}
+
+The form of \texttt{lhs} (variable, attribute, subscript, destructuring tuple) determines whether updates go to $\mathsf{LOCALS}$ or to fields of other objects.
+
+\paragraph{Liveness and Garbage Collection.}
+After each instruction, the analysis removes:
+\begin{itemize}
+\item Local variables not in the current liveness set;
+\item Unreachable objects (not reachable from any live local or parameter) from all three components.
+\end{itemize}
+
+\paragraph{Join and Ordering.}
+The order $\Sigma_1 \sqsubseteq \Sigma_2$ holds iff all three components are pointwise $\sqsubseteq$.  
+The join $\Sigma_1 \sqcup \Sigma_2$ merges pointer targets, joins types (Appendix~\ref{appendix:typesystem}), and unions dirty sets.
+
+\subsection{Interaction with Type System}
+The pointer analysis is parameterised by the type system in three ways:
+\begin{itemize}
+\item \textbf{Attribute and subscript semantics} are delegated to the type system's $\mathsf{access}$ and $\mathsf{subscr}$ operations, using the type map $T$.
+\item \textbf{Function calls} use the type system's application and side-effect extraction to update pointers and dirtyness.
+\item \textbf{Immutability} is determined via the type system to decide whether to reuse $\mathsf{Imm}(\tau)$ objects or allocate fresh ones.
+\end{itemize}
+
+\subsection{Use in Checkpointing}
+At loop boundaries identified by the control-flow graph, the dirty map $D$ is consulted to find \emph{dirty roots}: local variables whose reachable heap has been updated since the last checkpoint. Only these variables and their reachable subgraph need to be persisted.

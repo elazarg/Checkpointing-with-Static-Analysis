@@ -1,0 +1,24 @@
+
+\section{Introduction: SE}
+Static analysis of Python programs is notoriously difficult due to features like dynamic typing, reflection, and flexible control flow. Yet many Python programs --- particularly in numerical computing --- deliberately avoid these constructs, favoring typed, deterministic code and stable libraries like NumPy. This raises a natural question: can standard static analysis techniques yield practical optimizations for such well-structured programs?
+
+We explore this question by applying conventional program analyses --- points-to analysis, type inference, and liveness --- to numerical Python code that satisfies common structural constraints: no reflection, statically typed inputs, and predictable control flow. These techniques are augmented with simple effect annotations that classify operations across built-in types and external libraries as allocating, mutating, or pure, enabling the use of third-party libraries while maintaining nontrivial precision in heap shape tracking.
+
+To demonstrate the utility of these analyses, we target a concrete optimization problem common in long-running numerical workloads: \emph{minimizing checkpoint overhead}. Iterative programs often require periodic checkpoints to guard against failure, but naively saving the entire program state at each checkpoint introduces significant overhead, especially when much of that state is transient or unused across iterations.
+
+Our solution builds directly on the static analysis infrastructure: we develop an analysis that identifies the minimal persistent state --- the subset of program state that must survive from one iteration to the next to ensure correct execution after recovery. This analysis performs a region-based, heap-aware escape computation over loop iterations, tracking dirty state via pointer reachability, constrained to live variables. The result is automatic synthesis of selective checkpointing logic that preserves only semantically meaningful state.
+
+We evaluate the synthesis on realistic implementation of numerical algorithms: k-means clustering, orthogonal matching pursuit (OMP), and graph search procedures. These case studies confirm that classical analysis techniques, carefully applied to structurally disciplined Python code, can yield major practical benefits. Specifically, our synthesized checkpointing reduces snapshot size by 2–5 orders of magnitude compared to system-level or naive approaches, for programs satisfying our structural constraints.
+
+\paragraph{Contributions}
+\begin{enumerate}
+    \item A reusable static analysis framework for well-typed, structured Python programs.
+    \item Specialized analysis and synthesis steps for iteration-aware checkpoint minimization via escape analysis.
+    \item An empirical demonstration that semantically guided checkpointing is feasible and highly effective in practical, albeit constrained, Python workloads.
+\end{enumerate}
+
+Our approach does not aim for generality: it excludes Python programs that use reflection, dynamic evaluation, or unannotated higher-order code. However, these constraints are commonly satisfied by numerical computing programs. While we focus on checkpoint size rather than formal correctness or runtime performance, our results show that established analyses --- when paired with modest structural assumptions --- can enable sound optimizations that would be difficult to achieve manually.
+
+While the individual techniques we use --- liveness, points-to, and type analysis --- are well-established, our contribution lies in showing that, when carefully adapted to a structurally constrained subset of Python, they can enable significant and automatic optimizations for a problem class (iterative numerical checkpointing) that typically relies on coarse-grained, manual, or heavyweight solutions. We demonstrate that such analyses, together with modest effect annotations, can outperform system-level approaches by several orders of magnitude, without requiring developers to restructure their code.
+
+The remainder of the paper is organized as follows. In Section 2 we present a running example based on the K-Means clustering algorithm to illustrate the challenges and opportunities for selective checkpointing in numerical Python code. Section 3 describes our analysis framework in detail, including the intermediate representation, the design of the type and pointer domains, and the interaction between liveness, type, and heap analyses. Section 4 evaluates our approach on several realistic workloads, comparing our synthesized checkpoints against naive and system-level baselines. Section 5 discusses related work in static analysis for dynamic languages and checkpointing. We conclude with a summary of contributions and directions for future work.

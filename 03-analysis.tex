@@ -1,0 +1,114 @@
+\section{Analysis}
+\label{sec:analysis}
+
+Our framework performs precise static analysis of Python programs within a tractable subset tailored to numerical computing. This enables advanced source-level transformations such as minimal checkpointing, demonstrated here as our main case study.
+
+\subsection{Scope and Assumptions}
+\label{sec:scope}
+
+Our framework targets a practical subset of Python programs, chosen to balance analytical precision with tractable implementation.  
+We disallow dynamic code evaluation, require statically resolvable function calls, mandate explicit instantiation for generics, and adopt a simplified aliasing model for NumPy arrays.  
+These constraints, common in idiomatic numerical code, allow us to model control flow, data flow, and heap mutation soundly.
+
+Several trade-offs shape the design: we abstract away array shapes, use a wildcard field for unknown collection elements, and leverage literal and variadic generics for precise yet extensible typing.  
+Soundness depends on accurate type and effect annotations for external library calls.  
+
+A full statement of these assumptions, including justification and implications, is given in Appendix~\ref{appendix:assumptions}.
+
+\subsection{Intermediate Representation}
+Our first step is to lower CPython bytecode to a \emph{register-based three-address code (TAC) intermediate representation} (Appendix~\ref{appendix:ir}), making data flow explicit. For example:
+\begin{lstlisting}[language=Python]
+# Python
+x = f(y) + g(z)
+
+# TAC
+$1 = f(y)
+$2 = g(z)
+x  = $1 + $2
+\end{lstlisting}
+This removes implicit stack effects, ensures every instruction has explicit inputs and outputs, and simplifies dataflow reasoning.
+
+\subsection{Overview of the Analysis Framework}
+
+Our static analysis framework is built upon three core analyses: Liveness Analysis, Type Analysis, and Pointer and Dirty Analysis. These operate collaboratively within a \emph{reduced product domain}, meaning the insights from each analysis continuously inform and refine the others. This iterative refinement is crucial for overcoming the inherent imprecision that would arise if these analyses were run in isolation, allowing us to achieve a highly precise understanding of Python program behavior. The overall pipeline is visualized in Figure~\ref{fig:overview}.
+
+\begin{figure}[t]
+    \centering
+    \input{pipeline.tex}
+    \caption{Analysis pipeline. Python source is compiled to bytecode, lowered to TAC, and analyzed in three interacting domains. At loop boundaries, the intersection of live and dirty variables forms the minimal checkpoint set.}
+    \label{fig:overview}
+\end{figure}
+
+\subsection{Liveness Analysis}
+
+\textbf{Liveness Analysis} is a classical dataflow analysis performed backward through the program's control flow graph. Its primary role is to identify which variables (and the data they refer to) might be read or used in the future before they are overwritten. This "liveness" information is critical for discerning which parts of the program's state are truly relevant at any given point, particularly at loop boundaries. By identifying data that is no longer live, we can safely discard it for optimization purposes, such as reducing checkpoint size.
+
+\subsection{Type Analysis}
+
+Our \textbf{Type Analysis} system assigns a precise semantic type to every variable and abstract object in the program. Unlike simple type checkers, our system is designed to capture subtle aspects of Python's dynamic typing behavior in a static context. Key features that enhance its precision and utility include:
+
+\begin{itemize}
+    \item \textbf{Literal Values:} The system can track specific constant values, such as an exact integer (\texttt{Literal[3]}) or a precise string (\texttt{Literal["mean"]}). This enables highly accurate reasoning about operations where the outcome depends on these specific values, allowing us to resolve method calls or attribute accesses precisely at analysis time.
+    \item \textbf{Generic Types:} We explicitly model generic collections and data structures, like \texttt{list[int]} (a list containing only integers) or \texttt{numpy.ndarray} (a NumPy array). This allows the analysis to understand the types of elements within containers, which is fundamental for numerical computing where array contents are critical.
+    \item \textbf{Effect Annotations:} A unique and vital aspect of our type system is the inclusion of \emph{effect annotations} on function types. These annotations explicitly describe a function's side effects on the heap, even for built-in Python functions or external libraries where we don't have source code. This is crucial for tracking mutations and heap changes:
+    \begin{itemize}
+        \item \texttt{@new}: Indicates the function creates and returns a fresh, new object (e.g., \texttt{list()} or \texttt{np.array()}).
+        \item \texttt{@update}: Signifies that the function modifies one of its input arguments (e.g., \texttt{list.append()} mutates the list it's called on).
+        \item \texttt{@pure}: Means the function has no side effects on the heap; it only reads its inputs and returns a value (e.g., \texttt{len()}).
+    \end{itemize}
+\end{itemize}
+This detailed type information is fundamental for distinguishing between immutable data (which cannot be "dirty") and mutable state, providing the foundational basis for tracking all heap changes. While our system supports more complex features like union types and overloaded functions (Appendix~\ref{appendix:typesystem}), these core elements are most impactful for our analysis goals.
+
+\subsection{Pointer and Dirty Analysis}
+
+The \textbf{Pointer and Dirty Analysis} component provides a detailed understanding of how variables refer to objects in memory and which parts of that memory have been modified. It constructs an abstract representation of the program's heap based on the following concepts:
+
+\begin{itemize}
+    \item \textbf{Abstract Objects:} Instead of tracking specific, concrete memory addresses, we represent runtime objects as \emph{abstract objects}. These abstract objects serve as symbolic placeholders for actual memory locations. They can represent values allocated at a particular program point (e.g., a list created at line 5), objects passed as function parameters, immutable values (like a constant integer), or special global/local scope objects.
+    \item \textbf{Pointer Graph:} The analysis builds a graph where variables and abstract objects are nodes, and directed edges represent "points-to" relationships. This graph reveals \emph{aliasing}, which occurs when multiple variables or fields point to the same abstract object. Understanding aliasing is crucial because a modification through one reference implies a modification visible through all its aliases.
+    \item \textbf{Field-Sensitivity:} A key feature is \emph{field-sensitivity}. This means the analysis tracks updates to individual fields or elements within a composite data structure (like an array or object with attributes), rather than treating the entire object as changed whenever any part is modified. For example, if you modify \texttt{arr[0]}, the analysis can precisely distinguish this from an update to \texttt{arr[1]}, preventing over-approximation and unnecessary checkpointing.
+    \item \textbf{Dirty Tracking:} As the program executes abstractly, any abstract object whose internal fields are modified is marked as \emph{dirty}. This "dirty bit" is then propagated through any aliasing relationships identified in the pointer graph. Importantly, if an object is identified as immutable by the Type Analysis, it can never be marked dirty. This mechanism directly identifies precisely which state has changed and therefore needs to be considered for persistence.
+\end{itemize}
+This comprehensive understanding of memory layout, aliasing, and mutation patterns is indispensable for our checkpointing strategy.
+
+\subsection{Interactions between Analyses}
+
+The power of our framework stems from the continuous interaction and refinement among the Liveness, Type, and Pointer/Dirty analyses within the reduced product domain. Information flows between these components, enabling more precise results than if they operated independently:
+
+\begin{itemize}
+    \item \emph{Type $\rightarrow$ Dirty:} The Type Analysis identifies immutable types. The Pointer and Dirty Analysis uses this information to ensure that objects of immutable types are never marked dirty, even if they appear in an assignment target.
+    \item \emph{Dirty $\rightarrow$ Liveness:} If an object is marked as dirty, but the Liveness Analysis determines it is no longer used, it can be excluded from the checkpoint set.
+    \item \emph{Liveness $\rightarrow$ Pointer:} When the Liveness Analysis determines a variable is dead, the Pointer Analysis can safely remove any heap edges originating from that variable. This prunes the abstract heap, reducing aliasing noise and improving the precision of subsequent pointer analysis steps.
+    \item \emph{Pointer $\rightarrow$ Type:} For dynamic dispatches (e.g., method calls on an object whose exact type is not immediately known), the Pointer Analysis can narrow down the set of possible receiver objects. This information feeds back into the Type Analysis to refine the resolved type, leading to more accurate effect annotations and more precise tracking of mutations.
+\end{itemize}
+These synergistic feedbacks prevent each domain from making overly conservative approximations, which would otherwise inflate the computed checkpoint set and diminish the effectiveness of our transformations.
+
+\subsection{Checkpoint Minimization}
+
+Naïvely checkpointing every live variable at loop end wastes space and time on data that is either unchanged or easily recomputed. Our key observation is that only variables \emph{both} live and dirty need to be saved:
+\[
+\mathsf{CheckpointSet} = \mathsf{Live} \cap \mathsf{Dirty}.
+\]
+Here:
+\begin{enumerate}
+    \item \textbf{Live} comes from liveness analysis: variables (and reachable heap) used in later iterations.
+    \item \textbf{Dirty} comes from pointer/dirty analysis: variables whose reachable heap has been modified since the last checkpoint.
+\end{enumerate}
+
+\paragraph{Example (K-Means).}
+In each iteration of the K-Means clustering algorithm:
+\begin{itemize}
+    \item \texttt{assignments}: recomputed each time $\Rightarrow$ dead at loop end.
+    \item \texttt{points}: input data, never modified $\Rightarrow$ live but not dirty.
+    \item \texttt{centroids}: updated and used in the next iteration $\Rightarrow$ live and dirty.
+\end{itemize}
+The intersection singles out \texttt{centroids} as the only array to persist, eliminating large transient data from checkpoints.
+
+\subsection{Instrumentation and Execution}
+
+The analysis results drive an automated transformation pass that inserts code at statically determined loop boundaries:
+\begin{itemize}
+    \item \textbf{Restore:} At loop entry, load the most recent saved state if recovering from failure.
+    \item \textbf{Save:} At loop exit, serialize only the computed $\mathsf{CheckpointSet}$ (e.g.\ via \texttt{pickle}).
+\end{itemize}
+This preserves the original program’s structure and semantics while drastically reducing checkpoint cost. Because checkpoint locations and contents are statically determined, no runtime scanning or dependency tracking is needed.

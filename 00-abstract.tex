@@ -1,0 +1,23 @@
+\begin{abstract}
+Static analysis of Python programs faces significant challenges due to dynamic typing, reflection, and flexible control structures. However, important classes of Python programs --- particularly in numerical computing --- often avoid these problematic features, using explicit type annotations and predictable control flow patterns that may enable effective static reasoning.
+
+We demonstrate that standard program analysis techniques can be successfully applied to well-structured Python programs to enable practical optimizations. Our approach combines points-to analysis, type inference, and liveness analysis, augmented with lightweight effect annotations for built-in types and external libraries. To demonstrate the framework's utility, we develop a specialization that performs escape analysis across loop iteration boundaries, automatically identifying minimal persistent state for iterative algorithms.
+
+We apply this analysis to synthesize selective checkpointing instrumentation for realistic numerical Python programs, including k-means clustering, orthogonal matching pursuit, and graph search algorithms. Our evaluation shows that this approach can achieve checkpoint size reductions of 2--5 orders of magnitude compared to system-level alternatives, demonstrating that established static analysis techniques --- when carefully applied to structurally constrained Python code --- can enable significant automated optimizations.
+
+% Systems:
+% Checkpointing is a critical mechanism for fault tolerance in distributed computing systems. However, traditional system-level approaches --- such as full-process or VM state capture --- introduce significant overhead by indiscriminately storing entire memory snapshots. Application-aware checkpointing addresses this by selectively preserving only semantically relevant state, but such techniques have seen limited adoption in dynamic languages like Python due to the challenges of static analysis.
+
+% We show that for a some classical machine learning algorithms implemented with NumPy and SciPy, application-aware checkpointing is both feasible and highly effective. Our approach leverages abstract interpretation to combine type inference, points-to analysis, and liveness analysis, identifying the minimal set of variables required to safely resume execution after failure.
+
+% We implement this technique and evaluate it on several non-trivial Python ML workloads. Compared to system-level tools like CRIU~\cite{venkatesh2019fast} and naive checkpointing strategies that preserve all local state, our method reduces checkpoint size by 2--5 orders of magnitude. This makes frequent, low-overhead checkpointing practical in environments where traditional methods are otherwise prohibitive.
+
+% Synchronization of replicated data and program state is an essential aspect of application fault-tolerance. 
+% It allows quick recovery when a crash occurs on a
+% compute node, reducing downtime and data loss.
+% Current solutions use virtual memory mapping to identify page writes and replicate them at the destination. This approach has its limitations because the granularity is restricted to a minimum of 4KiB per page, which may result in more data being replicated. 
+% Motivated by the emerging CXL hardware, in a recent work Waddington, et al. [SoCC 22] demonstrated that using compression algorithms on VM snapshot data at cache line granularity may significantly improve the size of the replicated data to be synchronized. 
+
+% In this work we use static analysis techniques to analyze the execution of programs and store a succinct space that represent the execution state within in a loop. We automatically identify the variables that need to be stored for fault-tolerance, so that if the software crashes we can resume given that data. We demonstrate that using these static analysis techniques on several popular machine learning algorithms, we are able to identify and synchronize much more succinct data (about two orders of magnitude) compared Waddington, et al. [SoCC 22].
+\end{abstract}
+

@@ -1,0 +1,117 @@
+% \PlotExp{<Title>}{<CSV path>}{<Prefix>}
+\newcommand{\PlotExp}[3]{%
+  \nextgroupplot[title={#1}]
+  \pgfplotstableread[col sep=comma,trim cells]{#2}\datatable
+
+  % Per-row bands for proc0..4
+  \pgfplotstablecreatecol[
+    create col/expr={min(min(min(min(\thisrow{proc0},\thisrow{proc1}),\thisrow{proc2}),\thisrow{proc3}),\thisrow{proc4})}
+  ]{procmin}{\datatable}
+  \pgfplotstablecreatecol[
+    create col/expr={max(max(max(max(\thisrow{proc0},\thisrow{proc1}),\thisrow{proc2}),\thisrow{proc3}),\thisrow{proc4})}
+  ]{procmax}{\datatable}
+
+  % Per-row bands for vm0..4
+  \pgfplotstablecreatecol[
+    create col/expr={min(min(min(min(\thisrow{vm0},\thisrow{vm1}),\thisrow{vm2}),\thisrow{vm3}),\thisrow{vm4})}
+  ]{vmmin}{\datatable}
+  \pgfplotstablecreatecol[
+    create col/expr={max(max(max(max(\thisrow{vm0},\thisrow{vm1}),\thisrow{vm2}),\thisrow{vm3}),\thisrow{vm4})}
+  ]{vmmax}{\datatable}
+
+  % Bands (unique name paths via prefix #3)
+  \addplot[name path=#3PROCmax, draw=none] table[x=i, y=procmax]{\datatable};
+  \addplot[name path=#3PROCmin, draw=none] table[x=i, y=procmin]{\datatable};
+  \addplot[fill opacity=0.14, draw=none] fill between[of=#3PROCmax and #3PROCmin];
+
+  \addplot[name path=#3VMmax, draw=none] table[x=i, y=vmmax]{\datatable};
+  \addplot[name path=#3VMmin, draw=none] table[x=i, y=vmmin]{\datatable};
+  \addplot[fill opacity=0.14, draw=none] fill between[of=#3VMmax and #3VMmin];
+
+  % Central lines
+  \addplot[very thick] table[x=i, y=procavg]{\datatable};
+  \addplot[very thick, dashed] table[x=i, y=vmavg]{\datatable};
+  
+    \addplot[
+      only marks,
+      mark=diamond*,
+      mark options={blue}
+    ] table[x=i, y=naive]{\datatable};
+    
+    \addplot[
+      only marks,
+      mark=asterisk,
+      mark options={red}
+    ] table[x=i, y=instrumented]{\datatable};
+}
+
+
+\begin{tikzpicture}
+\begin{groupplot}[
+    group style={
+        group size=2 by 2,
+        horizontal sep=2cm,
+        vertical sep=2cm
+    },
+    width=0.48\textwidth,
+    height=0.35\textwidth,
+    xlabel={$i$},
+    ylabel={Bytes},
+    ymode=log,
+    xtick=\empty,
+    xticklabel=\pgfmathprintnumber{\tick},
+    xtick distance=1,
+    % ymin=9,
+    % ymax=3e8,
+    grid=major,
+    title style={yshift=-1ex},
+    legend to name=grouplegend,
+    legend columns=4,
+    legend style={/tikz/every even column/.append style={column sep=1em}, draw=none, font=\small, anchor=north}
+]
+
+\PlotExp{\texttt{noploop}}{experiments/trivial.csv}{A}
+\PlotExp{\texttt{pivoter}}{experiments/pivoter.csv}{B}
+\PlotExp{\texttt{kmeans}}{experiments/kmeans.csv}{C}
+\PlotExp{\texttt{omp}}{experiments/omp.csv}{D}
+
+\end{groupplot}
+
+\end{tikzpicture}
+\vspace{1ex} % optional spacing
+\begin{center}
+
+
+\pgfplotslegendfromname{grouplegend}
+% Define legend items here (OUTSIDE the plot):
+\begin{tikzpicture}
+  \begin{axis}[
+      hide axis,
+      scale only axis,
+      xmin=0, xmax=1, ymin=0, ymax=1, % force non-empty range
+      legend columns=3,
+      legend style={draw=none, /tikz/every even column/.append style={column sep=1em}}
+    ]
+
+    \addlegendimage{area legend, fill=black!15, draw=none}
+    \addlegendentry{\VMDIFF\;min--max band}
+
+    \addlegendimage{area legend, fill=gray!30, draw=none}
+    \addlegendentry{\PROCDIFF\;min--max band}
+
+    \addlegendimage{only marks, mark=diamond*, mark options={blue}}
+    \addlegendentry{Naive}
+    
+    \addlegendimage{line legend, black, dashed}
+    \addlegendentry{\VMDIFF\;Average}
+
+    \addlegendimage{line legend, black}
+    \addlegendentry{\PROCDIFF\;Average}
+
+    \addlegendimage{only marks, mark=asterisk, mark options={red}}
+    \addlegendentry{Instrumented}
+
+  \end{axis}
+\end{tikzpicture}
+\end{center}
+\caption{Memory usage per checkpointing method across four benchmarked programs}

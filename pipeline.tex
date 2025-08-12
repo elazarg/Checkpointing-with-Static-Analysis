@@ -1,0 +1,47 @@
+\begin{tikzpicture}[
+    box/.style={rectangle, draw=black, thick, minimum width=2.5cm, minimum height=0.8cm, align=center},
+    analysis/.style={rectangle, draw=blue, thick, minimum width=2cm, minimum height=0.6cm, align=center, fill=blue!10},
+    arrow/.style={->, thick},
+    darrow/.style={<->, thick, dashed},
+    node distance=0.8cm
+]
+
+% Pipeline stages
+\node[box] (source) {Python\\Source};
+\node[box, right=of source] (bytecode) {CPython\\Bytecode};
+\node[box, right=of bytecode] (ir) {Register\\IR};
+
+% Analysis framework box
+\node[rectangle, draw=black, very thick, minimum width=8cm, minimum height=5cm, below=0.8cm of bytecode] (framework) {};
+\node[below] at (framework.north) {\textbf{Analysis Framework}};
+
+% Three analyses inside framework
+\node[analysis, below=1.5cm of bytecode] (liveness) {Liveness\\(backward)};
+\node[analysis, below left=0.5cm and 0.1cm of liveness] (type) {Type\\Analysis};
+\node[analysis, below right=0.5cm and 0.1cm of liveness] (pointer) {Pointer\\+ Dirty};
+
+% Reduced product
+\node[rectangle, draw=green!60, very thick, fill=green!10, minimum width=6cm, minimum height=0.8cm, below=2cm of liveness] (product) {Reduced Product Domain};
+
+% Checkpoint equation
+\node[box, fill=yellow!20, below=0.5cm of framework] (checkpoint) {$\text{Checkpoint} = \text{Live} \cap \text{Dirty}$};
+
+% Instrumented code
+\node[box, below=of checkpoint] (instrumented) {Instrumented\\Python};
+
+% Arrows between pipeline stages
+\draw[arrow] (source) -- node[right] {} (bytecode);
+\draw[arrow] (bytecode) -- node[right] {} (ir);
+\draw[arrow] (ir) -- (framework.north);
+\draw[arrow] (framework.south) -- (checkpoint);
+\draw[arrow] (checkpoint) -- node[right] {\small instrument} (instrumented);
+
+% Arrows between analyses
+\draw[arrow] (liveness) -- (type);
+\draw[arrow] (liveness) -- (pointer);
+\draw[darrow] (type) -- (pointer);
+\draw[arrow] (type) -- (product);
+\draw[arrow] (pointer) -- (product);
+
+\end{tikzpicture}
+\caption{Overview of our analysis pipeline. Python source is compiled to bytecode, translated to our register-based IR, then analyzed through three interacting analyses (liveness, type, and pointer+dirty tracking) combined in a reduced product domain. The intersection of live and dirty variables determines the minimal checkpoint set, which drives source-level instrumentation.}

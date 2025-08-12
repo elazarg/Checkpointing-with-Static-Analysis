@@ -1,0 +1,26 @@
+
+\newcommand{\R}[0]{\text{R}}
+\begin{grammar}
+  \let\syntleft\relax
+  \let\syntright\relax
+    <R> ::= $\$\mathbb{N}$ \alt \text{Id}
+    
+    <Ins> ::= $\text{Assign}(\text{Sig}, \text{Exp})$
+         \alt $\text{For}(\text{Sig}, \R, Label)$
+         \alt $\text{Jmp}(\R, Label)$
+         \alt $\text{Return}(\R)$
+
+    <Sig> ::= $\R$
+         \alt $\R_1, \ldots, \R_n$
+         \alt $\text{Attribute}(\R, Field)$
+%         \alt $\text{Subscr}(\R_0, \R_1)$
+           
+    <Exp> ::= $\R$
+         \alt $\text{Call}(\R_0, \R_1, \ldots, \R_n, Args, Kwargs)$
+         \alt $\text{Attribute}(\R, Field)$
+         \alt $\text{Subscr}(\R_0, \R_1)$
+         \alt $\text{Un}(\R)$
+         \alt $\text{Bin}(\R_1, \R_2)$
+         \alt $\text{PredefinedFunction}$
+         \alt $\text{Const}$
+\end{grammar}

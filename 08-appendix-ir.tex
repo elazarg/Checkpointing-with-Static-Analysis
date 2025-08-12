@@ -1,0 +1,145 @@
+\section{Bytecode-to-IR Translation and Semantics}
+\label{appendix:ir}
+
+\subsection{Overview}
+Our analysis operates on a three-address code (TAC) intermediate representation derived from CPython bytecode. The IR makes data flow explicit through named variables, enabling direct application of the type system (Appendix~\ref{appendix:typesystem}) and pointer analysis (Appendix~\ref{appendix:pointeranalysis}) without simulating Python's operand stack.
+
+\subsection{Syntax}
+
+\paragraph{IR Instructions.} The set of TAC instructions $\mathcal{I}$ is:
+\[
+\begin{aligned}
+i ::= \;& \mathsf{Assign}(\sigma, e)
+\mid \mathsf{Jump}(\ell, v)
+\mid \mathsf{For}(\sigma, v, \ell) \\
+&\mid \mathsf{Return}(v)
+\mid \mathsf{Raise}(v)
+\mid \mathsf{Del}(\overline{v})
+\mid \mathsf{Nop}
+\end{aligned}
+\]
+
+\paragraph{Expressions.} TAC expressions $e \in \mathcal{E}$ are:
+\[
+\begin{aligned}
+e ::= \;& v \mid c
+\mid \mathsf{Attr}(v, f)
+\mid \mathsf{Subscr}(v_1, v_2) \\
+&\mid \mathsf{Call}(v, \overline{v})
+\mid \mathsf{Binary}(v_1, \mathsf{op}, v_2)
+\mid \mathsf{Unary}(\mathsf{op}, v) \\
+&\mid \mathsf{Import}(m)
+\mid \mathsf{MakeFunc}(\ldots)
+\end{aligned}
+\]
+
+\paragraph{Assignment Targets.} Target signatures $\sigma \in \mathcal{S}$ support destructuring:
+\[
+\sigma ::= v \mid (\sigma_1, \ldots, \sigma_n) \mid \mathsf{Attr}(v, f) \mid \mathsf{Subscr}(v_1, v_2) \mid \bot
+\]
+
+\paragraph{Variables.} Variables $v \in \mathcal{V}$ are partitioned into:
+\begin{itemize}
+\item \emph{Named variables} $v \in \mathcal{V}_{\mathsf{named}}$ — Python locals/globals.
+\item \emph{Stack variables} \texttt{\$n} $\in \mathcal{V}_{\mathsf{stack}}$ — evaluation temporaries replacing operand stack entries.
+\end{itemize}
+
+\subsection{Translation Semantics}
+
+\paragraph{Translation Judgment.}
+\[
+\mathsf{trans} : \mathsf{Bytecode} \times \mathsf{StackDepth} \to \mathcal{I}^*
+\]
+For bytecode instruction $b$ at stack depth $d$, $\mathsf{trans}(b, d)$ produces TAC instructions preserving $b$’s effect. Here $\mathsf{effect}(b) \in \mathbb{Z}$ denotes the net change in stack depth caused by executing $b$.
+
+\paragraph{Representative Translation Rules.}
+\[
+\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{LOAD\_CONST}(c), d) = [\mathsf{Assign}(\texttt{\$}n, c)]}
+\]
+\[
+\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{LOAD\_FAST}(x), d) = [\mathsf{Assign}(\texttt{\$}n, x)]}
+\]
+\[
+\frac{}{\mathsf{trans}(\mathtt{STORE\_FAST}(x), d) = [\mathsf{Assign}(x, \texttt{\$}d)]}
+\]
+\[
+\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{BINARY\_ADD}, d) =
+[\mathsf{Assign}(\texttt{\$}n, \mathsf{Binary}(\texttt{\$}_{d-1}, +, \texttt{\$}d))]}
+\]
+\[
+\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{CALL}(\mathsf{argc}), d) =
+[\mathsf{Assign}(\texttt{\$}n, \mathsf{Call}(\texttt{\$}_{d-\mathsf{argc}}, \ldots, \texttt{\$}d))]}
+\]
+
+\paragraph{Multi-instruction Translations.}
+Some bytecodes expand to multiple TAC instructions. For example:
+\begin{verbatim}
+STORE_SUBSCR   # implements x[k] = v
+$t = Attr(x, "__setitem__")
+_  = Call($t, k, v)
+\end{verbatim}
+
+\subsection{Control Flow}
+
+\paragraph{CFG Construction.}
+The control-flow graph $\mathcal{G} = (L, E, B)$ consists of:
+\begin{itemize}
+\item Labels $\ell \in L$ — basic block identifiers.
+\item Edges $(\ell_1, \ell_2) \in E$ — control transfers.
+\item Mapping $B : L \to \mathcal{I}^*$ — block contents.
+\end{itemize}
+
+Conditional \texttt{Jump} instructions produce two edges: the taken branch and the fallthrough. Unconditional jumps produce a single edge.
+
+\subsection{Integration with Analysis}
+
+\paragraph{Variable Classification.}
+\[
+\mathsf{scope}(v) =
+\begin{cases}
+\mathsf{LOCALS} & \text{if } v \in \mathcal{V}_{\mathsf{named}} \cup \mathcal{V}_{\mathsf{stack}} \\
+\mathsf{GLOBALS} & \text{if } v \in \mathcal{V}_{\mathsf{global}}
+\end{cases}
+\]
+
+\paragraph{Type System Interface.}
+\begin{itemize}
+\item $\mathsf{Attr}(v, f) \leadsto \mathsf{access}(\tau_v, f)$
+\item $\mathsf{Call}(v, \overline{v}) \leadsto \mathsf{apply}(\tau_v, \overline{\tau})$
+\item $\mathsf{Assign}(\sigma, e)$ updates the pointer graph via $\mathsf{signature}(\sigma, \mathsf{eval}(e))$
+\end{itemize}
+
+\paragraph{Pointer Analysis Interface.}
+Each TAC instruction $i$ induces a transfer function:
+\[
+\llbracket i \rrbracket : \Sigma \to \Sigma
+\]
+where $\Sigma = (G, T, D)$ is the typed pointer state (Appendix~\ref{appendix:pointeranalysis}).
+
+\subsection{Properties}
+
+\paragraph{Semantic Preservation.}
+\[
+\forall b, s. \quad
+\mathsf{eval}_{\mathsf{py}}(b, s) \equiv
+\mathsf{eval}_{\mathsf{tac}}(\mathsf{trans}(b), \mathsf{lift}(s))
+\]
+where $\mathsf{lift}$ maps Python VM state to TAC variable environments.
+
+\paragraph{Data Flow Explicitness.}
+\[
+\mathsf{deps}(\mathsf{Assign}(\sigma, e)) =
+\mathsf{vars}(e) \cup \mathsf{vars}(\sigma)
+\]
+All dependencies are explicit; no stack simulation is required.
+
+\subsection{Implementation Notes}
+
+The translation is implemented in \texttt{tac.py} with version-specific handling for CPython~3.12. Key points:
+\begin{itemize}
+\item \textbf{Stack allocation:} Stack depth tracking assigns unique \texttt{\$n}.
+\item \textbf{CFG edges:} Derived from bytecode control flow and exception tables.
+\item \textbf{Simplification:} Linear basic blocks merged post-translation.
+\item \textbf{Liveness:} Stack variables garbage-collected based on liveness.
+\end{itemize}
+The IR serves as the sole input to the type system and pointer analysis.

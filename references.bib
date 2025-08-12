@@ -1,0 +1,1596 @@
+@inproceedings{venkatesh2019fast,
+  title={Fast in-memory CRIU for docker containers},
+  author={Venkatesh, Ranjan Sarpangala and Smejkal, Till and Milojicic, Dejan S and Gavrilovska, Ada},
+  booktitle={Proceedings of the International Symposium on Memory Systems},
+  pages={53--65},
+  year={2019}
+}
+
+@article{tropp2007signal,
+  title={Signal recovery from random measurements via orthogonal matching pursuit},
+  author={Tropp, Joel A and Gilbert, Anna C},
+  journal={IEEE Transactions on information theory},
+  volume={53},
+  number={12},
+  pages={4655--4666},
+  year={2007},
+  publisher={IEEE}
+}
+
+@INPROCEEDINGS{803700,  author={Hauck, S. and Wilson, W.D.},  booktitle={Seventh Annual IEEE Symposium on Field-Programmable Custom Computing Machines (Cat. No.PR00375)},   title={Runlength compression techniques for FPGA configurations},   year={1999},  volume={},  number={},  pages={286-287},  doi={10.1109/FPGA.1999.803700}}
+
+@INPROCEEDINGS{9582173,
+  author={Ozawa, Yosuke and Shinagawa, Takahiro},
+  booktitle={2021 IEEE 14th International Conference on Cloud Computing (CLOUD)}, 
+  title={Exploiting Sub-page Write Protection for VM Live Migration}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={484-490},
+  doi={10.1109/CLOUD53861.2021.00063}}
+
+
+@INPROCEEDINGS{1524171,  author={Prateek Pujara and Aneesh Aggarwal},  booktitle={2005 International Conference on Computer Design},   title={Restrictive compression techniques to increase level 1 cache capacity},   year={2005},  volume={},  number={},  pages={327-333},  doi={10.1109/ICCD.2005.94}}
+
+@article{10.1145/356989.357003,
+author = {Zhang, Youtao and Yang, Jun and Gupta, Rajiv},
+title = {Frequent Value Locality and Value-Centric Data Cache Design},
+year = {2000},
+issue_date = {Nov. 2000},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {35},
+number = {11},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/356989.357003},
+doi = {10.1145/356989.357003},
+abstract = {By studying the behavior of programs in the SPECint95 suite we observed that six out of eight programs exhibit a new kind of value locality, the frequent value locality, according to which a few values appear very frequently in memory locations and are therefore involved in a large fraction of memory accesses. In these six programs ten distinct values occupy over 50% of all memory locations and on an average account for nearly 50% of all memory accesses during program execution. This observation holds for smaller blocks of consecutive memory locations and the set of frequent values remains quite stable over the execution of the program.In the six benchmarks with frequent value locality, on an average 50% of all cache misses occur during the reading or writing of the ten most frequently accessed values. We propose a new data cache structure, the frequent value cache (FVC), which employs a value-centric approach to caching data locations for exploiting the frequent value locality phenomenon. FVC is a small direct-mapped cache which is dedicated to holding only frequently occurring values. The value-centric nature of FVC enables us to store data in a compressed form where the compression is achieved by encoding the frequent values using a few bits. Moreover this simple compression scheme preserves the random access to data values in a cache line.Our experiments demonstrate that by augmenting a direct mapped cache (DMC) with a direct mapped FVC of size no more than 3 Kbytes we can obtain reductions in miss rates ranging from 1% to 68%. In fact we observed that higher reductions in miss rates can be achieved by augmenting a DMC with a small FVC as opposed to doubling the size of DMC for the 124.m88ksim and 134.perl benchmarks.},
+journal = {SIGPLAN Not.},
+month = {nov},
+pages = {150–159},
+numpages = {10}
+}
+
+@inproceedings{10.1145/2996890.2996894,
+author = {He, Muyang and Pang, Shaoning and Lavrov, Denis and Lu, Ding and Zhang, Yuan and Sarrafzadeh, Abdolhossein},
+title = {Reverse Replication of Virtual Machines (rRVM) for Low Latency and High Availability Services},
+year = {2016},
+isbn = {9781450346160},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2996890.2996894},
+doi = {10.1145/2996890.2996894},
+abstract = {Virtualization supplies a straightforward approach to high availability through iterative replications of virtual machine (VM) checkpoints that encapsulate the protected services. Unfortunately, traditional VM replication solutions suffer from deficiencies in either response latency or state recovery consistency, which constrains the adoption of VM replication in production.In this paper, we extend the function of the secondary host to be the primary recipient of network requests so that the state of the primary VM (PVM) is retained by the secondary host in the form of network packets. In doing this, we redesign the typical consistency model and network architecture for virtual machine replication. Specifically, the secondary host is set for network redirection and packets recording. Should the primary host fail, the recorded packets are used to recreate the state on the secondary host. Experiments in this research demonstrate simultaneously strong recovery consistency and low response latency in our real-time fault tolerance system. We name the system reverse replication of virtual machines (rRVM).},
+booktitle = {Proceedings of the 9th International Conference on Utility and Cloud Computing},
+pages = {118–127},
+numpages = {10},
+location = {Shanghai, China},
+series = {UCC '16}
+}
+
+@inproceedings{10.5555/1251203.1251223,
+author = {Clark, Christopher and Fraser, Keir and Hand, Steven and Hansen, Jacob Gorm and Jul, Eric and Limpach, Christian and Pratt, Ian and Warfield, Andrew},
+title = {Live Migration of Virtual Machines},
+year = {2005},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {Migrating operating system instances across distinct physical hosts is a useful tool for administrators of data centers and clusters: It allows a clean separation between hard-ware and software, and facilitates fault management, load balancing, and low-level system maintenance.By carrying out the majority of migration while OSes continue to run, we achieve impressive performance with minimal service downtimes; we demonstrate the migration of entire OS instances on a commodity cluster, recording service downtimes as low as 60ms. We show that that our performance is sufficient to make live migration a practical tool even for servers running interactive loads.In this paper we consider the design options for migrating OSes running services with liveness constraints, focusing on data center and cluster environments. We introduce and analyze the concept of writable working set, and present the design, implementation and evaluation of high-performance OS migration built on top of the Xen VMM.},
+booktitle = {Proceedings of the 2nd Conference on Symposium on Networked Systems Design \& Implementation - Volume 2},
+pages = {273–286},
+numpages = {14},
+series = {NSDI'05}
+}
+
+@inproceedings{10.1145/1555336.1555346,
+author = {Hacking, Stuart and Hudzia, Beno\^{\i}t},
+title = {Improving the Live Migration Process of Large Enterprise Applications},
+year = {2009},
+isbn = {9781605585802},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1555336.1555346},
+doi = {10.1145/1555336.1555346},
+abstract = {Recent developments in virtualisation technology have resulted in its proliferation of usage across datacentres. Ultimately, the goal of this technology is to more efficiently utilise server resources to reduce Total Cost of Ownership (TCO) by abstracting hardware and consolidating servers. This results in lower equipment costs and less electrical consumption for server power and cooling. However, the TCO benefits of holistic virtualisation extend beyond server assets. One of these aspects relates to the ability of being able to migrate Virtual Machines (VM) across distinct physical hosts over a network. However, limitations of the current migration technology start to appear when they are applied on larger application systems such as SAP ERP or SAP ByDesign. Such systems consume a large amount of memory and cannot be transferred as seamlessly as smaller ones, creating service interruption. Limiting the impact and optimising migration becomes even more important with the generalisation of Service Level Agreement (SLA). In this document we present our design and evaluation of a system that enables live migration of VMs running large enterprise applications without severely disrupting their live services, even across the Internet. By combining well-known techniques and innovative ones we can reduce system down-time and resource impact for migrating live, large Virtual Execution Environments.},
+booktitle = {Proceedings of the 3rd International Workshop on Virtualization Technologies in Distributed Computing},
+pages = {51–58},
+numpages = {8},
+keywords = {virtualisation, distributed systems, delta compression, live migration, sap, erp},
+location = {Barcelona, Spain},
+series = {VTDC '09}
+}
+
+
+@article{10.1007/s11227-015-1400-5,
+author = {Ahmad, Raja Wasim and Gani, Abdullah and Ab. Hamid, Siti Hafizah and Shiraz, Muhammad and Xia, Feng and Madani, Sajjad A.},
+title = {Virtual Machine Migration in Cloud Data Centers: A Review, Taxonomy, and Open Research Issues},
+year = {2015},
+issue_date = {July      2015},
+publisher = {Kluwer Academic Publishers},
+address = {USA},
+volume = {71},
+number = {7},
+issn = {0920-8542},
+url = {https://doi.org/10.1007/s11227-015-1400-5},
+doi = {10.1007/s11227-015-1400-5},
+abstract = {Virtualization efficiently manages the ever-increasing demand for storage, computing, and networking resources in large-scale Cloud Data Centers. Virtualization attains multifarious resource management objectives including proactive server maintenance, load balancing, pervasive service availability, power management, and fault tolerance by virtual machine (VM) migration. VM migration is a resource-intensive operation as it constantly requires adequate CPU cycles, memory capacity, system cache, and network bandwidth. Consequently, it adversely affects the performance of running applications and cannot be entirely overlooked in contemporary data centers, particularly when user SLA and critical business goals are to be met. The unavailability of a comprehensive survey on VM migration schemes that covers various VM migration aspects such as migration patterns, sequence, application performance, bandwidth optimization, and migration granularity has motivated this review of existing schemes. This paper reviews state-of-the-art live and non-live VM migration schemes. Through an extensive literature review, a detailed thematic taxonomy is proposed for the categorization of VM migration schemes. Critical aspects and related features of current VM migration schemes are inspected through detailed qualitative investigation. We extract significant parameters from existing literature to discuss the commonalities and variances among VM migration schemes. Finally, open research issues and challenges with VM migration that require further consideration to develop optimal VM migration schemes in Cloud Data Centers are briefly addressed.},
+journal = {J. Supercomput.},
+month = {jul},
+pages = {2473–2515},
+numpages = {43},
+keywords = {Pre-copy, Data Centers, VM migration, Virtualization, Post-copy}
+}
+
+
+@ARTICLE{6670704,  author={Xu, Fei and Liu, Fangming and Jin, Hai and Vasilakos, Athanasios V.},  journal={Proceedings of the IEEE},   title={Managing Performance Overhead of Virtual Machines in Cloud Computing: A Survey, State of the Art, and Future Directions},   year={2014},  volume={102},  number={1},  pages={11-31},  doi={10.1109/JPROC.2013.2287711}}
+
+@ARTICLE{8260891,
+  author={Zhang, Fei and Liu, Guangming and Fu, Xiaoming and Yahyapour, Ramin},
+  journal={IEEE Communications Surveys   Tutorials}, 
+  title={A Survey on Virtual Machine Migration: Challenges, Techniques, and Open Issues}, 
+  year={2018},
+  volume={20},
+  number={2},
+  pages={1206-1243},
+  doi={10.1109/COMST.2018.2794881}}
+
+@INPROCEEDINGS{5461517,  author={Moghaddam, Fereydoun Farrahi and Cheriet, Mohamed},  booktitle={2010 International Conference on Networking, Sensing and Control (ICNSC)},   title={Decreasing live virtual machine migration down-time using a memory page selection based on memory change PDF},   year={2010},  volume={},  number={},  pages={355-359},  doi={10.1109/ICNSC.2010.5461517}}
+
+@article{TRAVOSTINO2006901,
+title = {Seamless live migration of virtual machines over the MAN/WAN},
+journal = {Future Generation Computer Systems},
+volume = {22},
+number = {8},
+pages = {901-907},
+year = {2006},
+issn = {0167-739X},
+doi = {https://doi.org/10.1016/j.future.2006.03.007},
+url = {https://www.sciencedirect.com/science/article/pii/S0167739X06000483},
+author = {Franco Travostino and Paul Daspit and Leon Gommans and Chetan Jog and Cees {de Laat} and Joe Mambretti and Inder Monga and Bas {van Oudenaarde} and Satish Raghunath and Phil {Yonghui Wang}},
+keywords = {Virtualization, Virtual machine, Lightpaths, Control planes, Optical networks},
+abstract = {The “VM Turntable” demonstrator at iGRID 2005 pioneered the integration of Virtual Machines (VMs) with deterministic “lightpath” network services across a MAN/WAN. The results provide for a new stage of virtualization—one for which computation is no longer localized within a data center but rather can be migrated across geographical distances, with negligible downtime, transparently to running applications and external clients. A noteworthy data point indicates that a live VM was migrated between Amsterdam, NL and San Diego, USA with just 1–2 s of application downtime. When compared to intra-LAN local migrations, downtime is only about 5–10 times greater despite 1000 times higher round-trip times.}
+}
+
+@inproceedings{10.1145/1555336.1555346,
+author = {Hacking, Stuart and Hudzia, Beno\^{\i}t},
+title = {Improving the Live Migration Process of Large Enterprise Applications},
+year = {2009},
+isbn = {9781605585802},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1555336.1555346},
+doi = {10.1145/1555336.1555346},
+abstract = {Recent developments in virtualisation technology have resulted in its proliferation of usage across datacentres. Ultimately, the goal of this technology is to more efficiently utilise server resources to reduce Total Cost of Ownership (TCO) by abstracting hardware and consolidating servers. This results in lower equipment costs and less electrical consumption for server power and cooling. However, the TCO benefits of holistic virtualisation extend beyond server assets. One of these aspects relates to the ability of being able to migrate Virtual Machines (VM) across distinct physical hosts over a network. However, limitations of the current migration technology start to appear when they are applied on larger application systems such as SAP ERP or SAP ByDesign. Such systems consume a large amount of memory and cannot be transferred as seamlessly as smaller ones, creating service interruption. Limiting the impact and optimising migration becomes even more important with the generalisation of Service Level Agreement (SLA). In this document we present our design and evaluation of a system that enables live migration of VMs running large enterprise applications without severely disrupting their live services, even across the Internet. By combining well-known techniques and innovative ones we can reduce system down-time and resource impact for migrating live, large Virtual Execution Environments.},
+booktitle = {Proceedings of the 3rd International Workshop on Virtualization Technologies in Distributed Computing},
+pages = {51–58},
+numpages = {8},
+keywords = {delta compression, live migration, erp, virtualisation, distributed systems, sap},
+location = {Barcelona, Spain},
+series = {VTDC '09}
+}
+
+
+@INPROCEEDINGS{7034770,  author={Piao, Guangyong and Oh, Youngsup and Sung, Baegjae and Park, Chanik},  booktitle={2014 IEEE Fourth International Conference on Big Data and Cloud Computing},   title={Efficient Pre-copy Live Migration with Memory Compaction and Adaptive VM Downtime Control},   year={2014},  volume={},  number={},  pages={85-90},  doi={10.1109/BDCloud.2014.57}}
+
+
+
+
+@online{zerto,
+  title = { {Zert0} : Architecture Guide for the IT Resilience Platform},
+  howpublished = {\url {https://www.zerto.com/wp-content/uploads/2019/04/architecture-guide-for-the-it-resilience-platform-whitepaper.pdf}},
+  month = feb,
+  year = 2019,
+  urldate = {2022-2-14}
+}
+
+@INPROCEEDINGS{5289170,
+  author={Jin, Hai and Deng, Li and Wu, Song and Shi, Xuanhua and Pan, Xiaodong},
+  booktitle={2009 IEEE International Conference on Cluster Computing and Workshops}, 
+  title={Live virtual machine migration with adaptive, memory compression}, 
+  year={2009},
+  volume={},
+  number={},
+  pages={1-10},
+  doi={10.1109/CLUSTR.2009.5289170}}
+}
+
+@ARTICLE{7110612,
+  author={Mittal, Sparsh and Vetter, Jeffrey S.},
+  journal={IEEE Transactions on Parallel and Distributed Systems},
+  title={A Survey Of Architectural Approaches for Data Compression in Cache and Main Memory Systems},
+  year={2016},
+  volume={27},
+  number={5},
+  pages={1524-1536},
+  doi={10.1109/TPDS.2015.2435788}
+}
+
+@inbook{10.1145/3445814.3446714,
+author = {Ustiugov, Dmitrii and Petrov, Plamen and Kogias, Marios and Bugnion, Edouard and Grot, Boris},
+title = {Benchmarking, Analysis, and Optimization of Serverless Function Snapshots},
+year = {2021},
+isbn = {9781450383172},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3445814.3446714},
+booktitle = {Proceedings of the 26th ACM International Conference on Architectural Support for Programming Languages and Operating Systems},
+pages = {559–572},
+numpages = {14}
+}
+
+
+@inproceedings{apache2020firecracker,
+  title={Firecracker: Lightweight virtualization for serverless applications},
+  author={Agache, Alexandru and Brooker, Marc and Iordache, Alexandra and Liguori, Anthony and Neugebauer, Rolf and Piwonka, Phil and Popa, Diana-Maria},
+  booktitle={17th $\{$usenix$\}$ symposium on networked systems design and implementation ($\{$nsdi$\}$ 20)},
+  pages={419--434},
+  year={2020}
+}
+
+@book{TanenbaumSteen07,
+  abstract = {Very few textbooks today explore distributed systems in a manner appropriate for university students. In this unique text, esteemed authors Tanenbaum and van Steen provide full coverage of the field in a systematic way that can be readily used for teaching. No other text examines the underlying principles - and their applications to a wide variety of practical distributed systems - with this level of depth and clarity.},
+  added-at = {2016-12-26T21:10:28.000+0100},
+  address = {Upper Saddle River, NJ},
+  author = {Tanenbaum, Andrew S. and van Steen, Maarten},
+  biburl = {https://www.bibsonomy.org/bibtex/2aeb78dfa5b91b66dce027f86ecdeeb81/flint63},
+  description = {Edition 2 deutsch 2008 978-3-8273-7293-2},
+  edition = 2,
+  file = {Pearson Product page:http\://www.pearsoned.co.uk/bookshop/detail.asp?item=100000000280068:URL;Amazon Search inside:http\://www.amazon.de/gp/reader/0132392275/:URL},
+  groups = {public},
+  interhash = {7dc82e09cac538d5eb7781e41a050aa7},
+  intrahash = {aeb78dfa5b91b66dce027f86ecdeeb81},
+  isbn = {978-0-13-239227-3},
+  keywords = {01841 104 book shelf computer middleware network application},
+  publisher = {Pearson Prentice Hall},
+  timestamp = {2018-04-16T11:54:15.000+0200},
+  title = {Distributed Systems: Principles and Paradigms},
+  username = {flint63},
+  year = 2007
+}
+
+@article{schoetterl2016intel,
+  title={Intel page modification logging for lightweight continuous checkpointing},
+  author={Schoetterl-Glausch, Janis},
+  journal={Bachelor thesis, Operating Systems Group, Karlsruhe Institute of Technology (KIT), Germany, October31},
+  year={2016}
+}
+
+@inproceedings{10.5555/1387589.1387601,
+author = {Cully, Brendan and Lefebvre, Geoffrey and Meyer, Dutch and Feeley, Mike and Hutchinson, Norm and Warfield, Andrew},
+title = {Remus: High Availability via Asynchronous Virtual Machine Replication},
+year = {2008},
+isbn = {1119995555221},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {Allowing applications to survive hardware failure is an expensive undertaking, which generally involves reengineering software to include complicated recovery logic as well as deploying special-purpose hardware; this represents a severe barrier to improving the dependability of large or legacy applications. We describe the construction of a general and transparent high availability service that allows existing, unmodified software to be protected from the failure of the physical machine on which it runs. Remus provides an extremely high degree of fault tolerance, to the point that a running system can transparently continue execution on an alternate physical host in the face of failure with only seconds of downtime, while completely preserving host state such as active network connections. Our approach encapsulates protected software in a virtual machine, asynchronously propagates changed state to a backup host at frequencies as high as forty times a second, and uses speculative execution to concurrently run the active VM slightly ahead of the replicated system state.},
+booktitle = {Proceedings of the 5th USENIX Symposium on Networked Systems Design and Implementation},
+pages = {161–174},
+numpages = {14},
+location = {San Francisco, California},
+series = {NSDI'08}
+}
+
+@article{kemari2008,
+author = {Tamura, Yoshiaki and Sato, Koji and Kihara, Seiji and Moriai, Satoshi},
+year = {2008},
+month = {01},
+pages = {},
+title = {Kemari: virtual machine synchronization for fault tolerance}
+}
+
+@article{kvm,
+author = {Qumranet, Avi and Qumranet, Yaniv and Qumranet, Dor and Qumranet, Uri and Liguori, Anthony},
+year = {2007},
+month = {01},
+pages = {},
+title = {KVM: The Linux virtual machine monitor},
+volume = {15},
+journal = {Proceedings Linux Symposium}
+}
+
+@online{phoronix,
+  title = { Phoronix Test Suite: the open-source Phoronix Test Suite benchmarking platform},
+  howpublished = {\url {https://github.com/phoronix-test-suite/phoronix-test-suite}},
+  year = 2022,
+  urldate = {2022-1-11}
+}
+
+@online{CXL,
+  title = {{C}ompute {E}xpress {L}ink™: {T}he {B}reakthrough {CPU}-to-{D}evice {I}nterconnect},
+  howpublished = {\url{https://www.computeexpresslink.org/}},
+  year = 2021,
+  urldate = {2021-9-17}
+}
+
+@online{genz,
+  title = {{G}en-{Z} {C}ore {S}pecification 1.1},
+  howpublished = {\url{https://genzconsortium.org/gen-z-core-specification-1-1-2/}},
+  year = 2020,
+  urldate = {2022-1-7}
+}
+
+@online{opencapi,
+  title = {{O}pen{CAPI} 4.0 {T}ransaction {L}ayer {S}pecification},
+  year = 2021,
+  howpublished = {\url{https://opencapi.org/technical/specifications/}},
+  urldate = {2022-1-7}
+}
+  
+
+
+
+% stop
+
+@article{bitchebe2020intel,
+  title={Intel Page Modification Logging, a hardware virtualization feature: study and improvement for virtual machine working set estimation},
+  author={Bitchebe, Stella and Mvondo, Djob and Tchana, Alain and R{\'e}veill{\`e}re, Laurent and De Palma, No{\"e}l},
+  journal={arXiv preprint arXiv:2001.09991},
+  year={2020}
+}
+
+@inproceedings{bitchebe2021extending,
+  title={Extending Intel PML for hardware-assisted working set size estimation of VMs},
+  author={Bitchebe, Stella and Mvondo, Djob and R{\'e}veill{\`e}re, Laurent and De Palma, No{\"e}l and Tchana, Alain},
+  booktitle={Proceedings of the 17th ACM SIGPLAN/SIGOPS International Conference on Virtual Execution Environments},
+  pages={111--124},
+  year={2021}
+}
+
+
+
+
+@Inbook{Rahm2009,
+author="Rahm, Erhard",
+editor="LIU, LING
+and {\"O}ZSU, M. TAMER",
+title="Logging and Recovery",
+bookTitle="Encyclopedia of Database Systems",
+year="2009",
+publisher="Springer US",
+address="Boston, MA",
+pages="1643--1644",
+isbn="978-0-387-39940-9",
+doi="10.1007/978-0-387-39940-9_212",
+url="https://doi.org/10.1007/978-0-387-39940-9_212"
+}
+
+@misc{waddington2021architecture,
+      title={An Architecture for Memory Centric Active Storage ({MCAS})}, 
+      author={Daniel Waddington and Clem Dickey and Moshik Hershcovitch and Sangeetha Seshadri},
+      year={2021},
+      eprint={2103.00007},
+      archivePrefix={arXiv},
+      primaryClass={cs.AR}
+}
+
+@article{10.1145/2997649,
+author = {Karam, Robert and Paul, Somnath and Puri, Ruchir and Bhunia, Swarup},
+title = {Memory-Centric Reconfigurable Accelerator for Classification and Machine Learning Applications},
+year = {2017},
+issue_date = {May 2017},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {13},
+number = {3},
+issn = {1550-4832},
+url = {https://doi.org/10.1145/2997649},
+doi = {10.1145/2997649},
+abstract = {Big Data refers to the growing challenge of turning massive, often unstructured datasets into meaningful, organized, and actionable data. As datasets grow from petabytes to exabytes and beyond, it becomes increasingly difficult to run advanced analytics, especially Machine Learning (ML) applications, in a reasonable time and on a practical power budget using traditional architectures. Previous work has focused on accelerating analytics readily implemented as SQL queries on data-parallel platforms, generally using off-the-shelf CPUs and General Purpose Graphics Processing Units (GPGPUs) for computation or acceleration. However, these systems are general-purpose and still require a vast amount of data transfer between the storage devices and computing elements, thus limiting the system efficiency. As an alternative, this article presents a reconfigurable memory-centric advanced analytics accelerator that operates at the last level of memory and dramatically reduces energy required for data transfer. We functionally validate the framework using an FPGA-based hardware emulation platform and three representative applications: Na\"{\i}ve Bayesian Classification, Convolutional Neural Networks, and k-Means Clustering. Results are compared with implementations on a modern CPU and workstation GPGPU. Finally, the use of in-memory dataset decompression to further reduce data transfer volume is investigated. With these techniques, the system achieves an average energy efficiency improvement of 74\texttimes{} and 212\texttimes{} over GPU and single-threaded CPU, respectively, while dataset compression is shown to improve overall efficiency by an additional 1.8\texttimes{} on average.},
+journal = {J. Emerg. Technol. Comput. Syst.},
+month = may,
+articleno = {34},
+numpages = {24},
+keywords = {energy-efficiency, machine learning, Reconfigurable architectures, parallel processing, hardware accelerators, memory-centric}
+}
+@inproceedings{10.1145/3400302.3415772,
+author = {Chen, Hung-Ming and Hu, Chia-Lin and Chang, Kang-Yu and K\"{u}ster, Alexandra and Lin, Yu-Hsien and Kuo, Po-Shen and Chao, Wei-Tung and Lai, Bo-Cheng and Liu, Chien-Nan and Jou, Shyh-Jye},
+title = {On EDA Solutions for Reconfigurable Memory-Centric AI Edge Applications},
+year = {2020},
+isbn = {9781450380263},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3400302.3415772},
+doi = {10.1145/3400302.3415772},
+abstract = {Memory-centric designs deploy computation to storage and enable efficient in-memory computation while avoiding massive amount of data movement. The in-memory-computing schemes have shown distinct advantages and concerns when applying to different types of memory technologies, from conventional SRAM, DRAM to emerging ReRAM. Moreover, the next-generation smart edge systems are expected to support various intelligent applications by employing multi-task machine learning models which would be dynamically activated. To attain an efficient design within short design cycle, it is imperative to have an integrated design framework with automated tools to support hybrid memory systems and perform effective optimization across design stages. This work will introduce a unified framework which integrates EDA solutions to address the design and optimization challenges at different aspects of next-generation memory-centric designs, including fast reconfiguring in-memory/near-memory computing designs to provide optimized solutions (behavioral models and APR cell layouts) for designers to choose the best suitable architectures for their applications.},
+booktitle = {Proceedings of the 39th International Conference on Computer-Aided Design},
+articleno = {127},
+numpages = {8},
+keywords = {AI edge device synthesis, in-memory-computing, reconfigurability},
+location = {Virtual Event, USA},
+series = {ICCAD '20}
+}
+
+@article{10.1145/2845084,
+author = {Morad, Amir and Yavits, Leonid and Kvatinsky, Shahar and Ginosar, Ran},
+title = {Resistive GP-SIMD Processing-In-Memory},
+year = {2016},
+issue_date = {January 2016},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {12},
+number = {4},
+issn = {1544-3566},
+url = {https://doi.org/10.1145/2845084},
+doi = {10.1145/2845084},
+abstract = {GP-SIMD, a novel hybrid general-purpose SIMD architecture, addresses the challenge of data synchronization by in-memory computing, through combining data storage and massive parallel processing. In this article, we explore a resistive implementation of the GP-SIMD architecture. In resistive GP-SIMD, a novel resistive row and column addressable 4F2 crossbar is utilized, replacing the modified CMOS 190F2 SRAM storage previously proposed for GP-SIMD architecture. The use of the resistive crossbar allows scaling the GP-SIMD from few millions to few hundred millions of processing units on a single silicon die. The performance, power consumption and power efficiency of a resistive GP-SIMD are compared with the CMOS version. We find that PiM architectures and, specifically, GP-SIMD benefit more than other many-core architectures from using resistive memory. A framework for in-place arithmetic operation on a single multivalued resistive cell is explored, demonstrating a potential to become a building block for next-generation PiM architectures.},
+journal = {ACM Trans. Archit. Code Optim.},
+month = jan,
+articleno = {57},
+numpages = {22},
+keywords = {in-memory computing, processing in memory, GP-SIMD, resistive RAM, SIMD, PIM, memristor}
+}
+
+@inproceedings{10.1145/3299874.3317977,
+author = {Gupta, Saransh and Imani, Mohsen and Rosing, Tajana},
+title = {Exploring Processing In-Memory for Different Technologies},
+year = {2019},
+isbn = {9781450362528},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3299874.3317977},
+doi = {10.1145/3299874.3317977},
+abstract = {The recent emergence of IoT has led to a substantial increase in the amount of data processed. Today, a large number of applications are data intensive, involving massive data transfers between processing core and memory. These transfers act as a bottleneck mainly due to the limited data bandwidth between memory and the processing core. Processing in memory (PIM) avoids this latency problem by doing computations at the source of data.In this paper, we propose designs which enable PIM in the three major memory technologies, i.e. SRAM, DRAM, and the newly emerging non-volatile memories (NVMs). We exploit the analog properties of different memories to implement simple logic functions, namely OR, AND, and majority inside memory. We then extend them further to implement in-memory addition and multiplication. We compare the three memory technologies with GPU by running general applications on them. Our evaluations show that SRAM, NVM, and DRAM are 29.8x (36.3x), 17.6x (20.3x) and 1.7x (2.7x) better in performance (energy consumption) as compared to AMD GPU.},
+booktitle = {Proceedings of the 2019 on Great Lakes Symposium on VLSI},
+pages = {201–206},
+numpages = {6},
+keywords = {processing in memory, energy efficiency, sram, memristors, analog computing, non-volatile memories, dram},
+location = {Tysons Corner, VA, USA},
+series = {GLSVLSI '19}
+}
+
+@inproceedings{10.1145/3307650.3322237,
+author = {Imani, Mohsen and Gupta, Saransh and Kim, Yeseong and Rosing, Tajana},
+title = {FloatPIM: In-Memory Acceleration of Deep Neural Network Training with High Precision},
+year = {2019},
+isbn = {9781450366694},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3307650.3322237},
+doi = {10.1145/3307650.3322237},
+abstract = {Processing In-Memory (PIM) has shown a great potential to accelerate inference tasks of Convolutional Neural Network (CNN). However, existing PIM architectures do not support high precision computation, e.g., in floating point precision, which is essential for training accurate CNN models. In addition, most of the existing PIM approaches require analog/mixed-signal circuits, which do not scale, exploiting insufficiently reliable multi-bit Non-Volatile Memory (NVM). In this paper, we propose FloatPIM, a fully-digital scalable PIM architecture that accelerates CNN in both training and testing phases. FloatPIM natively supports floating-point representation, thus enabling accurate CNN training. FloatPIM also enables fast communication between neighboring memory blocks to reduce internal data movement of the PIM architecture. We evaluate the efficiency of FloatPIM on ImageNet dataset using popular large-scale neural networks. Our evaluation shows that FloatPIM supporting floating point precision can achieve up to 5.1% higher classification accuracy as compared to existing PIM architectures with limited fixed-point precision. FloatPIM training is on average 303.2\texttimes{} and 48.6\texttimes{} (4.3\texttimes{} and 15.8\texttimes{}) faster and more energy efficient as compared to GTX 1080 GPU (PipeLayer [1] PIM accelerator). For testing, FloatPIM also provides 324.8\texttimes{} and 297.9\texttimes{} (6.3\texttimes{} and 21.6\texttimes{}) speedup and energy efficiency as compared to GPU (ISAAC [2] PIM accelerator) respectively.},
+booktitle = {Proceedings of the 46th International Symposium on Computer Architecture},
+pages = {802–815},
+numpages = {14},
+keywords = {machine learning acceleration, processing in-memory, deep neural network, non-volatile memory},
+location = {Phoenix, Arizona},
+series = {ISCA '19}
+}
+
+@inproceedings{10.1145/3036669.3038242,
+author = {Khoram, Soroosh and Zha, Yue and Zhang, Jialiang and Li, Jing},
+title = {Challenges and Opportunities: From Near-Memory Computing to In-Memory Computing},
+year = {2017},
+isbn = {9781450346962},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3036669.3038242},
+doi = {10.1145/3036669.3038242},
+abstract = {The confluence of the recent advances in technology and the ever-growing demand for large-scale data analytics created a renewed interest in a decades-old concept, processing-in-memory (PIM). PIM, in general, may cover a very wide spectrum of compute capabilities embedded in close proximity to or even inside the memory array. In this paper, we present an initial taxonomy for dividing PIM into two broad categories: 1) Near-memory processing and 2) In-memory processing. This paper highlights some interesting work in each category and provides insights into the challenges and possible future directions.},
+booktitle = {Proceedings of the 2017 ACM on International Symposium on Physical Design},
+pages = {43–46},
+numpages = {4},
+keywords = {in-memory processing, nonvolatile memory, 3d integration, near-memory processing},
+location = {Portland, Oregon, USA},
+series = {ISPD '17}
+}
+
+
+@inproceedings {227810,
+author = {Daniel Bittman and Darrell D. E. Long and Peter Alvaro and Ethan L. Miller},
+title = {Optimizing Systems for Byte-Addressable {NVM} by Reducing Bit Flipping},
+booktitle = {17th {USENIX} Conference on File and Storage Technologies ({FAST} 19)},
+year = {2019},
+isbn = {978-1-939133-09-0},
+address = {Boston, MA},
+pages = {17--30},
+url = {https://www.usenix.org/conference/fast19/presentation/bittman},
+publisher = {{USENIX} Association},
+month = feb,
+}
+
+@inproceedings{HerlihyST08,
+  author    = {Maurice Herlihy and
+               Nir Shavit and
+               Moran Tzafrir},
+  title     = {Hopscotch Hashing},
+  booktitle = {Distributed Computing, 22nd International Symposium, {DISC} 2008,
+               Arcachon, France, September 22-24, 2008. Proceedings},
+  pages     = {350--364},
+  year      = {2008},
+  url       = {https://doi.org/10.1007/978-3-540-87779-0\_24},
+  doi       = {10.1007/978-3-540-87779-0\_24},
+  timestamp = {Tue, 13 Jun 2017 10:37:55 +0200},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{Pheatt:2008:ITB:1352079.1352134,
+ author = {Pheatt, Chuck},
+ title = {Intel Threading Building Blocks},
+ journal = {J. Comput. Sci. Coll.},
+ issue_date = {April 2008},
+ volume = {23},
+ number = {4},
+ month = apr,
+ year = {2008},
+ issn = {1937-4771},
+ pages = {298--298},
+ numpages = {1},
+ url = {http://dl.acm.org/citation.cfm?id=1352079.1352134},
+ acmid = {1352134},
+ publisher = {Consortium for Computing Sciences in Colleges},
+ address = {USA},
+}
+
+@INPROCEEDINGS{9238605,
+  author={D. {Waddington} and C. {Dickey} and L. {Xu} and T. {Janssen} and J. {Tran} and D. {Kshitij}},
+  booktitle={2020 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS)}, 
+  title={Evaluating Intel 3D-Xpoint NVDIMM Persistent Memory in the Context of a Key-Value Store}, 
+  year={2020},
+  volume={},
+  number={},
+  pages={202-211},
+  doi={10.1109/ISPASS48437.2020.00035}}
+
+
+@inproceedings{10.1145/3373376.3378511,
+author = {Ma, Teng and Zhang, Mingxing and Chen, Kang and Song, Zhuo and Wu, Yongwei and Qian, Xuehai},
+title = {AsymNVM: An Efficient Framework for Implementing Persistent Data Structures on Asymmetric NVM Architecture},
+year = {2020},
+isbn = {9781450371025},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3373376.3378511},
+doi = {10.1145/3373376.3378511},
+abstract = {The byte-addressable non-volatile memory (NVM) is a promising technology since it simultaneously provides DRAM-like performance, disk-like capacity, and persistency. The current NVM deployment with byte-addressability is em symmetric, where NVM devices are directly attached to servers. Due to the higher density, NVM provides much larger capacity and should be shared among servers. Unfortunately, in the symmetric setting, the availability of NVM devices is affected by the specific machine it is attached to. High availability can be achieved by replicating data to NVM on a remote machine. However, it requires full replication of data structure in local memory --- limiting the size of the working set. This paper rethinks NVM deployment and makes a case for the em asymmetric byte-addressable non-volatile memory architecture, which decouples servers from persistent data storage. In the proposed em anvm architecture, NVM devices (i.e., back-end nodes) can be shared by multiple servers (i.e., front-end nodes) and provide recoverable persistent data structures. The asymmetric architecture, which follows the industry trend of em resource disaggregation, is made possible due to the high-performance network (e.g., RDMA). At the same time, anvm leads to a number of key problems such as, still relatively long network latency, persistency bottleneck, and simple interface of the back-end NVM nodes. We build em anvm framework based on anvm architecture that implements: 1) high performance persistent data structure update; 2) NVM data management; 3) concurrency control; and 4) crash-consistency and replication. The key idea to remove persistency bottleneck is the use of em operation log that reduces stall time due to RDMA writes and enables efficient batching and caching in front-end nodes. To evaluate performance, we construct eight widely used data structures and two transaction applications based on anvm framework. In a 10-node cluster equipped with real NVM devices, results show that anvm achieves similar or better performance compared to the best possible symmetric architecture while enjoying the benefits of disaggregation. We found the speedup brought by the proposed optimizations is drastic, --- 5$sim$12\texttimes{} among all benchmarks.},
+booktitle = {Proceedings of the Twenty-Fifth International Conference on Architectural Support for Programming Languages and Operating Systems},
+pages = {757–773},
+numpages = {17},
+keywords = {memory architectures, rdma, persistent memory},
+location = {Lausanne, Switzerland},
+series = {ASPLOS '20}
+}
+
+
+
+%[Clover] Shin-Yeh Tsai, Yizhou Shan, Yiying Zhang. "Disaggregating Persistent Memory and Controlling Them Remotely: An Exploration of Passive Disaggregated Key-Value Stores," Proceedings of the 2020 USENIX Annual Technical Conference (ATC '20). https://cseweb.ucsd.edu/~yiying/pDPM-ATC20.pdf
+  
+
+@inproceedings{10.1109/ISCA.2006.44,
+author = {Yang, Qing and Xiao, Weijun and Ren, Jin},
+title = {TRAP-Array: A Disk Array Architecture Providing Timely Recovery to Any Point-in-Time},
+year = {2006},
+isbn = {076952608X},
+publisher = {IEEE Computer Society},
+address = {USA},
+url = {https://doi.org/10.1109/ISCA.2006.44},
+doi = {10.1109/ISCA.2006.44},
+abstract = {RAID architectures have been used for more than two decades to recover data upon disk failures. Disk failure is just one of the many causes of damaged data. Data can be damaged by virus attacks, user errors, defective software/firmware, hardware faults, and site failures. The risk of these types of data damage is far greater than disk failure with today's mature disk technology and networked information services. It has therefore become increasingly important for today's disk array to be able to recover data to any point in time when such a failure occurs. This paper presents a new disk array architecture that provides Timely Recovery to Any Point-in-time, referred to as TRAP-Array. TRAP-Array stores not only the data stripe upon a write to the array, but also the time-stamped Exclusive-ORs of successive writes to each data block. By leveraging the Exclusive-OR operations that are performed upon each block write in today's RAID4/5 controllers, TRAP does not incur noticeable performance overhead. More importantly, TRAP is able to recover data very quickly to any point-in-time upon data damage by tracing back the sequence and history of Exclusive-ORs resulting from writes. What is interesting is that TRAP architecture is amazingly space-efficient. We have implemented a prototype TRAP architecture using software at block device level and carried out extensive performance measurements using TPC-C benchmark running on Oracle and Postgress databases, TPC-W running on MySQL database, and file system benchmarks running on Linux and Windows systems. Our experiments demonstrated that TRAP is not only able to recover data to any point-in-time very quickly upon a failure but it also uses less storage space than traditional daily differential backup/snapshot. Compared to the state-of-the-art continuous data protection technologies, TRAP saves disk storage space by one to two orders of magnitude with a simple and a fast encoding algorithm. From an architecture point of view, TRAP-Array opens up another dimension for storage arrays. It is orthogonal and complementary to RAID in the sense that RAID protects data in the dimension along an array of physical disks while TRAP protects data in the dimension along the time sequence.},
+booktitle = {Proceedings of the 33rd Annual International Symposium on Computer Architecture},
+pages = {289–301},
+numpages = {13},
+series = {ISCA '06}
+}
+
+
+  
+
+@inproceedings{10.1145/1376616.1376681,
+author = {Shaull, Ross and Shrira, Liuba and Xu, Hao},
+title = {Skippy: A New Snapshot Indexing Method for Time Travel in the Storage Manager},
+year = {2008},
+isbn = {9781605581026},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1376616.1376681},
+doi = {10.1145/1376616.1376681},
+abstract = {The storage manager of a general-purpose database system can retain consistent disk page level snapshots and run application programs "back-in-time" against long-lived past states, virtualized to look like the current state. This opens the possibility that functions, such as on-line trend analysis and audit, formerly available in specialized temporal databases, can become available to general applications in general-purpose databases.Up to now, in-place updating database systems had no satisfactory way to run programs on-line over long-lived, disk page level, copy-on-write snapshots, because there was no efficient indexing method for such snapshots. We describe Skippy, a new indexing approach that solves this problem. Using Skippy, database application code can run against an arbitrarily old snapshot, and iterate over snapshot ranges, as efficiently it can access recent snapshots, for all update workloads. Performance evaluation of Skippy, based on theoretical analysis and experimental measurements, indicates that the new approach provides efficient access to snapshots at low cost.},
+booktitle = {Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data},
+pages = {637–648},
+numpages = {12},
+keywords = {time travel, versions, database, snapshots},
+location = {Vancouver, Canada},
+series = {SIGMOD '08}
+}
+
+@inproceedings{10.5555/824467.824984,
+author = {Morrey III, Charles B. and Grunwald, Dirk},
+title = {Peabody: The Time Travelling Disk},
+year = {2003},
+isbn = {0769519148},
+publisher = {IEEE Computer Society},
+address = {USA},
+abstract = {Disk drives are now available with capacities on the order of hundreds of gigabytes. What has not become available is an easy way to manage storage. With installed machines located across the enterprise, the backup, management of application installation, and maintenance of systems have become a nightmare. An increasing trend in the storage industry is to virtualize storage resources, maintaining a central repository that can be accessed acrossthe network. We have designed a network block storage device, Peabody, that exposes virtual disks. These virtual disks provide mechanisms to: recover any previous state of their sectors and share backend storage to improve cache utilization and reduce the total amount of storage needed.Peabody is exposed as an iSCSI target, and is mountable by any iSCSI compatible initiator. Using our implementation of Peabody, we show that for our workloads, up to 84% of disk sectors written, contain identical content to previously written sectors, motivating the need for content-based coalescing. The overhead for writing in a simple implementation is only 20 percent of the total write speed.This paper describes our early experiences with the Peabody implementation. We quantify how rapidly storage is consumed, examine optimizations, such as content-based coalescing and describe how recovery is currently implemented. We conclude with future plans based on these measurements.},
+booktitle = {Proceedings of the 20 Th IEEE/11 Th NASA Goddard Conference on Mass Storage Systems and Technologies (MSS'03)},
+pages = {241},
+numpages = {1},
+series = {MSS '03}
+}
+
+  
+
+@inproceedings{10.1109/ICDE.2005.133,
+author = {Shrira, Liuba and Xu, Hao},
+title = {SNAP: Efficient Snapshots for Back-in-Time Execution},
+year = {2005},
+isbn = {0769522858},
+publisher = {IEEE Computer Society},
+address = {USA},
+url = {https://doi.org/10.1109/ICDE.2005.133},
+doi = {10.1109/ICDE.2005.133},
+abstract = {SNAP is a novel high-performance snapshot system for object storage systems. The goal is to provide a snapshot service that is efficient enough to permit "back-in-time" read-only activities to run against application-specified snapshots. Such activities are often impossible to run against rapidly evolving current state because of interference or because the required activity is determined in retrospect. A key innovation in SNAP is that it provides snapshots that are transactionally consistent, yet non-disruptive. Unlike earlier systems, we use novel in-memory data structures to ensure that frequent snapshots do not block applications from accessing the storage system, and do not cause unnecessary disk operations. SNAP takes a novel approach to dealing with snapshot meta-data using a new technique that supports both incremental meta-data creation and efficient meta-data reconstruction. We have implemented a SNAP prototype and analyzed its performance. Preliminary results show that providing snapshots for back-in-time activities has low impact on system performance even when snapshots are frequent.},
+booktitle = {Proceedings of the 21st International Conference on Data Engineering},
+pages = {434–445},
+numpages = {12},
+series = {ICDE '05}
+}
+
+@inproceedings{10.1145/2485732.2485742,
+author = {Natanzon, Assaf and Bachmat, Eitan},
+title = {Virtual Point in Time Access},
+year = {2013},
+isbn = {9781450321167},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2485732.2485742},
+Doi = {10.1145/2485732.2485742},
+abstract = {Continuous Data Protection or CDP is a method for capturing all changes occurring to a storage device, allowing fine granularity restore of objects from crash consistent images. In this paper we introduce a method for creating a virtual image of a block storage device, using a CDP journal log and an image of the device at one point in time. The creation of the disk image for any point in time is created on demand. The creation algorithm is very efficient and takes only a few minutes for multiple TeraBytes of changes. The algorithm for creating the image can be formalized as a map/reduce algorithm and can be parallelized easily over multiple machines to reduce the creation time. The creation on demand of the virtual image using journaling methods, minimizes the effect on the production volumes, allowing the use of CDPs for enterprise class applications.},
+booktitle = {Proceedings of the 6th International Systems and Storage Conference},
+articleno = {17},
+numpages = {7},
+location = {Haifa, Israel},
+series = {SYSTOR '13}
+}
+
+@inproceedings{10.1145/2367589.2367597,
+author = {Huang, Ping and Zhou, Ke and Wang, Hua and Li, Chun Hua},
+title = {BVSSD: Build Built-in Versioning Flash-Based Solid State Drives},
+year = {2012},
+isbn = {9781450314480},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2367589.2367597},
+doi = {10.1145/2367589.2367597},
+abstract = {Time-traveling ability, which enables storage state to be reverted to any previous timepoints, is a highly desirable functionality in modern storage systems to ensure storage continuity. Continuous Data Protection (CDP) is a typical time-traveling implementation mechanism. CDP can guard well against software bugs, unintentional errors, malicious attacks, all of which are often beyond the capabilities of traditional periodical backup schemes. Broadly speaking, CDP can be implemented in two different ways, i.e., either integrate it seamlessly to the target file systems or more generally make it sit at the device block level. However, the state-of-the-art CDP implementations suffer from various limitations, e.g., huge implementation complexity, non-trivial performance interference. In this study, we introduce BVSSD, a new block level versioning system specifically designed for the emerging flash-based SSD. BVSSD realizes CDP functionality through positively and usefully exploiting the inherent idiosyncrasies of flash, which is the well-known "no-overwritten" property. Specifically, BVSSD simply keeps track of the SSD FTL metadata changes, which essentially represent the dynamics of the SSD storage state, and restores them to past timepoints to perform recoveries. Compared with existing block-level CDP schemes, BVSSD is much more light-weight, less performance-interfering, easier to realize, and more importantly, it requires no intrusive modifications to the upper file systems and applications. Our trace-driven simulation results with a number of different realistic enterprise-scale workload traces have shown that BVSSD only incurs marginal performance overheads, somewhere between 3% and 8% performance degradation, while with minimum additional RAM requirement, which is an acceptable price for the high reliability that BVSSD can provide. Furthermore, given most of the typcial SSDs deployment scenarios and their ever-increasing capacity trend, BVSSD is realistically poised to be feasible to be deployed in actual situations.},
+booktitle = {Proceedings of the 5th Annual International Systems and Storage Conference},
+articleno = {11},
+numpages = {12},
+keywords = {flash memory, continuous data protection, storage recovery, solid-state drives},
+location = {Haifa, Israel},
+series = {SYSTOR '12}
+}
+
+
+@article{10.1145/1341312.1341341,
+author = {Ta-Shma, Paula and Laden, Guy and Ben-Yehuda, Muli and Factor, Michael},
+title = {Virtual Machine Time Travel Using Continuous Data Protection and Checkpointing},
+year = {2008},
+issue_date = {January 2008},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {42},
+number = {1},
+issn = {0163-5980},
+url = {https://doi.org/10.1145/1341312.1341341},
+doi = {10.1145/1341312.1341341},
+abstract = {Virtual machine (VM) time travel enables reverting a virtual machine's state, both transient and persistent, to past points in time. This capability can be used to improve virtual machine availability, to enable forensics on past VM states, and to recover from operator errors. We present an approach to virtual machine time travel which combines Continuous Data Protection (CDP) storage support with live-migration-based virtual machine checkpointing. In particular, we present a novel approach for CDP which enables efficient reverts of the storage state to past points in time and makes it possible to undo a revert, and this is achieved using a simple branched-temporal data structure. We also present a design and implementation of a simple live-migration-based checkpointing mechanism in Xen.},
+journal = {SIGOPS Oper. Syst. Rev.},
+month = jan,
+pages = {127–134},
+numpages = {8}
+}
+
+@inproceedings{10.1145/2043674.2043692,
+author = {Wu, Jiangjiang and Ren, Jiangchun and Cheng, Yong and Mei, Songzhu and Wang, Zhiying},
+title = {A Novel File-Level Continuous Data Protection Mechanism Oriented Service Application},
+year = {2011},
+isbn = {9781450309189},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2043674.2043692},
+doi = {10.1145/2043674.2043692},
+abstract = {Continuous Data Protection (CDP) technology is a good schema for ensuring the continuity and survival capability of the service applications. However, the existing continuous data protection technology is difficult to meet the requirements, which means more fine-grained, closely associated with the upper applications and efficient failure recovery capabilities. We have designed and implemented a file-level CDP mechanism oriented service applications. By monitoring the modification operation on the files associated with corresponding service, the system generates the data backup blocks sets, which increased depend on the time series. Meanwhile, the Sub-Fragment is designed to save storage overhead during the data protecting procedure. When the service failure occurs, a novel file data recovery technology will be used to recovery the file data in the manner of no-copy data recovery. The test results for the sample data sets show that the mechanism can ensure the upper users accessing the file systems transparently, reduce more than half of the data storage costs during protecting process, and greatly enhance the efficiency of service application data.},
+booktitle = {Proceedings of the Third International Conference on Internet Multimedia Computing and Service},
+pages = {59–64},
+numpages = {6},
+keywords = {sub-fragment, continuous data protection, no-copy data recovery, file-level, reconstruct the sectors},
+location = {Chengdu, China},
+series = {ICIMCS '11}
+}
+
+  
+
+
+
+# ---
+
+
+@inproceedings{waddington2020ispass,
+author = {Daniel Waddington and Clem Dickey and Luna Xu and Travis Janssen and Jantz Tran and Doshi Kshitij},
+title = {{Evaluating Intel 3D-Xpoint NVDIMM Persistent Memory in the context of a Key-Value Store}},
+year = {2020},
+month = {August},
+booktitle = {International Symposium on Performance Analysis of Systems and Software},
+series = {ISPASS '20},
+location = {Virtual Meeting},
+publisher = {IEEE},
+url = {https://doi.org/10.1145/3178212.3178224},
+doi = {10.1145/3178212.3178224},
+}
+
+@inproceedings{10.1145/3030207.3053671,
+author = {Salhi, Haytham and Odeh, Feras and Nasser, Rabee and Taweel, Adel},
+title = {Open Source In-Memory Data Grid Systems: Benchmarking Hazelcast and Infinispan},
+year = {2017},
+isbn = {9781450344043},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3030207.3053671},
+doi = {10.1145/3030207.3053671},
+abstract = {Distributed cache systems are used to store and retrieve frequently used data for faster access by exploiting the memory of more than one machine, but they appear as one logical big cache. In this paper, we studied the performance of two popular open source distributed cache systems (Hazelcast and Infinispan) indifferently. The conducted performance analysis shows that Infinispan outperforms Hazelcast in the simple data retrieval scenarios as well as most of SQL-like queries scenarios, whereas Hazelcast outperforms Infinispan in SQL-like queries for small data sizes.},
+booktitle = {Proceedings of the 8th ACM/SPEC on International Conference on Performance Engineering},
+pages = {163–164},
+numpages = {2},
+keywords = {benchmarking, hazelcast, infinispan},
+location = {L'Aquila, Italy},
+series = {ICPE '17}
+}
+
+  
+@article{Stonebraker2013TheVM,
+  title={The VoltDB Main Memory DBMS},
+  author={Michael Stonebraker and Ariel Weisberg},
+  journal={IEEE Data Eng. Bull.},
+  year={2013},
+  volume={36},
+  pages={21-27}
+}
+
+@article{10.14778/1454159.1454211,
+author = {Kallman, Robert and Kimura, Hideaki and Natkins, Jonathan and Pavlo, Andrew and Rasin, Alexander and Zdonik, Stanley and Jones, Evan P. C. and Madden, Samuel and Stonebraker, Michael and Zhang, Yang and Hugg, John and Abadi, Daniel J.},
+title = {H-Store: A High-Performance, Distributed Main Memory Transaction Processing System},
+year = {2008},
+issue_date = {August 2008},
+publisher = {VLDB Endowment},
+volume = {1},
+number = {2},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/1454159.1454211},
+doi = {10.14778/1454159.1454211},
+abstract = {Our previous work has shown that architectural and application shifts have resulted in modern OLTP databases increasingly falling short of optimal performance [10]. In particular, the availability of multiple-cores, the abundance of main memory, the lack of user stalls, and the dominant use of stored procedures are factors that portend a clean-slate redesign of RDBMSs. This previous work showed that such a redesign has the potential to outperform legacy OLTP databases by a significant factor. These results, however, were obtained using a bare-bones prototype that was developed just to demonstrate the potential of such a system. We have since set out to design a more complete execution platform, and to implement some of the ideas presented in the original paper. Our demonstration presented here provides insight on the development of a distributed main memory OLTP database and allows for the further study of the challenges inherent in this operating environment.},
+journal = {Proc. VLDB Endow.},
+month = aug,
+pages = {1496–1499},
+numpages = {4}
+}
+
+  
+@book{10.5555/2505464,
+author = {Carlson, Josiah L.},
+title = {Redis in Action},
+year = {2013},
+isbn = {1617290858},
+publisher = {Manning Publications Co.},
+address = {USA},
+abstract = {SummaryRedis in Action introduces Redis and walks you through examples that demonstrate how to use it effectively. You'll begin by getting Redis set up properly and then exploring the key-value model. Then, you'll dive into real use cases including simple caching, distributed ad targeting, and more. You'll learn how to scale Redis from small jobs to massive datasets. Experienced developers will appreciate chapters on clustering and internal scripting to make Redis easier to use. About the TechnologyWhen you need near-real-time access to a fast-moving data stream, key-value stores like Redis are the way to go. Redis expands on the key-value pattern by accepting a wide variety of data types, including hashes, strings, lists, and other structures. It provides lightning-fast operations on in-memory datasets, and also makes it easy to persist to disk on the fly. Plus, it's free and open source. About this bookRedis in Action introduces Redis and the key-value model. You'll quickly dive into real use cases including simple caching, distributed ad targeting, and more. You'll learn how to scale Redis from small jobs to massive datasets and discover how to integrate with traditional RDBMS or other NoSQL stores. Experienced developers will appreciate the in-depth chapters on clustering and internal scripting. Written for developers familiar with database concepts. No prior exposure to NoSQL database concepts nor to Redis itself is required. Appropriate for systems administrators comfortable with programming. What's InsideRedis from the ground up Preprocessing real-time data Managing in-memory datasets Pub/sub and configuration Persisting to diskAbout the Author Dr. Josiah L. Carlson is a seasoned database professional and an active contributor to the Redis community. Purchase of the print book includes a free eBook in PDF, Kindle, and ePub formats from Manning Publications. Table of ContentsPART 1 GETTING STARTED Getting to know Redis Anatomy of a Redis web application PART 2 CORE CONCEPTS Commands in Redis Keeping data safe and ensuring performance Using Redis for application support Application components in Redis Search-based applications Building a simple social network PART 3 NEXT STEPS Reducing memory use Scaling Redis Scripting Redis with Lua}
+}
+
+  
+@article{10.1145/2806887,
+author = {Ousterhout, John and Gopalan, Arjun and Gupta, Ashish and Kejriwal, Ankita and Lee, Collin and Montazeri, Behnam and Ongaro, Diego and Park, Seo Jin and Qin, Henry and Rosenblum, Mendel and Rumble, Stephen and Stutsman, Ryan and Yang, Stephen},
+title = {The RAMCloud Storage System},
+year = {2015},
+issue_date = {September 2015},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {33},
+number = {3},
+issn = {0734-2071},
+url = {https://doi.org/10.1145/2806887},
+doi = {10.1145/2806887},
+abstract = {RAMCloud is a storage system that provides low-latency access to large-scale datasets. To achieve low latency, RAMCloud stores all data in DRAM at all times. To support large capacities (1PB or more), it aggregates the memories of thousands of servers into a single coherent key-value store. RAMCloud ensures the durability of DRAM-based data by keeping backup copies on secondary storage. It uses a uniform log-structured mechanism to manage both DRAM and secondary storage, which results in high performance and efficient memory usage. RAMCloud uses a polling-based approach to communication, bypassing the kernel to communicate directly with NICs; with this approach, client applications can read small objects from any RAMCloud storage server in less than 5μs, durable writes of small objects take about 13.5μs. RAMCloud does not keep multiple copies of data online; instead, it provides high availability by recovering from crashes very quickly (1 to 2 seconds). RAMCloud’s crash recovery mechanism harnesses the resources of the entire cluster working concurrently so that recovery performance scales with cluster size.},
+journal = {ACM Trans. Comput. Syst.},
+month = aug,
+articleno = {7},
+numpages = {55},
+keywords = {large-scale systems, storage systems, Datacenters, low latency}
+}
+
+  
+@inproceedings{10.5555/2616448.2616488,
+author = {Lim, Hyeontaek and Han, Dongsu and Andersen, David G. and Kaminsky, Michael},
+title = {MICA: A Holistic Approach to Fast in-Memory Key-Value Storage},
+year = {2014},
+isbn = {9781931971096},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {MICA is a scalable in-memory key-value store that handles 65.6 to 76.9 million key-value operations per second using a single general-purpose multi-core system. MICA is over 4-13.5x faster than current state-of-the-art systems, while providing consistently high throughput over a variety of mixed read and write workloads.MICA takes a holistic approach that encompasses all aspects of request handling, including parallel data access, network request handling, and data structure design, but makes unconventional choices in each of the three domains. First, MICA optimizes for multi-core architectures by enabling parallel access to partitioned data. Second, for efficient parallel data access, MICA maps client requests directly to specific CPU cores at the server NIC level by using client-supplied information and adopts a light-weight networking stack that bypasses the kernel. Finally, MICA's new data structures--circular logs, lossy concurrent hash indexes, and bulk chaining--handle both read-and write-intensive workloads at low overhead.},
+booktitle = {Proceedings of the 11th USENIX Conference on Networked Systems Design and Implementation},
+pages = {429–444},
+numpages = {16},
+location = {Seattle, WA},
+series = {NSDI'14}
+}
+
+  
+@article{10.1145/2872887.2750416,
+author = {Li, Sheng and Lim, Hyeontaek and Lee, Victor W. and Ahn, Jung Ho and Kalia, Anuj and Kaminsky, Michael and Andersen, David G. and Seongil, O. and Lee, Sukhan and Dubey, Pradeep},
+title = {Architecting to Achieve a Billion Requests per Second Throughput on a Single Key-Value Store Server Platform},
+year = {2015},
+issue_date = {June 2015},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {43},
+number = {3S},
+issn = {0163-5964},
+url = {https://doi.org/10.1145/2872887.2750416},
+doi = {10.1145/2872887.2750416},
+abstract = {Distributed in-memory key-value stores (KVSs), such as memcached, have become a critical data serving layer in modern Internet-oriented datacenter infrastructure. Their performance and efficiency directly affect the QoS of web services and the efficiency of datacenters. Traditionally, these systems have had significant overheads from inefficient network processing, OS kernel involvement, and concurrency control. Two recent research thrusts have focused upon improving key-value performance. Hardware-centric research has started to explore specialized platforms including FPGAs for KVSs; results demonstrated an order of magnitude increase in throughput and energy efficiency over stock memcached. Software-centric research revisited the KVS application to address fundamental software bottlenecks and to exploit the full potential of modern commodity hardware; these efforts too showed orders of magnitude improvement over stock memcached.We aim at architecting high performance and efficient KVS platforms, and start with a rigorous architectural characterization across system stacks over a collection of representative KVS implementations. Our detailed full-system characterization not only identifies the critical hardware/software ingredients for high-performance KVS systems, but also leads to guided optimizations atop a recent design to achieve a record-setting throughput of 120 million requests per second (MRPS) on a single commodity server. Our implementation delivers 9.2X the performance (RPS) and 2.8X the system energy efficiency (RPS/watt) of the best-published FPGA-based claims. We craft a set of design principles for future platform architectures, and via detailed simulations demonstrate the capability of achieving a billion RPS with a single server constructed following our principles.},
+journal = {SIGARCH Comput. Archit. News},
+month = jun,
+pages = {476–488},
+numpages = {13}
+}
+
+
+
+@inproceedings{10.1145/2619239.2626299,
+author = {Kalia, Anuj and Kaminsky, Michael and Andersen, David G.},
+title = {Using RDMA Efficiently for Key-Value Services},
+year = {2014},
+isbn = {9781450328364},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2619239.2626299},
+doi = {10.1145/2619239.2626299},
+abstract = {This paper describes the design and implementation of HERD, a key-value system designed to make the best use of an RDMA network. Unlike prior RDMA-based key-value systems, HERD focuses its design on reducing network round trips while using efficient RDMA primitives; the result is substantially lower latency, and throughput that saturates modern, commodity RDMA hardware.HERD has two unconventional decisions: First, it does not use RDMA reads, despite the allure of operations that bypass the remote CPU entirely. Second, it uses a mix of RDMA and messaging verbs, despite the conventional wisdom that the messaging primitives are slow. A HERD client writes its request into the server's memory; the server computes the reply. This design uses a single round trip for all requests and supports up to 26 million key-value operations per second with 5μs average latency. Notably, for small key-value items, our full system throughput is similar to native RDMA read throughput and is over 2X higher than recent RDMA-based key-value systems. We believe that HERD further serves as an effective template for the construction of RDMA-based datacenter services.},
+booktitle = {Proceedings of the 2014 ACM Conference on SIGCOMM},
+pages = {295–306},
+numpages = {12},
+keywords = {RDMA, ROCE, infiniband, key-value stores},
+location = {Chicago, Illinois, USA},
+series = {SIGCOMM '14}
+}
+
+
+
+@inproceedings{10.5555/2616448.2616486,
+author = {Dragojevi\'{c}, Aleksandar and Narayanan, Dushyanth and Hodson, Orion and Castro, Miguel},
+title = {FaRM: Fast Remote Memory},
+year = {2014},
+isbn = {9781931971096},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {We describe the design and implementation of FaRM, a new main memory distributed computing platform that exploits RDMA to improve both latency and throughput by an order of magnitude relative to state of the art main memory systems that use TCP/IP. FaRM exposes the memory of machines in the cluster as a shared address space. Applications can use transactions to allocate, read, write, and free objects in the address space with location transparency. We expect this simple programming model to be sufficient for most application code. FaRM provides two mechanisms to improve performance where required: lock-free reads over RDMA, and support for collocating objects and function shipping to enable the use of efficient single machine transactions. FaRM uses RDMA both to directly access data in the shared address space and for fast messaging and is carefully tuned for the best RDMA performance. We used FaRM to build a key-value store and a graph store similar to Facebook's. They both perform well, for example, a 20-machine cluster can perform 167 million key-value lookups per second with a latency of 31µs.},
+booktitle = {Proceedings of the 11th USENIX Conference on Networked Systems Design and Implementation},
+pages = {401–414},
+numpages = {14},
+location = {Seattle, WA},
+series = {NSDI'14}
+}
+
+@inproceedings{10.1145/2815400.2815425,
+author = {Dragojevi\'{c}, Aleksandar and Narayanan, Dushyanth and Nightingale, Edmund B. and Renzelmann, Matthew and Shamis, Alex and Badam, Anirudh and Castro, Miguel},
+title = {No Compromises: Distributed Transactions with Consistency, Availability, and Performance},
+year = {2015},
+isbn = {9781450338349},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2815400.2815425},
+doi = {10.1145/2815400.2815425},
+abstract = {Transactions with strong consistency and high availability simplify building and reasoning about distributed systems. However, previous implementations performed poorly. This forced system designers to avoid transactions completely, to weaken consistency guarantees, or to provide single-machine transactions that require programmers to partition their data. In this paper, we show that there is no need to compromise in modern data centers. We show that a main memory distributed computing platform called FaRM can provide distributed transactions with strict serializability, high performance, durability, and high availability. FaRM achieves a peak throughput of 140 million TATP transactions per second on 90 machines with a 4.9 TB database, and it recovers from a failure in less than 50 ms. Key to achieving these results was the design of new transaction, replication, and recovery protocols from first principles to leverage commodity networks with RDMA and a new, inexpensive approach to providing non-volatile DRAM.},
+booktitle = {Proceedings of the 25th Symposium on Operating Systems Principles},
+pages = {54–70},
+numpages = {17},
+location = {Monterey, California},
+series = {SOSP '15}
+}
+
+
+@inproceedings{KulkarniMNZRS18,
+  added-at = {2019-01-29T00:00:00.000+0100},
+  author = {Kulkarni, Chinmay and Moore, Sara and Naqvi, Mazhar and Zhang, Tian and Ricci, Robert and Stutsman, Ryan},
+  biburl = {https://www.bibsonomy.org/bibtex/2a4aecfe9d7e3a343d6290ade385092b7/dblp},
+  booktitle = {OSDI},
+  editor = {Arpaci-Dusseau, Andrea C. and Voelker, Geoff},
+  ee = {https://dl.acm.org/citation.cfm?id=3291215},
+  interhash = {f52caca8cf9653be8b51bdc839084c01},
+  intrahash = {a4aecfe9d7e3a343d6290ade385092b7},
+  keywords = {dblp},
+  pages = {627-643},
+  publisher = {USENIX Association},
+  timestamp = {2019-01-30T11:37:23.000+0100},
+  title = {Splinter: Bare-Metal Extensions for Multi-Tenant Low-Latency Storage.},
+  url = {http://dblp.uni-trier.de/db/conf/osdi/osdi2018.html#KulkarniMNZRS18},
+  year = 2018
+}
+
+
+
+@INPROCEEDINGS{7446055,
+  author={K. {Doshi} and E. {Giles} and P. {Varman}},
+  booktitle={2016 IEEE International Symposium on High Performance Computer Architecture (HPCA)}, 
+  title={Atomic persistence for SCM with a non-intrusive backend controller}, 
+  year={2016},
+  volume={},
+  number={},
+  pages={77-89},}
+  
+@INPROCEEDINGS{9138965,
+  author={M. {Cai} and C. C. {Coats} and J. {Huang}},
+  booktitle={2020 ACM/IEEE 47th Annual International Symposium on Computer Architecture (ISCA)}, 
+  title={HOOP: Efficient Hardware-Assisted Out-of-Place Update for Non-Volatile Memory}, 
+  year={2020},
+  volume={},
+  number={},
+  pages={584-596},}
+  
+@INPROCEEDINGS{8834719,
+  author={K. {Tang} and W. {Tong} and J. {Ma} and B. {Liu}},
+  booktitle={2019 IEEE International Conference on Networking, Architecture and Storage (NAS)}, 
+  title={DV-NVLLC: Efficiently guaranteeing crash consistency in persistent memory via dynamic versioning}, 
+  year={2019},
+  volume={},
+  number={},
+  pages={1-8},}
+
+@inproceedings{10.1145/2830772.2830802,
+author = {Ren, Jinglei and Zhao, Jishen and Khan, Samira and Choi, Jongmoo and Wu, Yongwei and Mutlu, Onur},
+title = {ThyNVM: Enabling Software-Transparent Crash Consistency in Persistent Memory Systems},
+year = {2015},
+isbn = {9781450340342},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2830772.2830802},
+doi = {10.1145/2830772.2830802},
+booktitle = {Proceedings of the 48th International Symposium on Microarchitecture},
+pages = {672–685},
+numpages = {14},
+location = {Waikiki, Hawaii},
+series = {MICRO-48}
+}
+
+
+@article{10.1145/2800695.2801719,
+author = {Pillai, Thanumalayan Sankaranarayana and Chidambaram, Vijay and Alagappan, Ramnatthan and Al-Kiswany, Samer and Arpaci-Dusseau, Andrea C. and Arpaci-Dusseau, Remzi H.},
+title = {Crash Consistency},
+year = {2015},
+issue_date = {July 2015},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {13},
+number = {7},
+issn = {1542-7730},
+url = {https://doi.org/10.1145/2800695.2801719},
+doi = {10.1145/2800695.2801719},
+journal = {Queue},
+month = jul,
+pages = {20–28},
+numpages = {9}
+}
+  
+
+@article{Peng_2019,
+   title={System evaluation of the Intel optane byte-addressable NVM},
+   ISBN={9781450372060},
+   url={http://dx.doi.org/10.1145/3357526.3357568},
+   DOI={10.1145/3357526.3357568},
+   journal={Proceedings of the International Symposium on Memory Systems  - MEMSYS  ’19},
+   publisher={ACM Press},
+   author={Peng, Ivy B. and Gokhale, Maya B. and Green, Eric W.},
+   year={2019}
+}
+
+
+
+@article{izraelevitz2019basic,
+	author    = {{Izraelevitz}, Joseph and {Yang}, Jian and {Zhang}, Lu and {Kim}, Juno and
+	{Liu}, Xiao and {Memaripour}, Amirsaman and {Soh}, Yun Joon and
+	{Wang}, Zixuan and {Xu}, Yi and {Dulloor}, Subramanya R. and
+	{Zhao}, Jishen and {Swanson}, Steven},
+	title     = {Basic Performance Measurements of the Intel Optane {DC} Persistent
+	Memory Module},
+	journal   = {CoRR},
+	volume    = {abs/1903.05714},
+	year      = {2019},
+	url       = {http://arxiv.org/abs/1903.05714},
+	archivePrefix = {arXiv},
+	eprint    = {1903.05714},
+	timestamp = {Sun, 31 Mar 2019 19:01:24 +0200},
+	biburl    = {https://dblp.org/rec/journals/corr/abs-1903-05714.bib},
+	bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+
+@ARTICLE{2020arXiv200102172G,
+       author = {{G{\"o}tze}, Philipp and {Tharanatha}, Arun Kumar and {Sattler}, Kai-Uwe},
+        title = "{Data Structure Primitives on Persistent Memory: An Evaluation}",
+      journal = {arXiv e-prints},
+     keywords = {Computer Science - Databases, Computer Science - Data Structures and Algorithms, Computer Science - Emerging Technologies},
+         year = "2020",
+        month = "Jan",
+          eid = {arXiv:2001.02172},
+        pages = {arXiv:2001.02172},
+archivePrefix = {arXiv},
+       eprint = {2001.02172},
+ primaryClass = {cs.DB},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2020arXiv200102172G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@online{TIOBE,
+  title = {{TIOBE} {I}ndex for {S}eptember 2021},
+  year = 2021,
+  howpublished = {\url{http://tiobe.com/tiobe-index}},
+  urldate = {2021-9-17}
+}
+
+@online{spectra2020,
+  title = {{S}pectra - {D}igital {D}ata {O}utlook 2020},
+  year = 2020,
+  howpublished = {\url{https://spectralogic.com/wp-content/uploads/digital_data_storage_outlook_2020.pdf}}
+}
+
+@online{pythonpbr,
+  title = {{P}ass by {R}eference in {P}ython: {B}ackground and {B}est {P}ractices},
+  howpublished = {\url{https://realpython.com/python-pass-by-reference/}},
+  year = 2020,
+  urldate = {2020-9-17}
+}
+
+@onlione{pynvm,
+  title = {{P}y{NVM}: {A} {P}ython {I}nterface to {PMDK}},
+  howpublished = {\url{https://pynvm.readthedocs.io/en/v0.3.1/}},
+  year = 2016,
+  urldate = {2021-9-17}
+}
+
+@online{cpython,
+  title = {{CP}ython {G}ithub},
+  howpublished = {\url{https://github.com/python/cpython}},
+  year = 2021,
+  urldate = {2021-9-17}
+}
+
+@online{cpython-capi,
+  title = {{P}ython/{C} {API} {R}eference {M}anual},
+  howpublished = {\url{https://docs.python.org/3/c-api/index.html}},
+  year = 2021,
+  urldate = {2021-9-17}
+}
+
+@online{numpy,
+  title = {{N}um{P}y},
+  howpublished = {\url{https://numpy.org/}},
+  year = 2021,
+  urldate = {2021-9-17}
+}
+@online{pytorch,
+  title = {{P}y{T}orch},
+  howpublished = {\url{https://pytorch.org/}},
+  year = 2021,
+  urldate = {2021-9-17}
+}
+@online{arrow,
+  title = {{A}pache {A}rrow: A cross-language development platform for in-memory analytics},
+  howpublished = {\url{https://arrow.apache.org/}},
+  year = 2021,
+  urldate = {2021-9-17}
+}
+
+
+@online{emisoft2019,
+  title = {{T}he state of Ransomware in the {US}: {R}eport and Statistics 2019},
+  year = "2019",
+  month = "Dec",
+  howpublished = {\url{https://bit.ly/2ZV4pu4}}
+}
+
+@online{SNIA17cdp,
+  author = {Storage Networking Industry Association (SNIA)},
+  title = {Technical Whitepaper: Data Protection Best Practices},
+  year = {2017},
+  month = {October},
+  howpublished = {\url{http://bit.ly/2GRl1bW}}
+}
+
+@misc{Coveware19,
+  title = {Ransomware Payments Rise as Public Sector is Targeted, New Variants Enter the Market, An Osterman Research Survey Report},
+  howpublished = {\url{https://www.coveware.com/blog/q3-ransomware-marketplace-report}},
+  note = {Accessed: 2020-01-24},
+  year = 2016,
+  month = August,
+}
+
+@misc{Varonis20,
+  title = {DATA GETS PERSONAL: 2019 Global Data Risk Report from the Varonis Data Lab},
+  howpublished = {\url{https://info.varonis.com/hubfs/Varonis 2019 Global Data Risk Report.pdf}},
+  year = {2019},
+}
+
+@inproceedings{zakaria17,
+author = {Zakaria, Wira Zanoramy A. and Abdollah, Mohd Faizal and Mohd, Othman and Ariffin, Aswami Fadillah Mohd},
+title = {The Rise of Ransomware},
+year = {2017},
+isbn = {9781450354882},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3178212.3178224},
+doi = {10.1145/3178212.3178224},
+booktitle = {Proceedings of the 2017 International Conference on Software and E-Business},
+pages = {66–70},
+numpages = {5},
+keywords = {Malware, Ransomware detection, Ransomware},
+location = {Hong Kong, Hong Kong},
+series = {ICSEB 2017}
+}
+  
+@inproceedings{10.1145/3368691.3368734,
+author = {Malkawe, Rabia and Qasaimeh, Malik and Ghanim, Firas and Ababneh, Mohammad},
+title = {Toward an Early Assessment for Ransomware Attack Vulnerabilities},
+year = {2019},
+isbn = {9781450372848},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3368691.3368734},
+doi = {10.1145/3368691.3368734},
+booktitle = {Proceedings of the Second International Conference on Data Science, E-Learning and Information Systems},
+articleno = {Article 43},
+numpages = {7},
+keywords = {security assessment, IoT security, vulnerabilities mitigation, Ransomware attack},
+location = {Dubai, United Arab Emirates},
+series = {DATA ’19}
+}
+  
+@misc{malwarebyte19,
+  title = {Understanding the Depth of the Global Ransomware Problem},
+  howpublished = {\url{https://www.malwarebytes.com/pdf/white-papers/UnderstandingTheDepthOfRansomwareIntheUS.pdf}},
+  note = {Accessed: 2020-01-28}
+}
+
+
+@inproceedings{HerlihyST08,
+  author    = {Maurice Herlihy and
+               Nir Shavit and
+               Moran Tzafrir},
+  title     = {Hopscotch Hashing},
+  booktitle = {Distributed Computing, 22nd International Symposium, {DISC} 2008,
+               Arcachon, France, September 22-24, 2008. Proceedings},
+  pages     = {350--364},
+  year      = {2008},
+  url       = {https://doi.org/10.1007/978-3-540-87779-0\_24},
+  doi       = {10.1007/978-3-540-87779-0\_24},
+  timestamp = {Tue, 13 Jun 2017 10:37:55 +0200},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{Pheatt:2008:ITB:1352079.1352134,
+ author = {Pheatt, Chuck},
+ title = {Intel\&Reg; Threading Building Blocks},
+ journal = {J. Comput. Sci. Coll.},
+ issue_date = {April 2008},
+ volume = {23},
+ number = {4},
+ month = apr,
+ year = {2008},
+ issn = {1937-4771},
+ pages = {298--298},
+ numpages = {1},
+ url = {http://dl.acm.org/citation.cfm?id=1352079.1352134},
+ acmid = {1352134},
+ publisher = {Consortium for Computing Sciences in Colleges},
+ address = {USA},
+}
+
+
+@misc{MongoDB_PM1,
+	title = {Getting storage engines ready for fast storage devices},
+	howpublished = {\url{https://bit.ly/3hRP6bF}},
+	year = {2020},
+}
+
+
+@inproceedings{MongoDB_PM2,
+	author    = {Moshik Hershcovitch and
+	Revital Eres and
+	Adam J. McPadden},
+	title     = {{PM} aware storage engine for MongoDB},
+	booktitle = {Proceedings of the 11th {ACM} International Systems and Storage Conference,
+	{SYSTOR} 2018, HAIFA, Israel, June 04-07, 2018},
+	pages     = {123},
+	publisher = {{ACM}},
+	year      = {2018},
+	url       = {https://doi.org/10.1145/3211890.3211912},
+	doi       = {10.1145/3211890.3211912},
+	timestamp = {Wed, 21 Nov 2018 12:44:27 +0100},
+	biburl    = {https://dblp.org/rec/conf/systor/HershcovitchEM18.bib},
+	bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@misc{PMemKV,
+	title = {Intel Corporation - pmemkv},
+	howpublished = {\url{https://github.com/pmem/pmemkv}},
+}
+
+@article{Hekaton,
+	author    = {Craig Freedman and
+	Erik Ismert and
+	Per{-}{\AA}ke Larson},
+	title     = {Compilation in the Microsoft {SQL} Server Hekaton Engine},
+	journal   = {{IEEE} Data Eng. Bull.},
+	volume    = {37},
+	number    = {1},
+	pages     = {22--30},
+	year      = {2014},
+	url       = {http://sites.computer.org/debull/A14mar/p22.pdf},
+	timestamp = {Tue, 10 Mar 2020 16:23:50 +0100},
+	biburl    = {https://dblp.org/rec/journals/debu/FreedmanIL14.bib},
+	bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+@misc{TranscatSQL,
+	title = {MICROSOFT, INC. {Transact-SQL} Reference (Database Engine},
+	howpublished = {\url{http://docs.microsoft.com/en-us/sql/t-sql/
+	language-reference}},
+	year = {2020}
+}
+
+
+@misc{PLSQL,
+	title = {ORACLE, {I}nc. {O}racle {D}atabase 12c PL/SQL. },
+	howpublished = {\url{http://www.oracle.com/technetwork/database/features/plsql/
+	index.html}},
+	year = {2020}
+}
+
+@misc{PMDK,
+	title = {Intel Corporation. {P}ersistent {M}emory {D}evelopment {K}it.},
+	howpublished = {\url{ http://pmem.io/pmdk/}},
+	year = {2020}
+}
+
+@misc{rust,
+  title={Rust Programming Language},
+  howpublished={\url{https://www.rust-lang.org/}},
+  note={Accessed: 2020-9-17}
+}
+
+@misc{mcenery20,
+  title={How much computer code has been written?},
+  howpublised={\url{https://medium.com/modern-stack/how-much-computer-code-has-been-written-c8c03100f459}},
+  note={Accessed: 2021-5-28}
+}
+
+@inproceedings{10.1145/3445814.3446710,
+author = {Hoseinzadeh, Morteza and Swanson, Steven},
+title = {Corundum: Statically-Enforced Persistent Memory Safety},
+year = {2021},
+isbn = {9781450383172},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3445814.3446710},
+doi = {10.1145/3445814.3446710},
+abstract = {Fast, byte-addressable, persistent main memories (PM) make it possible to build complex data structures that can survive system failures. Programming for PM is challenging, not least because it combines well-known programming challenges like locking, memory management, and pointer safety with novel PM-specific bug types. It also requires logging updates to PM to facilitate recovery after a crash. A misstep in any of these areas can corrupt data, leak resources, or prevent successful recovery after a crash. Existing PM libraries in a variety of languages -- C, C++, Java, Go -- simplify some of these problems, but they still require the programmer to learn (and flawlessly apply) complex rules to ensure correctness. Opportunities for data-destroying bugs abound.  This paper presents Corundum, a Rust-based library with an idiomatic PM programming interface and leverages Rust’s type system to statically avoid most common PM programming bugs. Corundum lets programmers develop persistent data structures using familiar Rust constructs and have confidence that they will be free of those bugs. We have implemented Corundum and found its performance to be as good as or better than Intel's widely-used PMDK library, HP's Atlas, Mnemosyne, and go-pmem.},
+booktitle = {Proceedings of the 26th ACM International Conference on Architectural Support for Programming Languages and Operating Systems},
+pages = {429–442},
+numpages = {14},
+keywords = {non-volatile memory programming library, crash-consistent programming, static bug detection},
+location = {Virtual, USA},
+series = {ASPLOS 2021}
+}
+
+
+@inproceedings{10.1145/3297858.3304013,
+author = {Gan, Yu and Zhang, Yanqi and Cheng, Dailun and Shetty, Ankitha and Rathi, Priyal and Katarki, Nayan and Bruno, Ariana and Hu, Justin and Ritchken, Brian and Jackson, Brendon and Hu, Kelvin and Pancholi, Meghna and He, Yuan and Clancy, Brett and Colen, Chris and Wen, Fukang and Leung, Catherine and Wang, Siyuan and Zaruvinsky, Leon and Espinosa, Mateo and Lin, Rick and Liu, Zhongling and Padilla, Jake and Delimitrou, Christina},
+title = {An Open-Source Benchmark Suite for Microservices and Their Hardware-Software Implications for Cloud and Edge Systems},
+year = {2019},
+isbn = {9781450362405},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3297858.3304013},
+doi = {10.1145/3297858.3304013},
+abstract = {Cloud services have recently started undergoing a major shift from monolithic applications, to graphs of hundreds or thousands of loosely-coupled microservices. Microservices fundamentally change a lot of assumptions current cloud systems are designed with, and present both opportunities and challenges when optimizing for quality of service (QoS) and cloud utilization.In this paper we explore the implications microservices have across the cloud system stack. We first present DeathStarBench, a novel, open-source benchmark suite built with microservices that is representative of large end-to-end services, modular and extensible. DeathStarBench includes a social network, a media service, an e-commerce site, a banking system, and IoT applications for coordination control of UAV swarms. We then use DeathStarBench to study the architectural characteristics of microservices, their implications in networking and operating systems, their challenges with respect to cluster management, and their trade-offs in terms of application design and programming frameworks. Finally, we explore the tail at scale effects of microservices in real deployments with hundreds of users, and highlight the increased pressure they put on performance predictability.},
+booktitle = {Proceedings of the Twenty-Fourth International Conference on Architectural Support for Programming Languages and Operating Systems},
+pages = {3–18},
+numpages = {16},
+keywords = {cluster management, serverless, acceleration, microservices, datacenters, qos, cloud computing, fpga},
+location = {Providence, RI, USA},
+series = {ASPLOS '19}
+}
+
+@inproceedings{10.1145/1980022.1980089,
+author = {Maitra, S. and Shanker, M. and Mudholkar, P. K.},
+title = {Disaster Recovery Planning with Virtualization Technologies in Banking Industry},
+year = {2011},
+isbn = {9781450304498},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1980022.1980089},
+doi = {10.1145/1980022.1980089},
+abstract = {Business interruptions can occur anywhere, anytime. Massive hurricanes, tsunamis, power outages, terrorist bombings and more have made recent headlines. It is impossible to predict what may strike when. In today's 24x7x365 world, it has become mandatory to prepare for such disaster scenarios. With the ever increasing dependence on banks for both electronic and traditional banking services, it has become almost mandatory for the banking industry to plan for 'Business Continuity' (BCP).In this paper, how various innovative virtualization technologies are leveraged to reallocate or restore server, network and storage resources to a critical application based on business priorities will be described.Using the dynamic resource reallocation capabilities offered by virtualization technologies, some mission critical applications such as Exchange email and a transaction intensive database application particularly in banking industry are reconfigured and deployed for rapid recovery through dynamic reallocation of the server, network and storage resources. Rapid improvement in the performance or restoration of the application and therefore minimization of the interruption of the services they provide can be leveraged using the virtualization technologies. This is called Real-time Assurance of Business Continuity (RABC) through virtualization where the "Real-time" can be designed to be non-disruptive to the application of interest or can be minutes to hours depending on business risk tolerance and affordability.},
+booktitle = {Proceedings of the International Conference and Workshop on Emerging Trends in Technology},
+pages = {298–299},
+numpages = {2},
+keywords = {recovery time objective (RTO), virtualization, disaster recovery},
+location = {Mumbai, Maharashtra, India},
+series = {ICWET '11}
+}
+
+  
+
+@INPROCEEDINGS{5270298,
+  author={Kangarlou, Ardalan and Eugster, Patrick and Xu, Dongyan},
+  booktitle={2009 IEEE/IFIP International Conference on Dependable Systems and Networks}, 
+  title={VNsnap: Taking snapshots of virtual networked environments with minimal downtime}, 
+  year={2009},
+  volume={},
+  number={},
+  pages={524-533},
+  doi={10.1109/DSN.2009.5270298}
+}
+
+@online{agilex,
+title = {Intel® Agilex™ I-Series FPGA Development Kit},
+howpublished = {\url {https://www.intel.com/content/www/us/en/products/details/fpga/development-kits/agilex/i-series.html}},
+month = jun,
+year = 2022,
+urldate = {2022-6-6}
+}
+
+@inproceedings{10.1145/3317550.3321424,
+author = {Calciu, Irina and Puddu, Ivan and Kolli, Aasheesh and Nowatzyk, Andreas and Gandhi, Jayneel and Mutlu, Onur and Subrahmanyam, Pratap},
+title = {Project PBerry: FPGA Acceleration for Remote Memory},
+year = {2019},
+isbn = {9781450367271},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3317550.3321424},
+doi = {10.1145/3317550.3321424},
+abstract = {Recent research efforts propose remote memory systems that pool memory from multiple hosts. These systems rely on the virtual memory subsystem to track application memory accesses and transparently offer remote memory to applications. We outline several limitations of this approach, such as page fault overheads and dirty data amplification. Instead, we argue for a fundamentally different approach: leverage the local host's cache coherence traffic to track application memory accesses at cache line granularity. Our approach uses emerging cache-coherent FPGAs to expose cache coherence events to the operating system. This approach not only accelerates remote memory systems by reducing dirty data amplification and by eliminating page faults, but also enables other use cases, such as live virtual machine migration, unified virtual memory, security and code analysis. All of these use cases open up many promising research directions.},
+booktitle = {Proceedings of the Workshop on Hot Topics in Operating Systems},
+pages = {127–135},
+numpages = {9},
+keywords = {remote memory, FPGA, cache coherence},
+location = {Bertinoro, Italy},
+series = {HotOS '19}
+}
+
+@INPROCEEDINGS{9252003,  author={Pinto, Christian and Syrivelis, Dimitris and Gazzetti, Michele and Koutsovasilis, Panos and Reale, Andrea and Katrinis, Kostas and Hofstee, H. Peter},  booktitle={2020 53rd Annual IEEE/ACM International Symposium on Microarchitecture (MICRO)},   title={ThymesisFlow: A Software-Defined, HW/SW co-Designed Interconnect Stack for Rack-Scale Memory Disaggregation},   year={2020},  volume={},  number={},  pages={868-880},  doi={10.1109/MICRO50266.2020.00075}}
+
+@inproceedings{sancho2008analysis,
+  title={Analysis of double buffering on two different multicore architectures: Quad-core Opteron and the Cell-BE},
+  author={Sancho, Jos{\'e} Carlos and Kerbyson, Darren J},
+  booktitle={2008 IEEE International Symposium on Parallel and Distributed Processing},
+  pages={1--12},
+  year={2008},
+  organization={IEEE}
+}
+
+@inproceedings{Firecracker,
+  author       = {Alexandru Agache and
+                  Marc Brooker and
+                  Alexandra Iordache and
+                  Anthony Liguori and
+                  Rolf Neugebauer and
+                  Phil Piwonka and
+                  Diana{-}Maria Popa},
+  title        = {Firecracker: Lightweight Virtualization for Serverless Applications},
+  booktitle    = {17th {USENIX} Symposium on Networked Systems Design and Implementation,
+                  {NSDI} 2020, Santa Clara, CA, USA, February 25-27, 2020},
+  pages        = {419--434},
+  publisher    = {{USENIX} Association},
+  year         = {2020},
+}
+
+@article{mallat1993matching,
+  title={Matching pursuits with time-frequency dictionaries},
+  author={Mallat, St{\'e}phane G and Zhang, Zhifeng},
+  journal={IEEE Transactions on signal processing},
+  volume={41},
+  number={12},
+  pages={3397--3415},
+  year={1993},
+  publisher={IEEE}
+}
+
+@article{elenberg2018restricted,
+  title={Restricted strong convexity implies weak submodularity},
+  author={Elenberg, Ethan R and Khanna, Rajiv and Dimakis, Alexandros G and Negahban, Sahand},
+  journal={The Annals of Statistics},
+  volume={46},
+  number={6B},
+  pages={3539--3568},
+  year={2018},
+  publisher={JSTOR}
+}
+
+@inproceedings{MoshikSOCC22,
+author = {Waddington, Daniel and Hershcovitch, Moshik and Sundararaman, Swaminathan and Dickey, Clem},
+title = {A case for using cache line deltas for high frequency VM snapshotting},
+year = {2022},
+isbn = {9781450394147},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3542929.3563481},
+doi = {10.1145/3542929.3563481},
+booktitle = {Proceedings of the 13th Symposium on Cloud Computing},
+pages = {526–539},
+numpages = {14},
+location = {San Francisco, California},
+series = {SoCC '22}
+}
+
+@mastersthesis{glausch16pml,
+  author = {Janis Schoetterl-Glausch},
+  title = {Intel Page Modification Logging for Lightweight Continuous Checkpointing},
+  type = {Bachelor Thesis},
+  year = 2016,
+  month = oct # "31",
+  school = {Operating Systems Group, Karlsruhe Institute of Technology (KIT), Germany}
+}
+
+@inproceedings{li1990catch,
+  title={Catch-compiler-assisted techniques for checkpointing},
+  author={Li, C-CJ and Fuchs, W Kent},
+  booktitle={Digest of Papers. Fault-Tolerant Computing: 20th International Symposium},
+  pages={74--75},
+  year={1990},
+  organization={IEEE Computer Society}
+}
+@article{rodriguez2010cppc,
+  title={CPPC: a compiler-assisted tool for portable checkpointing of message-passing applications},
+  author={Rodr{\'\i}guez, Gabriel and Mart{\'\i}n, Mar{\'\i}a J and Gonz{\'a}lez, Patricia and Tourino, Juan and Doallo, Ram{\'o}n},
+  journal={Concurrency and Computation: Practice and Experience},
+  volume={22},
+  number={6},
+  pages={749--766},
+  year={2010},
+  publisher={Wiley Online Library}
+}
+
+@inproceedings{vogt2015lightweight,
+  title={Lightweight memory checkpointing},
+  author={Vogt, Dirk and Giuffrida, Cristiano and Bos, Herbert and Tanenbaum, Andrew S},
+  booktitle={2015 45th Annual IEEE/IFIP International Conference on Dependable Systems and Networks},
+  pages={474--484},
+  year={2015},
+  organization={IEEE}
+}
+
+@article{kim2024lact,
+  title={LACT: Liveness-Aware Checkpointing to reduce checkpoint overheads in intermittent systems},
+  author={Kim, Youngbin and Lim, Yoojin and Lim, Chaedeok},
+  journal={Journal of Systems Architecture},
+  volume={153},
+  pages={103213},
+  year={2024},
+  publisher={Elsevier}
+}
+
+@inproceedings{de2012static,
+  title={Static analysis and compiler design for idempotent processing},
+  author={De Kruijf, Marc A and Sankaralingam, Karthikeyan and Jha, Somesh},
+  booktitle={Proceedings of the 33rd ACM SIGPLAN conference on Programming Language Design and Implementation},
+  pages={475--486},
+  year={2012}
+}
+
+@phdthesis{salib2004starkiller,
+  title={Starkiller: A static type inferencer and compiler for Python},
+  author={Salib, Michael},
+  year={2004},
+  school={Massachusetts Institute of Technology}
+}
+
+@inproceedings{ancona2007rpython,
+  title={RPython: a step towards reconciling dynamically and statically typed OO languages},
+  author={Ancona, Davide and Ancona, Massimo and Cuni, Antonio and Matsakis, Nicholas D},
+  booktitle={Proceedings of the 2007 symposium on Dynamic languages},
+  pages={53--64},
+  year={2007}
+}
+
+@inproceedings{fritz2017cost,
+  title={Cost versus precision for approximate typing for Python},
+  author={Fritz, Levin and Hage, Jurriaan},
+  booktitle={Proceedings of the 2017 ACM SIGPLAN Workshop on Partial Evaluation and Program Manipulation},
+  pages={89--98},
+  year={2017}
+}
+
+@inproceedings{fromherz2018static,
+  title={Static value analysis of Python programs by abstract interpretation},
+  author={Fromherz, Aymeric and Ouadjaout, Abdelraouf and Min{\'e}, Antoine},
+  booktitle={NASA Formal Methods: 10th International Symposium, NFM 2018, Newport News, VA, USA, April 17-19, 2018, Proceedings 10},
+  pages={185--202},
+  year={2018},
+  organization={Springer}
+}
+
+@phdthesis{monat2021static,
+  title={Static type and value analysis by abstract interpretation of Python programs with native C libraries},
+  author={Monat, Rapha{\"e}l},
+  year={2021},
+  school={Sorbonne Universit{\'e}}
+}
+
+@inproceedings{gorbovitski2010alias,
+  title={Alias analysis for optimization of dynamic languages},
+  author={Gorbovitski, Michael and Liu, Yanhong A and Stoller, Scott D and Rothamel, Tom and Tekle, Tuncay K},
+  booktitle={Proceedings of the 6th Symposium on Dynamic Languages},
+  pages={27--42},
+  year={2010}
+}
+
+@misc{mypy,
+  title = {Mypy: Optional Static Typing for Python},
+  author = {Jukka Lehtosalo and contributors},
+  year = {2012--},
+  howpublished = {\url{https://github.com/python/mypy}},
+}
+
+@misc{pytype,
+  title = {Pytype: A Static Type Analyzer for Python Code},
+  author = {Google},
+  year = {2016--},
+  howpublished = {\url{https://github.com/google/pytype}},
+}
+
+@misc{pyre,
+  title = {Pyre: A Performant Type Checker for Python},
+  author = {Meta (Facebook)},
+  year = {2017--},
+  howpublished = {\url{https://github.com/facebook/pyre-check}},
+}
+
+@inproceedings{jensen2009type,
+  title={Type analysis for JavaScript},
+  author={Jensen, Simon Holm and M{\o}ller, Anders and Thiemann, Peter},
+  booktitle={International Static Analysis Symposium},
+  pages={238--255},
+  year={2009},
+  organization={Springer}
+}
+
+@inproceedings{kashyap2014jsai,
+  title={JSAI: A static analysis platform for JavaScript},
+  author={Kashyap, Vineeth and Dewey, Kyle and Kuefner, Ethan A and Wagner, John and Gibbons, Kevin and Sarracino, John and Wiedermann, Ben and Hardekopf, Ben},
+  booktitle={Proceedings of the 22nd ACM SIGSOFT international symposium on Foundations of Software Engineering},
+  pages={121--132},
+  year={2014}
+}
+
+@inproceedings{furr2009static,
+  title={Static type inference for Ruby},
+  author={Furr, Michael and An, Jong-hoon and Foster, Jeffrey S and Hicks, Michael},
+  booktitle={Proceedings of the 2009 ACM symposium on Applied Computing},
+  pages={1859--1866},
+  year={2009}
+}
+
+@inproceedings{kazerounian2020sound,
+  title={Sound, heuristic type annotation inference for ruby},
+  author={Kazerounian, Milod and Ren, Brianna M and Foster, Jeffrey S},
+  booktitle={Proceedings of the 16th ACM SIGPLAN International Symposium on Dynamic Languages},
+  pages={112--125},
+  year={2020}
+}
+
+@article{kazerounian2021simtyper,
+  title={SimTyper: sound type inference for Ruby using type equality prediction},
+  author={Kazerounian, Milod and Foster, Jeffrey S and Min, Bonan},
+  journal={Proceedings of the ACM on Programming Languages},
+  volume={5},
+  number={OOPSLA},
+  pages={1--27},
+  year={2021},
+  publisher={ACM New York, NY, USA}
+}
+
+@inproceedings{maidl2014typed,
+  title={Typed Lua: An optional type system for Lua},
+  author={Maidl, Andr{\'e} Murbach and Mascarenhas, Fabio and Ierusalimschy, Roberto},
+  booktitle={Proceedings of the Workshop on Dynamic Languages and Applications},
+  pages={1--10},
+  year={2014}
+}

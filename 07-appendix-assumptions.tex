@@ -1,0 +1,27 @@
+\appendix
+\section{Analysis Assumptions and Design Trade-offs}
+\label{appendix:assumptions}
+
+To ensure a sound and tractable static analysis of a highly dynamic language, our framework targets a well-defined and practical subset of Python programs. This section outlines the scope of our analysis and the key design trade-offs that balance implementation complexity with analytical precision.
+
+\paragraph{Target Program Scope}
+Our analysis requires that programs adhere to the following properties, which enable a sound interpretation of control and data flow:
+\begin{itemize}
+    \item \textbf{No Dynamic Code Evaluation:} Constructs such as \texttt{eval}, \texttt{exec}, and \texttt{getattr} with dynamically computed string arguments are disallowed. These features prevent the static resolution of the program's control-flow graph.
+    \item \textbf{Statically-Resolvable Calls:} Function calls must be resolvable at analysis time using the provided type signatures. The framework does not model complex higher-order control flow where functions are passed as first-class values to unknown call sites.
+    \item \textbf{Explicit Generic Instantiations:} To avoid relying on runtime type propagation, generic collections must be explicitly instantiated with their type parameters (e.g., \texttt{list[int]()}), especially when empty.
+    \item \textbf{Simplified NumPy Aliasing:} The analysis assumes that NumPy array variables refer to distinct memory objects unless explicitly constructed via view-creating operations. It does not model view-based aliasing where multiple arrays may share the same underlying data buffer.
+\end{itemize}
+
+These assumptions are satisfied by a wide class of numerical programs that follow idiomatic NumPy usage: preallocated buffers, explicit data copying, no implicit sharing, and simple iteration over typed arrays. These assumptions enable a sound, precise static analysis tailored to checkpointing in deterministic, structured Python programs.
+
+\paragraph{Precision and Design Trade-offs}
+Within this scope, our analysis embodies several conscious design trade-offs. Some choices simplify the abstract domain at the cost of precision, while others introduce complexity to the type system to more faithfully model Python's idioms and avoid hardcoding.
+\begin{itemize}
+    \item \textbf{Dimensionality-Agnostic Array Types:} The type system abstracts all \texttt{numpy.ndarray} objects as containing floating-point numbers but does not track their dimensionality or shape. This design greatly simplifies the typing of numerical operations but means the analysis cannot distinguish between a vector and a matrix, which in some cases may require additional user hints to ensure type precision.
+    \item \textbf{Wildcard for Collection Elements:} To handle collections of arbitrary size and for accesses that are not precisely known, our pointer analysis models all element access (e.g., via subscripting) using a single wildcard field, \texttt{*}. This is efficient and scalable but merges the abstract state of all elements, meaning a write to one index will appear to affect all others.
+    \item \textbf{Literal Types for Precision:} We chose to add complexity by incorporating literal types (e.g., \texttt{Literal["mean"]}) into the type system. While this makes the type hierarchy more complex, it enables a fully generic, type-driven model for attribute access. It allows the analysis to resolve expressions like \texttt{x.mean} by treating it as a subscription on \texttt{x}'s type with the literal value, avoiding hardcoded heuristics for method names.
+    \item \textbf{Variadic Generics for Generality:} The type system supports variadic generics (e.g., \texttt{*Args}). This required a more complex unification algorithm but was useful to accurately model common Python constructors like \texttt{tuple()} without special-casing them in the analyzer. This design allows the framework to be more extensible and handle a wider range of idiomatic Python code in a principled way.
+    \item \textbf{Reliance on Annotations:} The soundness of the analysis is contingent on the correctness and completeness of the provided type and side-effect annotations (e.g., \texttt{new}, \texttt{update}). This is particularly true for external library functions, which are modeled as black boxes whose behavior is determined entirely by these summaries. Verifying these annotations is currently a manual process.
+\end{itemize}
+
