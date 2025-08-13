@@ -39,11 +39,8 @@ f ::= \langle i \rangle \mid \langle s \rangle \mid \langle i, s \rangle
 \label{appendix:type-parametricity}
 
 \paragraph{Scope and relation to static semantics.}
-This subsection refines the typing of function application in the case where the callee
-has a quantified function type $\forall\overline{X}.~R \xrightarrow{\epsilon} \tau_r$ or
-an overload thereof. It specifies how type parameters are instantiated, how partial
-application produces residual callables, and how variadic packs and method receivers
-are handled. Member lookup, protocol constraints, and attribute-resolution are treated
+This section refines the function application typing judgment from \S\ref{sec:static-semantics}, giving the operational binding procedure that instantiates type parameters, handles partial application, variadic packs, overload resolution, and receiver binding.
+. Member lookup, protocol constraints, and attribute-resolution are treated
 elsewhere; here we assume the relevant function or method case is already selected.
 
 \paragraph{Notation.}
@@ -74,7 +71,12 @@ Then $\mathsf{subtract\_indices}(R,S)$ shifts each remaining positional index $i
 down by $|\{j\in S \mid j<i\}|$; keyword fields are unchanged.
 
 \paragraph{Row/argument unification.}
-Let $R$ be a parameter row and $A$ an argument row. Row unification reduces to
+Let $R$ be a parameter row and $A$ an argument row. The unification of a row $R$ with an argument list $A$ is defined in terms of the \emph{binary type unification} relation $\mathsf{unify\_type}$ from Fig.~\ref{fig:unification}, extended pointwise to matching keys:
+\[
+\mathsf{unify\_row}(R_1, R_2) \;=\; \{ \; k \mapsto \mathsf{unify\_type}(R_1(k), R_2(k)) \;\mid\; k \in \mathrm{dom}(R_1) \cap \mathrm{dom}(R_2) \; \}.
+\]
+Keys that do not match are handled by the variadic and default-parameter rules described in this section.
+Row unification reduces to
 field-wise unification:
 \[
 \frac{
@@ -133,6 +135,19 @@ If $R$ contains exactly one positional row $i:X^*$, after matching all fixed row
           future applications may supply additional positionals.
 \end{enumerate}
 A case with only a trailing $X^*$ is callable-empty.
+
+\paragraph{Example (variadic pack with partial application).}
+Let $f$ have type:
+\[
+\forall X^*. \ (\star X^*) \xrightarrow{\epsilon} \mathsf{tuple}[X^*]
+\]
+A call $f(1, \mathsf{True})$ unifies $X^*$ with $(\mathsf{int}, \mathsf{bool})$ and produces the result type $\mathsf{tuple}[\mathsf{int}, \mathsf{bool}]$.
+
+A partial application $f(1)$ unifies $X^*$ with $(\mathsf{int}, Y^*)$, producing the residual callable:
+\[
+(\star Y^*) \xrightarrow{\epsilon} \mathsf{tuple}[\mathsf{int}, Y^*]
+\]
+which may be called again with any remaining arguments.
 
 \paragraph{Overloads.}
 An overload is a finite set of cases $\{ \varphi_1,\dots,\varphi_m \}$.
@@ -197,6 +212,9 @@ is treated separately in \S\ref{appendix:class-parametricity}.
 \subsection{Rows, TypedDicts, and Generic Access}
 \label{sec:rows-generic-access}
 
+\paragraph{Relation to static semantics.}
+This section corresponds to the member lookup rules used in \S\ref{sec:static-semantics}, defining how record and class members are retrieved and instantiated prior to the function binding procedure in \S\ref{sec:type-parametricity}.
+
 \paragraph{Scope.}
 This subsection defines \emph{rows} (finite maps from keys to types) and their use in typed-dict types, lookup, and class/module member access.
 It also specifies the behavior of generic classes and protocols, including instantiation and structural satisfaction, and covers the interaction between class-level type parameters and method-level parameters.
@@ -229,14 +247,14 @@ We write:
 \end{itemize}
 
 \paragraph{Lattice structure.}
-Rows form a lattice $(\mathcal{R}, \sqsubseteq, \sqcup, \sqcap, \top, \bot)$:
+Rows form a lattice $(\mathcal{R}, \sqsubseteq, \sqcup, \sqcap, \top, \bot)$ under an \emph{information ordering}: a row with more fields is more specific (lower in the lattice).
 \begin{itemize}
-\item $\top$ = empty row (no constraints)
-\item $\bot$ = inconsistent row (no possible values)
-\item Join ($\sqcup$): pointwise join on keys in the union of domains
-\item Meet ($\sqcap$): pointwise meet on keys in the intersection of domains
+  \item $\top$ = empty row (no constraints)
+  \item $\bot$ = inconsistent row (no possible values)
+  \item \textbf{Join} ($\sqcup$, least upper bound): pointwise join on keys in the \emph{intersection} of domains
+  \item \textbf{Meet} ($\sqcap$, greatest lower bound): pointwise meet on keys in the \emph{union} of domains
 \end{itemize}
-This reflects an \emph{information ordering}: $\top$ = least information, $\bot$ = contradiction.
+This ordering differs from the usual set inclusion intuition: because fields have negative polarity --- more fields impose more constraints, meet collects all keys, while join keeps only those common to both.
 
 \paragraph{Lookup.}
 Lookup extracts the type(s) associated with a given key from a row or type:
@@ -391,6 +409,8 @@ For functions, unification \emph{requires} side effects to be equal; they are no
 \caption{Unification rules (function unification requires equal effects).}
 \label{fig:unification}
 \end{figure*}
+
+\noindent\textbf{Note:} We require $\epsilon_1 = \epsilon_2$ for function unification to succeed, matching the implementation’s strict effect discipline. This choice ensures precision in checkpointing analysis. In other systems, a join or subeffect relation could be used here.
 
 \paragraph{Name Resolution.}  
 Name resolution proceeds by current function (we only analyze standalone functions, so class-scope is irrelevant), then module‐local entries in the global module map $\mathcal{M}$, then builtins; otherwise it fails.
