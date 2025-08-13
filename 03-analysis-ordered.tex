@@ -1,0 +1,125 @@
+\section{Analysis}
+\label{sec:analysis}
+
+Our static analysis framework combines several interacting domains to determine the minimal set of program variables that must be included in a checkpoint.  
+We present the domains in an order that matches their conceptual dependencies, starting from the IR, then moving to liveness, explaining objects, and general domain conventions before introducing the specific domains for dirty tracking, pointers, and types.
+
+\subsection{Intermediate Representation}
+Our analyses operate not on Python source or bytecode directly, but on a simplified register-based \emph{three-address code} (TAC).
+This IR is designed to make dataflow and heap accesses explicit, removing the operand stack of Python bytecode and any implicit temporaries.
+A TAC program consists of a finite set of \emph{labels} $L$, each with an associated basic block of instructions.
+Each instruction reads and writes explicit \emph{variables} $v \in \mathcal{V}$, which may be:
+\begin{itemize}
+    \item \emph{Named locals} (e.g.\ \texttt{x}, \texttt{result}), corresponding to function parameters and Python local variables.
+    \item \emph{Stack variables} ($\$0, \$1, \ldots$), introduced during translation to replace Python's stack slots.
+\end{itemize}
+Control flow is represented explicitly in a \emph{control-flow graph} (CFG) $G = (L, E)$ with directed edges for possible execution paths.
+We write $\mathsf{succ}(l)$ and $\mathsf{pred}(l)$ for the successors and predecessors of a label $l$ in $G$.
+An \emph{instruction location} is denoted by $(l, i)$ for the $i$-th instruction in block $l$.
+\subsection{Liveness Analysis}
+Liveness analysis determines, for each program point, the set of TAC variables whose current value may be read along some future control-flow path before being overwritten.  
+We compute liveness as a standard backward dataflow analysis on the TAC, with the set of live variables at a location $(l,i)$ denoted $\mathsf{Live}_{l,i} \subseteq \mathcal{V}$.
+
+\paragraph{Gen/Kill sets.}
+For each instruction, we define:
+\begin{itemize}
+    \item $\mathsf{gen}$: the set of variables read by the instruction (whose current value is needed now).
+    \item $\mathsf{kill}$: the set of variables definitely overwritten by the instruction (whose current value is no longer needed).
+\end{itemize}
+The backward transfer function is:
+\[
+\mathsf{Live}_{\mathrm{in}} = (\mathsf{Live}_{\mathrm{out}} \setminus \mathsf{kill}) \cup \mathsf{gen}.
+\]
+A variable in $\mathsf{kill}$ is said to be \emph{killed} at that instruction.
+
+\paragraph{Variable kinds.}
+Variables in $\mathcal{V}$ come in two forms:
+\begin{itemize}
+    \item \emph{Stack variables} ($\$0, \$1, \ldots$) are compiler-generated temporaries that exist only within a single basic block and cannot be addressed once they are dead.  
+          Killing such a variable immediately removes any heap objects reachable from it from the root set.
+    \item \emph{Named local variables} (e.g.\ \texttt{x}, \texttt{result}) persist for the duration of a function activation and may, in Python, be captured by closures or declared \texttt{nonlocal}.
+          We restrict our target program subset to disallow such captures, so a named local can be considered dead when no further reads occur in the current function body.
+\end{itemize}
+
+\paragraph{Role in later domains.}
+The live-variable set at each point is used to prune the root set for the pointer graph: when a variable $v$ is not live, all edges reachable only through $v$ are removed.
+This prevents dead variables from keeping otherwise unreachable objects alive in the analysis state.
+
+\subsection{Objects and Fields}
+We model the heap as a finite set of \emph{abstract objects} $\mathcal{O}$, each representing either:
+\begin{itemize}
+    \item A distinguished \emph{root object} such as \texttt{LOCALS} or \texttt{GLOBALS}.
+    \item A \emph{parameter object} representing a function argument at entry.
+    \item An \emph{allocation site object} $o_{l,i}$ created by a specific instruction location $(l, i)$.
+\end{itemize}
+Objects have \emph{fields} $f \in \mathcal{F}$ representing attributes, dictionary keys, or sequence elements.
+For collections, we use a wildcard field $\star$ to conservatively represent all indexed elements.
+Accessing \texttt{x.f} refers to field $f$ of the object(s) currently bound to variable $x$.
+
+We will write $G[o][f]$ for the set of target objects stored in field $f$ of object $o$ in the pointer graph (defined later), and $D[o]$ for the set of fields of $o$ that are currently dirty.
+
+\subsection{Map Domains}
+Many of our domains are \emph{maps}, i.e.\ finite partial functions $M : K \to V$ with a fixed \emph{default value} $\bot_V$ for missing keys.
+We adopt a uniform notation and semantics for their use in abstract interpretation:
+\begin{itemize}
+    \item \textbf{Transfer:} An assignment to key $k$ replaces $M[k]$ with a new value $v$.
+    \item \textbf{Weak update:} If $k$ may alias with other keys, we conservatively set $M[k] \leftarrow M[k] \sqcup v$ instead of overwriting.
+    \item \textbf{Join:} $(M_1 \sqcup M_2)[k] = M_1[k] \sqcup M_2[k]$ for all $k$ in the union of their domains.
+    \item \textbf{Subsumption:} $M_1 \sqsubseteq M_2$ if $M_1[k] \sqsubseteq M_2[k]$ for all $k$ in the union of their domains.
+\end{itemize}
+We treat missing keys as implicitly mapped to $\bot_V$ for the purposes of all operations above.
+In our analyses, the value type $V$ may itself be another map, a set of objects, or a simple lattice such as booleans, making this pattern reusable across domains.
+
+\subsection{Dirty Domain}
+The \emph{dirty} domain maps each object to the set of fields written since the last checkpoint.
+An update marks the corresponding field as dirty; deletions are treated as writes.
+The domain itself does not decide which dirty objects must be checkpointed—this decision is deferred until pointer reachability and liveness are taken into account.
+\subsection{Pointer Domain}
+The \emph{pointer domain} models the shape of the heap as a map
+\[
+P : \mathcal{O} \to (\mathcal{F} \to \mathcal{P}(\mathcal{O}))
+\]
+where $P[o][f]$ is the set of abstract objects that may be stored in field $f$ of object $o$.
+The inner map has default value $\emptyset$ for any field not explicitly present.
+
+\paragraph{Transfer.}
+On an instruction that stores a reference into a field---for example \texttt{x.f = y}---we first resolve the set of possible source objects $S$ for $y$ and the set of possible target objects $T$ for $x$.
+For each $t \in T$, we update $P[t][f]$ with $S$.
+If $t$ is known to be the only object bound to $x$ (no aliasing), we perform a \emph{strong update}:
+\[
+P[t][f] \leftarrow S.
+\]
+If aliasing is possible, we perform a \emph{weak update}:
+\[
+P[t][f] \leftarrow P[t][f] \cup S.
+\]
+Reads, such as \texttt{y = x.f}, do not change $P$ but are resolved by looking up $\bigcup_{t \in T} P[t][f]$.
+
+\paragraph{Join and Subsumption.}
+The join $P_1 \sqcup P_2$ is computed pointwise over objects and fields, taking the union of target sets.
+Subsumption $P_1 \sqsubseteq P_2$ holds if $P_1[o][f] \subseteq P_2[o][f]$ for all $o \in \mathcal{O}$ and $f \in \mathcal{F}$.
+
+\paragraph{Reachability.}
+Given a set of \emph{root objects} $R \subseteq \mathcal{O}$ (typically \texttt{LOCALS} and \texttt{GLOBALS}), the set of \emph{reachable objects} $\mathsf{Reach}(R, P)$ is the smallest set containing $R$ and closed under:
+\[
+o \in \mathsf{Reach}(R, P) \wedge o' \in P[o][f] \implies o' \in \mathsf{Reach}(R, P).
+\]
+We use liveness to prune the roots $R$ before reachability is computed, ensuring that dead variables do not keep their objects alive.
+
+\input{03-typesystem}
+
+\subsection{Domain Interactions}
+The domains operate in a reduced product with directed information flow:
+\begin{itemize}
+    \item \emph{Liveness $\rightarrow$ Pointer:} prunes unreachable roots and their edges.
+    \item \emph{Type $\rightarrow$ Pointer:} constrains possible targets based on type-level field shape.
+    \item \emph{Type $\rightarrow$ Dirty:} immutable objects never become dirty.
+    \item \emph{Pointer $\rightarrow$ Type:} dynamic dispatch resolution is narrowed to types of reachable receivers.
+\end{itemize}
+These interactions improve precision by removing impossible states before they can pollute other domains.
+
+\subsection{Transfer Functions}
+For each TAC instruction, the transfer function updates only the affected keys in each domain according to the instruction’s semantics.
+Weak updates are applied when aliasing is possible, and joins are used when merging control-flow paths.
+The set of checkpoint roots at loop boundaries is obtained by intersecting live roots with reachable dirty objects.
+

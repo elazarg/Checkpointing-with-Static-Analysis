@@ -5,9 +5,7 @@ We explore this by applying conventional program analyses to numerical Python co
 
 To demonstrate the utility of these analyses, we target a concrete optimization problem common in long-running numerical workloads: \emph{minimizing checkpoint overhead}. Iterative programs often require periodic checkpoints to guard against failure, but naively saving the entire program state at each checkpoint introduces significant overhead, especially when much of that state is transient or unused across iterations.
 
-Our solution builds directly on the static analysis infrastructure: we develop an analysis that identifies the \emph{minimal persistent state}, the subset of program state that must survive from one iteration to the next to ensure correct execution after recovery. This analysis performs heap-aware state tracking across loop iterations, determining dirty state via pointer reachability, constrained to live variables. The result is automatic synthesis of selective checkpointing logic that preserves only semantically meaningful state.
-
-While liveness, type, and pointer analyses are well-established, their integration via a reduced product domain with effect annotations enables novel, automated checkpoint optimization for Python, a dynamic language where such precision is rare.
+To reduce checkpoint overhead, we develop an analysis that identifies the \emph{minimal persistent state}, the subset of program state that must survive from one iteration to the next to ensure correct execution after recovery. This analysis performs heap shape tracking across loop iterations, determining dirty state via pointer reachability, constrained to live variables. The result is automatic synthesis of selective checkpointing logic that preserves only semantically meaningful state.
 
 We evaluate the synthesis on realistic implementations of numerical algorithms: k-means clustering, orthogonal matching pursuit (OMP), and graph search procedures. These case studies confirm that static analysis techniques, carefully applied to structurally disciplined Python code, can yield major practical benefits.
 

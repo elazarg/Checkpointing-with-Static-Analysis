@@ -35,6 +35,156 @@ f ::= \langle i \rangle \mid \langle s \rangle \mid \langle i, s \rangle
 \label{fig:syntax}
 \end{figure}
 
+\subsection{Type parametricity}
+\label{appendix:type-parametricity}
+
+\paragraph{Scope and relation to static semantics.}
+This subsection refines the typing of function application in the case where the callee
+has a quantified function type $\forall\overline{X}.~R \xrightarrow{\epsilon} \tau_r$ or
+an overload thereof. It specifies how type parameters are instantiated, how partial
+application produces residual callables, and how variadic packs and method receivers
+are handled. Member lookup, protocol constraints, and attribute-resolution are treated
+elsewhere; here we assume the relevant function or method case is already selected.
+
+\paragraph{Notation.}
+\begin{itemize}
+  \item $\mathrm{dom}(R)$: the set of indices/keys in a row type $R$.
+  \item $\theta$: a finite substitution mapping type variables (including packs) to types.
+        Application is written $\tau[\theta]$ and is capture-avoiding.
+  \item $X^*$: a \emph{pack} type variable. $\mathsf{Star}(\overline{\tau})$ denotes a concrete pack.
+  \item $R[a \mapsto \tau]$: row update; $R \setminus S$: row subtraction (remove fields $S$).
+  \item $\sqcup$: pointwise join for compatible substitutions (defined below).
+\end{itemize}
+
+\paragraph{Substitution join.}
+Given substitutions $\theta_1,\ldots,\theta_n$, define
+$\bigsqcup_i \theta_i$ iff for every variable $Z$ appearing in more than one $\theta_i$,
+the right-hand sides are equal (modulo $\alpha$-conversion). The result maps each $Z$
+to that unique right-hand side, and is undefined otherwise.
+
+\paragraph{Callable-emptiness.}
+\[
+\mathsf{callable\_empty}(R) \;\triangleq\; \mathrm{dom}(R)=\emptyset \;\;\lor\;\;
+\bigl(R=\{0:X^*\}\bigr)
+\]
+
+\paragraph{Reindexing (positional rows).}
+Let $S \subseteq \mathbb{N}$ be the set of matched positional indices in $R$.
+Then $\mathsf{subtract\_indices}(R,S)$ shifts each remaining positional index $i\notin S$
+down by $|\{j\in S \mid j<i\}|$; keyword fields are unchanged.
+
+\paragraph{Row/argument unification.}
+Let $R$ be a parameter row and $A$ an argument row. Row unification reduces to
+field-wise unification:
+\[
+\frac{
+  \forall f \in \mathrm{dom}(R)\cap\mathrm{dom}(A).~ \theta_f = \mathsf{unify}_{\text{type}}\bigl(R[f],A[f]\bigr)
+}{
+  \mathsf{unify}(R,A) \;=\; \bigsqcup_{f} \theta_f
+}
+\]
+Undefined if any $\theta_f$ is undefined or if the join is undefined.
+Here $\mathsf{unify}_{\text{type}}$ is the binary type unification from Fig.~\ref{fig:unification}.
+
+\paragraph{Effects under binding.}
+Given a substitution $\theta$ produced by binding (below), effects transform by
+(i) substitution: $\epsilon' = \epsilon[\theta]$; and (ii) projection to the residual
+parameter set (drop effect components attached to removed parameters). If effects do
+not mention parameters, $\epsilon'=\epsilon[\theta]$.
+
+\paragraph{Non-generic functions.}
+A non-quantified function case has type $R \xrightarrow{\epsilon} \tau_r$.
+Given actual arguments $A$:
+\[
+\theta = \mathsf{unify}(R,A)
+\]
+If undefined, the call is ill-typed. Otherwise,
+let $S=\mathrm{dom}(R)\cap\mathrm{dom}(A)$. The \emph{residual} is
+\[
+R_{\mathrm{res}} \;=\; \mathsf{subtract\_indices}\bigl(R\setminus S,\, S\bigr),\quad
+\epsilon'=\epsilon[\theta]\text{ (projected)},\quad
+\tau_r'=\tau_r[\theta].
+\]
+If $\mathsf{callable\_empty}(R_{\mathrm{res}})$, the application yields $\tau_r'$;
+otherwise the result is the residual function $R_{\mathrm{res}} \xrightarrow{\epsilon'} \tau_r'$.
+
+\paragraph{Quantified functions.}
+A quantified case has type $\forall\overline{X}.~R \xrightarrow{\epsilon} \tau_r$.
+Binding proceeds as above to produce $\theta$, $R_{\mathrm{res}}$, $\epsilon'$, $\tau_r'$,
+and then \emph{drops} any $X\in\overline{X}$ such that $X\not\in \mathrm{FV}(R_{\mathrm{res}})\cup \mathrm{FV}(\tau_r')$,
+except pack variables still present in $R_{\mathrm{res}}$.
+The residual is $\forall\overline{X}_{\mathrm{res}}.~R_{\mathrm{res}} \xrightarrow{\epsilon'} \tau_r'$,
+where $\overline{X}_{\mathrm{res}}$ preserves ordering from $\overline{X}$.
+
+\paragraph{Partial application.}
+If only a subset $S \subseteq \mathrm{dom}(R)$ of parameters is matched,
+binding applies $\mathsf{unify}$ to $S$, substitutes into all types and effects,
+removes $S$ from $R$ via $\mathsf{subtract\_indices}$, and drops solved variables as above.
+Residual callables can be applied again.
+
+\paragraph{Variadic packs.}
+If $R$ contains exactly one positional row $i:X^*$, after matching all fixed rows:
+\begin{enumerate}
+    \item \textbf{Binding:} Let $T$ be the set of remaining positional indices (must be contiguous; otherwise undefined).
+          Let the corresponding actual element types, ordered by index, be $\overline{\sigma}$.
+          Bind $X^* \mapsto \mathsf{Star}(\overline{\sigma})$; if $T=\emptyset$, bind $X^* \mapsto \mathsf{Star}()$.
+    \item \textbf{Residual:} Treat the variadic row as matched for substitution purposes,
+          but keep it in $R_{\mathrm{res}}$ (shifted to account for earlier removals) so that
+          future applications may supply additional positionals.
+\end{enumerate}
+A case with only a trailing $X^*$ is callable-empty.
+
+\paragraph{Overloads.}
+An overload is a finite set of cases $\{ \varphi_1,\dots,\varphi_m \}$.
+For given $A$, attempt binding on each arm independently, obtaining
+either failure or a pair $(S_j,\varphi'_j)$ where $S_j$ is the set of matched parameter
+rows in arm $j$ (field identifiers: indices for positionals, names for keywords) and $\varphi'_j$ is the residual case.
+Discard failures and \emph{group} residuals by identical $S_j$.
+Each group $G$ defines a wrapper
+\[
+(S) \;\to\; \mathsf{Overloaded}\bigl(\{\varphi'_j \mid (S_j,\varphi'_j)\in G\}\bigr).
+\]
+For an actual \emph{call} at the current site, extract from the inner overloads
+the callable-empty cases and join their return types; otherwise the result is the residual overload.
+
+\paragraph{Receiver binding (methods).}
+A method case is a function case whose first row is the receiver:
+\[
+\forall \overline{X}.~(0:\tau_{\mathit{self}},~R') \xrightarrow{\epsilon} \tau_r.
+\]
+Given a receiver type $\sigma_{\mathit{recv}}$ (obtained by prior member access),
+binding runs the same algorithm with $A=\{0:\sigma_{\mathit{recv}}\}$, producing
+$\theta$ from $\mathsf{unify}(\{0:\tau_{\mathit{self}}\},\{0:\sigma_{\mathit{recv}}\})$,
+dropping the receiver row, reindexing $R'$, substituting $\theta$ in $R',\tau_r,\epsilon$,
+and pruning solved type variables as above. The result is a callable over the explicit
+parameters after \texttt{self}. Mechanically, this is equivalent to partial application
+on the first parameter, with the argument supplied by the receiver.
+
+\paragraph{Arity discipline.}
+Unmatched \emph{arguments} are ill-typed; unmatched \emph{parameters} produce residuals.
+
+\paragraph{Worked example.}
+Let $\varphi = \forall T,U.~(0:T,\;1:U) \xrightarrow{\epsilon} T$.
+\begin{enumerate}
+  \item First application with $A=\{0:\mathsf{int}\}$:
+  \[
+    \theta=\{T\mapsto \mathsf{int}\},\quad S=\{0\},\quad
+    R_{\mathrm{res}} = \{0:U\},\quad
+    \overline{X}_{\mathrm{res}}=(U)
+  \]
+  Result: $\forall U.~(0:U)\xrightarrow{\epsilon[\theta]} \mathsf{int}$.
+  \item Second application with $A'=\{0:\mathsf{str}\}$:
+  \[
+    \theta'=\{U\mapsto \mathsf{str}\}
+  \]
+  Callable-empty $\Rightarrow$ result $\mathsf{int}$.
+\end{enumerate}
+
+\paragraph{Remark on class-level parametricity.}
+Class-level parametricity, including interaction between class and method type parameters,
+is treated separately in \S\ref{appendix:class-parametricity}.
+
+
 \paragraph{Examples.}  
 \begin{itemize}
 \item Function \texttt{def f(x: int, y: str = "d")} has type:
@@ -42,6 +192,122 @@ f ::= \langle i \rangle \mid \langle s \rangle \mid \langle i, s \rangle
 \item Generic \texttt{list[int]} is $\mathsf{list}\langle\mathsf{int}\rangle$.
 \item Class \texttt{Point} with fields \texttt{x: int, y: int} has record $\{\langle 0, \text{x} \rangle : \mathsf{int}, \langle 1, \text{y} \rangle : \mathsf{int}\}$.
 \end{itemize}
+
+
+\subsection{Rows, TypedDicts, and Generic Access}
+\label{sec:rows-generic-access}
+
+\paragraph{Scope.}
+This subsection defines \emph{rows} (finite maps from keys to types) and their use in typed-dict types, lookup, and class/module member access.
+It also specifies the behavior of generic classes and protocols, including instantiation and structural satisfaction, and covers the interaction between class-level type parameters and method-level parameters.
+We model \emph{instance members} only; class members would appear as members of the metatype $\mathsf{type}[C]$ and are handled analogously in the metatype section.
+All matching is structural; nominal subtyping and base-class hierarchies are not modeled.
+
+\paragraph{Keys and matching.}
+Keys range over
+\[
+k \in \mathcal{K} = \mathbb{N} \,\uplus\, \mathcal{L}
+\]
+where $\mathbb{N}$ indexes positional fields and $\mathcal{L}$ names labeled fields.
+Matching $k \approx k'$ holds iff
+\[
+(k, k' \in \mathbb{N} \wedge k = k') \quad\lor\quad (k, k' \in \mathcal{L} \wedge k = k')
+\]
+Keys from different domains never match.
+
+\paragraph{Rows and typed-dicts.}
+A \emph{row} is a finite mapping from keys to types:
+\[
+\rho ::= \{ k_1 : \tau_1, \dots, k_n : \tau_n \}
+\]
+with the uniqueness invariant $\forall i \neq j.\ k_i \neq k_j$.
+We write:
+\begin{itemize}
+\item $\mathrm{dom}(\rho) = \{ k_1,\dots,k_n \}$
+\item $\rho \cdot k = \tau$ if $k:\tau \in \rho$
+\item $\rho \setminus S$ for the row with fields whose keys are not in $S$
+\end{itemize}
+
+\paragraph{Lattice structure.}
+Rows form a lattice $(\mathcal{R}, \sqsubseteq, \sqcup, \sqcap, \top, \bot)$:
+\begin{itemize}
+\item $\top$ = empty row (no constraints)
+\item $\bot$ = inconsistent row (no possible values)
+\item Join ($\sqcup$): pointwise join on keys in the union of domains
+\item Meet ($\sqcap$): pointwise meet on keys in the intersection of domains
+\end{itemize}
+This reflects an \emph{information ordering}: $\top$ = least information, $\bot$ = contradiction.
+
+\paragraph{Lookup.}
+Lookup extracts the type(s) associated with a given key from a row or type:
+\begin{align*}
+\rho \cdot a &= \bigsqcup \{ \tau \mid k:\tau \in \rho \ \wedge\ k \approx a \}
+  &&\text{(basic case; $\bot$ if no match)}\\
+(\tau_1 + \tau_2) \cdot a &= (\tau_1 \cdot a) \ \sqcup\ (\tau_2 \cdot a)
+  &&\text{(union types)} \\
+\text{If result is }\{\rho_j \to \tau_j\} &: \quad \bigoplus_j (\rho_j \to \tau_j)
+  &&\text{(overloads)}\\
+\text{If }\epsilon.\mathsf{property} = \mathsf{true} &: \quad \mathsf{get\_property}(\tau \cdot a) = \sigma
+  &&\text{(properties)}
+\end{align*}
+
+\paragraph{Generic classes.}
+A generic class type has the form
+\[
+\mathsf{class}\; C[\overline{\alpha}] : \rho
+\]
+where $\overline{\alpha} = (\alpha_1,\dots,\alpha_m)$ are class-level type parameters, and $\rho$ is the row of member names to their types.
+
+\emph{Instantiation:} Given $\overline{\tau}$ with $|\overline{\tau}| = m$,
+\[
+C[\overline{\tau}] = (\mathsf{class}\;C[\overline{\alpha}] : \rho)[\alpha_i \mapsto \tau_i]_{i=1}^m
+\]
+Substitution applies to members, including effects:
+\[
+(\rho \xrightarrow{\epsilon} \tau)[\alpha \mapsto \sigma] \;=\; (\rho[\alpha \mapsto \sigma]) \xrightarrow{\epsilon[\alpha \mapsto \sigma]} (\tau[\alpha \mapsto \sigma])
+\]
+Class parameters are in scope for all members.
+
+\paragraph{Method parameter shadowing.}
+If a method is quantified $\forall\overline{\beta}.\rho \xrightarrow{\epsilon} \tau$ and $\overline{\beta} \cap \overline{\alpha} \neq \varnothing$, then each $\beta_i$ shadows the corresponding $\alpha_j$ within the method’s scope. No automatic renaming occurs.
+
+\paragraph{Protocols.}
+A protocol $\Pi[\overline{\alpha}]: \rho$ is a structural interface.
+A type $T$ satisfies $\Pi[\overline{\sigma}]$ iff:
+\begin{enumerate}
+\item For all $a \in \mathrm{dom}(\rho_{\Pi[\overline{\sigma}]})$, $T \cdot a \neq \bot$.
+\item $T \cdot a \ \mathrel{\texttt{unifies}} \ \rho_{\Pi[\overline{\sigma}]} \cdot a$,
+  where $\texttt{unifies}$ is the bidirectional unification from the parametricity section.
+\end{enumerate}
+
+\paragraph{Member access.}
+The member lookup judgment
+\[
+\tau \ \cdot\ a \ \Downarrow\ v
+\]
+is defined by:
+\begin{align*}
+(\mathsf{class}\;C[\overline{\alpha}] : \rho) \cdot a &= \rho \cdot a \\
+C[\overline{\tau}] \cdot a &= (\mathsf{class}\;C[\overline{\alpha}]:\rho)[\alpha_i\mapsto\tau_i] \cdot a \\
+\mathsf{module}(\rho) \cdot a &= \rho \cdot a \\
+(\tau_1 + \tau_2) \cdot a &= (\tau_1 \cdot a) \sqcup (\tau_2 \cdot a)
+\end{align*}
+If $\rho \cdot a = \bot$, then $\tau \cdot a = \bot$.
+
+\emph{Interaction with parametricity:} If $\tau \cdot a$ is callable, apply receiver binding from \S\ref{sec:type-parametricity}, treating the receiver as the first positional argument.
+
+\paragraph{Worked example.}
+\[
+\begin{aligned}
+&\text{Definition:} \quad \mathsf{class}\; \mathsf{List}[T] :
+\{\mathrm{"append"} : (\mathrm{self}:\mathsf{List}[T], x:T) \xrightarrow{\epsilon} \mathsf{None} \} \\[0.5em]
+&\text{Instantiation:} \quad \mathsf{List}[\mathsf{int}] =
+\{\mathrm{"append"} : (\mathrm{self}:\mathsf{List}[\mathsf{int}], x:\mathsf{int}) \xrightarrow{\epsilon} \mathsf{None} \} \\[0.5em]
+&\text{Lookup:} \quad \mathsf{List}[\mathsf{int}] \cdot \mathrm{"append"} =
+(\mathrm{self}:\mathsf{List}[\mathsf{int}], x:\mathsf{int}) \xrightarrow{\epsilon} \mathsf{None} \\[0.5em]
+&\text{Bind self:} \quad (x:\mathsf{int}) \xrightarrow{\epsilon} \mathsf{None}
+\end{aligned}
+\]
 
 \subsection{Static Semantics}
 
@@ -89,6 +355,14 @@ Otherwise it is a straightforward union:
 \quad\quad
 \tau_1 \sqcup \tau_2 = \tau_1 + \tau_2 \ \text{if unrelated}
 \]
+
+\paragraph{Quantified function application.}
+When a function expression has type $\forall\overline{X}.~R \xrightarrow{\epsilon} \tau_r$,
+its application to an argument list is checked by \emph{binding} the arguments to the
+parameters, instantiating $\overline{X}$ as needed, and producing either a result type
+or a residual callable. The binding algorithm, including partial application,
+variadic packs, overloads, and receiver binding, is defined in
+Appendix~\ref{appendix:type-parametricity}.
 
 \paragraph{Unification.}  
 Unification $\Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta$ computes substitutions $\theta : \mathcal{V} \to \mathcal{T}$, supports variadic parameters, instantiation, functions, and records.  
