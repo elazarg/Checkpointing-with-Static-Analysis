@@ -1,175 +1,83 @@
 \subsection{Type and Effect Domain}
 
-The type domain classifies abstract objects using a type language designed for Python’s object model but specialised for well-structured, numerically oriented code.
-It captures not just nominal classes, but also structural information (via row types and protocols), callable signatures, and heap effects.
+Our type domain models Python values using a small set of constructs chosen to match the subset of Python we target: nominal classes, structural protocols, callable signatures, container types, and the special \texttt{any} type for unknown values.
+Unlike general--purpose type systems, we unify the representation of parameter lists and object fields as \emph{rows}: finite ordered maps from keys (positional indices or names) to types.  
+This gives a single mechanism for lookup, subtyping, joining, and unification across functions, classes, and modules.
 
-\paragraph{Type syntax.}
-The main constructors (see Appendix~\ref{appendix:typesystem} for the full grammar) include:
+Functions are annotated with \emph{effects} that describe their interactions with the heap: whether they allocate new objects, return existing ones, or update fields.  
+These effects are directly consumed by the checkpointing analysis to determine which heap locations may be modified and which can be safely excluded from checkpoints.
+
+\paragraph{Main type constructs.}
+The principal forms in our type language (full syntax in Appendix~\ref{appendix:typesystem}) are:
 \begin{itemize}
-\item \textbf{Classes} $\mathsf{class}(C, R, \overline{\tau}, \overline{\alpha})$: a nominal class $C$ with a row $R$ of fields and optional generic parameters.
-\item \textbf{Protocols} $\mathsf{protocol}(R, \overline{\alpha})$: structural interfaces that require the listed fields with given types, independent of nominal class.
-\item \textbf{Modules}: rows of exported names and their types.
-\item \textbf{Callable types} $\forall \overline{X}.;R\_{\mathrm{params}} \xrightarrow{\epsilon} \tau\_{\mathrm{ret}}$: with parameter and return rows, an effect annotation $\epsilon$, and possible overload sets.
-\item \textbf{Unions}, \textbf{generic instantiations}, and \textbf{variadic parameters} for \texttt{\*args}-style functions.
-\item \texttt{any} for unknown values.
+  \item \textbf{Classes} $\mathsf{class}(C, R, \overline{\tau}, \overline{\alpha})$:
+        a nominal class $C$ with row $R$ of fields and optional generic parameters $\overline{\alpha}$.
+  \item \textbf{Protocols} $\mathsf{protocol}(R, \overline{\alpha})$:
+        structural interfaces requiring the listed fields with given types, independent of nominal identity.
+  \item \textbf{Modules}:
+        rows of exported names and their types.
+  \item \textbf{Functions} $\forall \overline{X}.\;R_{\mathrm{params}} \xrightarrow{\epsilon} \tau_{\mathrm{ret}}$:
+        with parameter row $R_{\mathrm{params}}$, return type $\tau_{\mathrm{ret}}$, and effect $\epsilon$.
+        Functions may appear in overload sets.
+  \item \textbf{Other forms}:
+        unions, generic instantiations, variadic packs for \texttt{*args}-style functions, and \texttt{any}.
 \end{itemize}
 
-\subsection{Type parametricity}
-\label{subsec:type-parametricity}
+\paragraph{Rows and subtyping.}
+A row is a finite sequence of fields indexed by name or position.  
+Width subtyping applies: a type with extra fields is a subtype of one with fewer fields, provided all shared fields match.  
+Protocols are a special case: any object with the required fields is a subtype, regardless of its nominal class.
 
-This section describes the handling of type parameters for \emph{functions} in our type system.
-We proceed from the simplest case of non-generic functions to the more complex cases
-of partial application, overloaded functions, and functions with explicit type parameters
-(including variadic packs).
-
-\paragraph{Non-generic functions.}
-A non-generic function case is written as:
-\[
-(p_0 : \tau_0, \dots, p_{n-1} : \tau_{n-1}) \xrightarrow{\epsilon} \tau_r
-\]
-where $\epsilon$ is the function's effect annotation (ignored in this section).
-A \emph{call} is checked by matching each parameter type $\tau_i$ to the corresponding
-argument type. If all parameters are matched, the call returns $\tau_r$.
-
-\paragraph{Overloads.}
-An overloaded function is a finite set of cases:
-\[
-\mathsf{Overloaded}(f_1, \dots, f_m)
-\]
-Each call is attempted against each arm $f_j$ independently.
-Arms whose parameters do not match the actual arguments are discarded.
-If more than one arm remains, their return types are joined.
-This preserves precision while deferring disambiguation until sufficient arguments are supplied.
-
-\paragraph{Partial application.}
-Calls may supply only a subset of the function's parameters.
-The type system performs \emph{partial binding}:
-\begin{enumerate}
-    \item Match each supplied parameter against the corresponding argument type.
-    \item Apply the resulting substitution to all parameter and return types.
-    \item Remove matched parameter rows, reindexing the remainder.
-    \item Return a \emph{residual callable} with the remaining parameters and updated types.
-\end{enumerate}
-When all parameters are matched, the call immediately yields the substituted return type.
-
-\paragraph{Function-level type parameters.}
-A generic function case has the form:
-\[
-\forall X_1, \dots, X_k .\; (p_0 : \tau_0, \dots, p_{n-1} : \tau_{n-1}) \xrightarrow{\epsilon} \tau_r
-\]
-Type parameters may be:
+\paragraph{Call checking and binding.}
+When a call is type--checked, argument types are unified with the corresponding parameter types:
 \begin{itemize}
-    \item Declared explicitly in the function's generic header.
-    \item Introduced implicitly when a free type variable appears in a parameter type.
+  \item Type variables may be solved, yielding a substitution applied to all remaining parameters and the return type.
+  \item Parameters matched by the call are removed, producing either a \emph{residual callable} (for partial application) or the substituted return type.
+  \item Variadic packs (\texttt{*args}) may be partially bound and matched incrementally; if unmatched packs remain, the result is again a residual callable.
 \end{itemize}
-Type parameters are scoped to the function case and may shadow outer variables.
-
-On a call, \emph{unification} between $\tau_i$ and the actual argument type may
-\emph{solve} some type parameters, yielding a substitution $\theta$.
-This substitution is applied to all parameter and return types.
-Parameters whose type variables are fully solved and no longer appear in the residual type
-are dropped from the quantifier list, except for variadic packs that remain in unmatched parameters.
-
-\paragraph{Variadic packs.}
-A variadic pack $X^*$ may appear in the parameter list to represent an arbitrary
-sequence of contiguous positional arguments.
-When matching:
-\begin{enumerate}
-    \item All remaining positionals are collected and joined elementwise into a $Star(\dots)$ type.
-    \item The pack variable is bound to this $Star(\dots)$ in the substitution.
-    \item The variadic parameter remains in the residual callable to allow further arguments to be supplied.
-\end{enumerate}
-If a pack is the only remaining parameter, the case is considered callable-empty,
-allowing the call to complete with zero further arguments.
-Pack variables also appear in return types or other parameters and can be \emph{indexed}
-via $Access$ expressions, which are resolved once the pack is concretized.
-
-\paragraph{Overloads with generics and partial application.}
-When the callee is an overloaded function, partial binding is attempted
-for each arm independently.
-Residuals from arms that match the same set of supplied parameters are grouped together.
-If all residuals in a group are callable-empty, their return types are joined
-to produce the call's result; otherwise the result is a residual overload.
-
-\paragraph{Self-binding for methods.}
-A method type is a function case whose first parameter is the receiver:
-\[
-\forall \overline{X}.\; (0 : \tau_{\mathit{self}},\; 1:\tau_1, \dots, k:\tau_k) \xrightarrow{\epsilon} \tau_r
-\]
-Given a receiver type $\sigma_{\mathit{recv}}$:
-\begin{enumerate}
-    \item Unify $\tau_{\mathit{self}}$ with $\sigma_{\mathit{recv}}$, yielding a substitution $\theta$.
-    \item Apply $\theta$ to the remaining parameters, return type, and type parameter list.
-    \item Remove the receiver row and reindex remaining parameters.
-    \item Drop solved type parameters that no longer appear in the residual type.
-\end{enumerate}
-The result is a callable that expects only the explicit arguments after \texttt{self}.
-
-
-\paragraph{Row types and row variables.}
-A \emph{row type} is a finite list of fields, indexed by name and/or position, with associated types.
-A \emph{row variable} $\rho$ denotes “all other fields” and allows open records.
-Row polymorphism supports \emph{width subtyping}: a type with extra fields is a subtype of one with fewer fields, provided the shared fields match.
-Protocols are a special case of this — any object with the required fields is a subtype, regardless of its nominal class.
-
-\paragraph{Joins.}
-The join operation merges type information:
-\begin{itemize}
-\item \textbf{Unions}: $\mathsf{union}$ of alternatives.
-\item \textbf{Classes with same name}: join each field type; if fields disagree in presence or variance, widen to \texttt{any} for that field.
-\item \textbf{Classes with different names}: join to a union type.
-\item \textbf{Effects}: union the set of updates, join result types, and OR allocation/points-to flags.
-\end{itemize}
-Joins introduce imprecision when element types disagree or when residual rows widen to \texttt{any}.
+Overloaded functions are handled by attempting binding against each arm independently; the results are joined when ambiguity remains.  
+The formal residual--callable construction is given in Appendix~\ref{appendix:typesystem}.
 
 \paragraph{Effects.}
-Effects annotate callable types with heap interactions:
+Effects annotate functions with heap interactions:
 \begin{itemize}
-\item \textbf{new} — allocates a fresh object of a given type.
-\item \textbf{points-to} — returns a reference to an existing object.
-\item \textbf{update} — modifies a specific field or refines its type.
+  \item \textbf{\texttt{new}}: allocates a fresh object.
+  \item \textbf{\texttt{points-to}}: returns a reference to an existing object.
+  \item \textbf{\texttt{update}}: modifies or refines a specific field, possibly changing its type.
 \end{itemize}
 Updates are instantiated with actual arguments. For example, from the builtins stub:
-\begin{align*}
-\texttt{list.append} &: (\texttt{self}:\mathrm{list}[T],\ \texttt{x}:S) \to \texttt{None} \\
-\mathrm{with}\ & \mathrm{update}[\texttt{self},\ 0:\mathrm{list}[T \mid S]]
-\end{align*}
-
-If \texttt{self} starts as \texttt{list[$\bot$]} and the call is \texttt{append(x)} where x is of type \texttt{int}, the element type is refined to \texttt{list[int]}. Note that this is not a special case for list; any library can use this effect.
-
-\paragraph{Monomorphic \texttt{self} requirement.}
-Type-changing \texttt{update} effects are only applied when the receiver object is unaliased and monomorphic.
-Without this restriction, a refinement on one alias could unsoundly affect unrelated references.
-
-\paragraph{Overloads and dispatch.}
-An $\mathsf{overload}(\varphi\_1,\dots,\varphi\_n)$ is a finite set of callable types differing in parameter rows, return types, or effects.
-At a call site:
-\begin{enumerate}
-\item Type variables are instantiated from argument types.
-\item Variadic arguments are expanded if present.
-\item Row subtyping is checked.
-\end{enumerate}
-Matching overloads contribute their return types and effects; multiple matches are joined; no match yields \texttt{any}.
+\[
+\texttt{list.append} :
+(\texttt{self}:\mathrm{list}[T],\ \texttt{x}:S) \to \texttt{None}
+\quad\mathrm{with}\quad
+\mathrm{update}[\texttt{self},\ 0:\mathrm{list}[T \mid S]]
+\]
+If \texttt{self} initially has type \texttt{list[$\bot$]} and we call \texttt{append} with an \texttt{int}, the element type refines to \texttt{list[int]}.  
+Type-changing updates are only applied when the receiver is unaliased and monomorphic, preventing unsound refinements across aliases.
 
 \paragraph{Field and attribute access.}
-For $x.f$, the pointer domain supplies the possible receivers; each receiver’s row is inspected:
+For $x.f$, the pointer domain yields possible receivers; their rows are inspected:
 \begin{itemize}
-\item All agree $\Rightarrow$ take that type.
-\item Disagree $\Rightarrow$ join types.
-\item Missing $\Rightarrow$ join with the residual row’s default (often \texttt{any}) and mark as possibly failing.
+  \item If all agree on the field type, that type is returned.
+  \item If types disagree, their join is returned.
+  \item If the field is missing, join with the residual row's default (often \texttt{any}) and mark as possibly failing.
 \end{itemize}
+
+\paragraph{Example: partial application and update.}
+Consider:
+\[
+f : \forall T,U.\; (0:T, 1:U) \to T
+\]
+Calling $f$ with an \texttt{int} yields a residual $(0:U) \to \texttt{int}$.  
+Calling this residual with a \texttt{str} then yields a residual  $() \to \texttt{int}$; finally, retrieving the result yields an \texttt{int}.  
+Similarly, \texttt{list.append} with an \texttt{int} argument refines the element type from unknown to \texttt{int}.
 
 \paragraph{Precision and limits.}
 The type system can:
 \begin{enumerate}
-\item Identify exactly which heap locations an operation may modify.
-\item Exclude immutable structures from checkpoints.
-\item Refine container element types across updates.
+  \item Identify exactly which heap locations an operation may modify.
+  \item Exclude immutable structures from checkpoints.
+  \item Refine container element types across updates.
 \end{enumerate}
-Precision loss occurs when:
-\begin{itemize}
-\item Joins on differing field types force unions.
-\item Residual rows accumulate many unknowns, widening to \texttt{any}.
-\item Computed attributes (\texttt{getattr} with unknown names) require falling back to \texttt{any}.
-\end{itemize}
-Dynamic Python features like monkey-patching, dynamic module imports, or metaclass trickery are excluded from the target subset.
+Precision loss occurs when joins force widening to \texttt{any} (e.g., differing field types, many unknowns, or unknown attribute names).  
+Dynamic features such as monkey--patching, dynamic imports, or metaclass manipulation are excluded from the target subset.
