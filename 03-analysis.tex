@@ -1,206 +1,127 @@
-\begin{figure}[t]
-    \centering
-    \input{pipeline.tex}
-    \caption{Analysis pipeline. Python source is compiled to bytecode, lowered to TAC, and analyzed in three interacting domains.}
-    \label{fig:overview}
-\end{figure}
-
 \section{Analysis}
 \label{sec:analysis}
 
-Our framework combines a preliminary \emph{Liveness Analysis} with a reduced product of \emph{Type Analysis} and \emph{Pointer and Dirty Analysis}. Liveness is computed first, identifying the variables that can influence future computation at each program point. This guides the reduced product: type information constrains pointer targets, while pointer/dirty tracking in turn refines type updates. Here, ``dirty'' refers to heap objects modified since the last checkpoint—a critical distinction for determining what state must be persisted. By exchanging information during abstract interpretation, the analyses in the reduced product achieve greater precision than they could in isolation, even in the presence of Python’s dynamic features. The process operates over an intermediate representation (IR) derived from Python bytecode, which makes dataflow explicit and simplifies reasoning. Figure~\ref{fig:overview} shows the full pipeline, from source code through IR, liveness, and the reduced product, to the extracted invariants used for checkpoint minimization.
-
-
-\subsection{Scope and Assumptions}
-\label{sec:scope}
-
-Our framework targets a practical subset of Python programs, chosen to balance analytical precision with tractable implementation.  
-We disallow dynamic code evaluation, require statically resolvable function calls, mandate explicit instantiation for generics, and adopt a simplified aliasing model for NumPy arrays.  
-These constraints, common in idiomatic numerical code, allow us to model control flow, data flow, and heap mutation soundly.
-
-Several trade-offs shape the design: we abstract away array shapes, use a wildcard field for unknown collection elements, and leverage literal and variadic generics for precise yet extensible typing.  
-Soundness depends on accurate type and effect annotations for external library calls.  
-
-A full statement of these assumptions, including justification and implications, is given in Appendix~\ref{appendix:assumptions}.
+Our static analysis framework combines several interacting domains to determine the minimal set of program variables that must be included in a checkpoint.  
+We present the domains in an order that matches their conceptual dependencies, starting from the IR, then moving to liveness, explaining objects, and general domain conventions before introducing the specific domains for dirty tracking, pointers, and types.
 
 \subsection{Intermediate Representation}
-Our first step is to lower CPython bytecode to a \emph{register-based three-address code (TAC) intermediate representation} (Appendix~\ref{appendix:ir}), making data flow explicit and naming stack variables consistently. For example:
-\begin{lstlisting}[language=Python]
-# Python
-x = g(y) + z.f
-
-# Bytecode
-  2 PUSH_NULL
-  4 LOAD_NAME  0 (g)
-  6 LOAD_NAME  1 (y)
-  8 CALL       1
- 16 LOAD_NAME  2 (z)
- 18 LOAD_ATTR  0 (f)
- 38 BINARY_OP  0 (+)
- 42 STORE_NAME 3 (x)
-
-# TAC
-$1 = g
-$2 = y
-$1 = $1($2)
-$2 = z
-$2 = $2.f
-$1 = $1 + $2 [inplace=False] 
-x = $1
-\end{lstlisting}
-This removes implicit stack effects, ensures every instruction has explicit inputs and outputs, and simplifies dataflow reasoning.
-
+Our analyses operate not on Python source or bytecode directly, but on a simplified register-based \emph{three-address code} (TAC).
+This IR is designed to make dataflow and heap accesses explicit, removing the operand stack of Python bytecode and any implicit temporaries.
+A TAC program consists of a finite set of \emph{labels} $L$, each with an associated basic block of instructions.
+Each instruction reads and writes explicit \emph{variables} $v \in \mathcal{V}$, which may be:
+\begin{itemize}
+    \item \emph{Named locals} (e.g.\ \texttt{x}, \texttt{result}), corresponding to function parameters and Python local variables.
+    \item \emph{Stack variables} ($\$0, \$1, \ldots$), introduced during translation to replace Python's stack slots.
+\end{itemize}
+Control flow is represented explicitly in a \emph{control-flow graph} (CFG) $G = (L, E)$ with directed edges for possible execution paths.
+We write $\mathsf{succ}(l)$ and $\mathsf{pred}(l)$ for the successors and predecessors of a label $l$ in $G$.
+An \emph{instruction location} is denoted by $(l, i)$ for the $i$-th instruction in block $l$.
 \subsection{Liveness Analysis}
+Liveness analysis determines, for each program point, the set of TAC variables whose current value may be read along some future control-flow path before being overwritten.  
+We compute liveness as a standard backward dataflow analysis on the TAC, with the set of live variables at a location $(l,i)$ denoted $\mathsf{Live}_{l,i} \subseteq \mathcal{V}$.
 
-\textbf{Liveness Analysis} is a classical backward dataflow analysis over the program’s control flow graph. Its purpose here is to over-approximate the set of \emph{roots} --- the function-local program variables (stack variables and named variables) whose values may be read in the future before being overwritten. This information does not by itself remove unreachable state, but rather constrains the subsequent pointer analysis, which performs the actual ``garbage collection'' of unreachable heap objects. At loop boundaries, knowing the live roots ensures that only heap objects reachable from them are considered relevant for further analysis, enabling precise identification of state that can be excluded from checkpoints.
+Related: \cite{pythonsemantics}.
 
-\subsection{Type Analysis}
-\label{sec:typesystem}
-
-Our \textbf{Type Analysis} system assigns a precise semantic type to every variable and abstract object in the program. Unlike simple type checkers, our system is designed to capture subtle aspects of Python's dynamic typing behavior in a static context. Key features that enhance its precision and utility include:
-
+\paragraph{Gen/Kill sets.}
+For each instruction, we define:
 \begin{itemize}
-    \item \textbf{Literal Values:} The system can track specific constant values, such as an exact integer (\texttt{Literal[3]}) or a precise string (\texttt{Literal["mean"]}). This enables highly accurate reasoning about operations where the outcome depends on these specific values, allowing us to resolve method calls or attribute accesses precisely at analysis time.
-    \item \textbf{Generic Types:} We explicitly model generic collections and data structures, like \texttt{list[int]} (a list containing only integers) or \texttt{numpy.ndarray} (a NumPy array). This allows the analysis to understand the types of elements within containers, which is fundamental for numerical computing where array contents are critical.
-    \item \textbf{Effect Annotations:} A vital aspect of our type system is the inclusion of \emph{effect annotations} on function types. These annotations explicitly describe a function's side effects on the heap, even for built-in Python functions or external libraries where we don't have source code. This is crucial for tracking mutations and heap changes:
-    \begin{itemize}
-        \item \texttt{@new}: Indicates the function creates and returns a fresh, new object (e.g., \texttt{list()} or \texttt{np.array()}).
-        \item \texttt{@update}: Signifies that the function modifies one of its input arguments (e.g., \texttt{list.append()} mutates the list it's called on).
-        \item \texttt{@pure}: Means the function has no side effects on the heap; it only reads its inputs and returns a value (e.g., \texttt{len()}).
-    \end{itemize}
+    \item $\mathsf{gen}$: the set of variables read by the instruction (whose current value is needed now).
+    \item $\mathsf{kill}$: the set of variables definitely overwritten by the instruction (whose current value is no longer needed).
 \end{itemize}
-This detailed type information is fundamental for distinguishing between immutable data (which cannot be "dirty") and mutable state, providing the foundational basis for tracking all heap changes. While our system supports more complex features like union types and overloaded functions (Appendix~\ref{appendix:typesystem}), these core elements are most impactful for our analysis goals.
+The backward transfer function is:
+\[
+\mathsf{Live}_{\mathrm{in}} = (\mathsf{Live}_{\mathrm{out}} \setminus \mathsf{kill}) \cup \mathsf{gen}.
+\]
+A variable in $\mathsf{kill}$ is said to be \emph{killed} at that instruction.
 
-\paragraph{Heap-indexed maps.}
-We use three primary abstract maps over the set of abstract objects~$\mathcal{O}$.
-Let $\mathcal{F}$ be the set of abstract field identifiers, consisting of
-all possible attribute names plus the wildcard~\texttt{*} denoting collection
-elements. In our simplified aliasing model, \emph{all} element accesses
-into lists, tuples, NumPy arrays, and other sequence-like containers are
-represented by the wildcard~\texttt{*}, rather than distinct integer indices.
-This means the analysis does not distinguish between different positions
-within the same collection.
-Let $\mathcal{T}$ be the type lattice from \S\ref{sec:typesystem}.
-
+\paragraph{Variable kinds.}
+Variables in $\mathcal{V}$ come in two forms:
 \begin{itemize}
-    \item \textbf{Pointer graph}:
-    \[
-        G : \mathcal{O} \to (\mathcal{F} \to 2^{\mathcal{O}})
-    \]
-    where $G[o][f]$ is the set of abstract objects that field $f \in \mathcal{F}$ of object~$o$
-    may point to.  
-
-    \item \textbf{Type map}:
-    \[
-        T : \mathcal{O} \to \mathcal{T}
-    \]
-    where $T[o]$ is the abstract type of object~$o$.
-
-    \item \textbf{Dirty map}:
-    \[
-        D : \mathcal{O} \to 2^{\mathcal{F}}
-    \]
-    where $D[o]$ is the set of fields of object~$o$ that have been (abstractly) written since
-    the last checkpoint boundary.  
-    A nonempty $D[o]$ means $o$ is ``dirty,'' but dirtiness is tracked \emph{per-field}.
+    \item \emph{Stack variables} ($\$0, \$1, \ldots$) are compiler-generated temporaries that exist only within a single basic block and cannot be addressed once they are dead.  
+          Killing such a variable immediately removes any heap objects reachable from it from the root set.
+    \item \emph{Named local variables} (e.g.\ \texttt{x}, \texttt{result}) persist for the duration of a function activation and may, in Python, be captured by closures or declared \texttt{nonlocal}.
+          We restrict our target program subset to disallow such captures, so a named local can be considered dead when no further reads occur in the current function body.
 \end{itemize}
 
-\subsection{Pointer and Dirty Analysis}
+\paragraph{Role in later domains.}
+The live-variable set at each point is used to prune the root set for the pointer graph: when a variable $v$ is not live, all edges reachable only through $v$ are removed.
+This prevents dead variables from keeping otherwise unreachable objects alive in the analysis state.
 
-The \textbf{Pointer and Dirty Analysis} component provides a detailed understanding
-of how variables refer to objects in memory and which parts of that memory have been modified.
-It operates over the heap-indexed maps $G$, $T$, and $D$ defined above:
-
+\subsection{Objects and Fields}
+We model the heap as a finite set of \emph{abstract objects} $\mathcal{O}$, each representing either:
 \begin{itemize}
-    \item \textbf{Abstract Objects:}
-    We represent runtime objects as elements of $\mathcal{O}$, rather than tracking
-    concrete memory addresses. These can correspond to allocations at specific program
-    points, function parameters, immutable values, or special scope objects such as
-    \texttt{LOCALS} and \texttt{GLOBALS}.  
-    Immutability is determined statically from $T[o]$ (the type of~$o$): 
-    built-in scalars, tuples of immutable types, pure functions, and certain type objects
-    are classified as immutable, while containers and most user classes are not.
-    Immutable objects are mapped to canonical representatives and never appear in $D$
-    (the set of dirtied fields), eliminating spurious updates.
-
-    \item \textbf{Pointer Graph:}
-    $G[o][f]$ is the set of objects that field~$f$ of~$o$ may point to.
-    This graph encodes aliasing: if two variables map via $G$ to a common object,
-    a modification through one is visible through the other.
-
-    \item \textbf{Field-Sensitivity:}
-    Because $G$ is defined over individual fields $f \in \mathcal{F}$, 
-    the analysis can distinguish updates to different fields or collection elements.
-    For example, if $f = \texttt{*}$ (wildcard), then $G[o][\texttt{*}]$ denotes
-    all objects that may be stored in collection~$o$.
-
-    \item \textbf{Dirty Tracking:}
-    $D[o]$ is the set of fields of object~$o$ that have been written since the last
-    checkpoint. When a field~$f$ is updated, $f$ is added to $D[o]$, and this information
-    is propagated through all aliases in $G$.
-    If $T[o]$ is immutable, then $D[o]$ is always empty.
+    \item A distinguished \emph{root object} such as \texttt{LOCALS} or \texttt{GLOBALS}.
+    \item A \emph{parameter object} representing a function argument at entry.
+    \item An \emph{allocation site object} $o_{l,i}$ created by a specific instruction location $(l, i)$.
 \end{itemize}
+Objects have \emph{fields} $f \in \mathcal{F}$ representing attributes, dictionary keys, or sequence elements.
+For collections, we use a wildcard field $\star$ to conservatively represent all indexed elements.
+Accessing \texttt{x.f} refers to field $f$ of the object(s) currently bound to variable $x$.
 
-By explicitly tracking $G$ (pointer relationships), $T$ (types), and $D$ (dirtied fields),
-we obtain a precise view of memory layout, aliasing, and mutation patterns,
-which is indispensable for our checkpointing strategy.
+We will write $P[o][f]$ for the set of target objects stored in field $f$ of object $o$ in the pointer graph (defined later), and $D[o]$ for the set of fields of $o$ that are currently dirty.
 
-\subsection{Interactions between Analyses}
-Our framework achieves precision through continuous interaction and refinement between Type Analysis and Pointer/Dirty Analysis within the reduced product domain, guided by pre-computed liveness information.
-Information flows as follows:
+\subsection{Map Domains}
+Many of our domains are \emph{maps}, i.e.\ finite partial functions $M : K \to V$ with a fixed \emph{default value} $\bot_V$ for missing keys.
+We adopt a uniform notation and semantics for their use in abstract interpretation:
 \begin{itemize}
-    \item \emph{Liveness $\rightarrow$ Pointer:}
-    Liveness determines the set of live \emph{roots}—variables from which heap reachability is computed. Pointer analysis then prunes the pointer graph by removing objects not reachable from these roots, reducing aliasing imprecision.
-    \item \emph{Type $\rightarrow$ Dirty:}
-    If $T[o]$ indicates that object~$o$ is immutable, then $D[o]$ remains empty, even if $o$ appears on the left-hand side of an assignment. This prevents immutable objects from being spuriously marked dirty.
-    \item \emph{Type $\rightarrow$ Pointer:}
-    Type information determines field layouts and possible allocation patterns, constraining which objects can be pointed to by typed references.
-    \item \emph{Pointer $\rightarrow$ Type:}
-    For dynamic dispatches such as method calls on variable~$v$, the possible receiver objects $o \in G[o_v][f]$ constrain the possible types $T[o]$.
-    This narrowing refines effect annotations (e.g., whether a method updates a field) and thus leads to more accurate updates to $D$.
+    \item \textbf{Transfer:} An assignment to key $k$ replaces $M[k]$ with a new value $v$.
+    \item \textbf{Weak update:} If $k$ may alias with other keys, we conservatively set $M[k] \leftarrow M[k] \sqcup v$ instead of overwriting.
+    \item \textbf{Join:} $(M_1 \sqcup M_2)[k] = M_1[k] \sqcup M_2[k]$ for all $k$ in the union of their domains.
+    \item \textbf{Subsumption:} $M_1 \sqsubseteq M_2$ if $M_1[k] \sqsubseteq M_2[k]$ for all $k$ in the union of their domains.
 \end{itemize}
+We treat missing keys as implicitly mapped to $\bot_V$ for the purposes of all operations above.
+In our analyses, the value type $V$ may itself be another map, a set of objects, or a simple lattice such as booleans, making this pattern reusable across domains.
 
-By exchanging information through $G$ (pointer graph), $T$ (type map), and $D$ (dirty map), the reduced product avoids overly conservative approximations that would otherwise inflate the computed checkpoint set in Equation~\eqref{eq:checkpointset}.
+\subsection{Dirty Domain}
+The \emph{dirty} domain maps each object to the set of fields written since the last checkpoint.
+An update marks the corresponding field as dirty; deletions are treated as writes.
+The domain itself does not decide which dirty objects must be checkpointed—this decision is deferred until pointer reachability and liveness are taken into account.
+\subsection{Pointer Domain}
+The \emph{pointer domain} models the shape of the heap as a map
+\[
+P : \mathcal{O} \to (\mathcal{F} \to \mathcal{P}(\mathcal{O}))
+\]
+where $P[o][f]$ is the set of abstract objects that may be stored in field $f$ of object $o$.
+The inner map has default value $\emptyset$ for any field not explicitly present.
 
+\paragraph{Transfer.}
+On an instruction that stores a reference into a field---for example \texttt{x.f = y}---we first resolve the set of possible source objects $S$ for $y$ and the set of possible target objects $T$ for $x$.
+For each $t \in T$, we update $P[t][f]$ with $S$.
+If $t$ is known to be the only object bound to $x$ (no aliasing), we perform a \emph{strong update}:
+\[
+P[t][f] \leftarrow S.
+\]
+If aliasing is possible, we perform a \emph{weak update}:
+\[
+P[t][f] \leftarrow P[t][f] \cup S.
+\]
+Reads, such as \texttt{y = x.f}, do not change $P$ but are resolved by looking up $\bigcup_{t \in T} P[t][f]$.
 
-\subsection{Checkpoint Minimization}
-Naïvely checkpointing every live variable at loop end wastes space and time on data
-that is either unchanged or easily recomputed. Our key observation is that only
-variables \emph{both} live and dirty need to be saved:
-\begin{equation}
-    \label{eq:checkpointset}
-    \mathsf{CheckpointSet} \;=\; \mathsf{Live} \;\cap\; \mathsf{Dirty}.
-\end{equation}
-Here:
-\begin{enumerate}
-    \item \textbf{Live} comes from liveness analysis: variables (and reachable heap)
-    used in later iterations.
-    \item \textbf{Dirty} comes from pointer/dirty analysis: variables whose reachable heap
-    has been modified since the last checkpoint.
-\end{enumerate}
-In the implementation, the dirty set is computed at loop end by identifying dirty roots
-via alias-closure over the pointer graph, then intersected with the live set at loop entry.
-This ensures that objects whose last use occurs before the loop boundary, even if dirtied,
-are excluded.
+\paragraph{Join and Subsumption.}
+The join $P_1 \sqcup P_2$ is computed pointwise over objects and fields, taking the union of target sets.
+Subsumption $P_1 \sqsubseteq P_2$ holds if $P_1[o][f] \subseteq P_2[o][f]$ for all $o \in \mathcal{O}$ and $f \in \mathcal{F}$.
 
-\paragraph{Example (K-Means).}
-In each iteration of the K-Means clustering algorithm:
+\paragraph{Reachability.}
+Given a set of \emph{root objects} $R \subseteq \mathcal{O}$ (typically \texttt{LOCALS} and \texttt{GLOBALS}), the set of \emph{reachable objects} $\mathsf{Reach}(R, P)$ is the smallest set containing $R$ and closed under:
+\[
+o \in \mathsf{Reach}(R, P) \wedge o' \in P[o][f] \implies o' \in \mathsf{Reach}(R, P).
+\]
+We use liveness to prune the roots $R$ before reachability is computed, ensuring that dead variables do not keep their objects alive.
+
+\input{03-typesystem}
+
+\subsection{Domain Interactions}
+The domains operate in a reduced product with directed information flow:
 \begin{itemize}
-    \item \texttt{assignments}: recomputed each time $\Rightarrow$ dead at loop end.
-    \item \texttt{points}: input data, never modified $\Rightarrow$ live but not dirty.
-    \item \texttt{centroids}: updated and used in the next iteration $\Rightarrow$ live and dirty.
+    \item \emph{Liveness $\rightarrow$ Pointer:} prunes unreachable roots and their edges.
+    \item \emph{Type $\rightarrow$ Pointer:} constrains possible targets based on type-level field shape.
+    \item \emph{Type $\rightarrow$ Dirty:} immutable objects never become dirty.
+    \item \emph{Pointer $\rightarrow$ Type:} dynamic dispatch resolution is narrowed to types of reachable receivers.
 \end{itemize}
-In our notation, if $o_c$ is the abstract object for \texttt{centroids}, then
-$o_c \in \mathsf{Live}$ and $D[o_c] \neq \varnothing$, so it appears in
-$\mathsf{CheckpointSet}$ by Equation~\eqref{eq:checkpointset}.
-The intersection therefore singles out \texttt{centroids} as the only array to persist,
-eliminating large transient data from checkpoints.
+These interactions improve precision by removing impossible states before they can pollute other domains.
 
-\subsection{Instrumentation and Execution}
+\subsection{Transfer Functions}
+For each TAC instruction, the transfer function updates only the affected keys in each domain according to the instruction’s semantics.
+Weak updates are applied when aliasing is possible, and joins are used when merging control-flow paths.
+The set of checkpoint roots at loop boundaries is obtained by intersecting live roots with reachable dirty objects.
 
-The analysis results drive an automated transformation pass that inserts code at statically determined loop boundaries:
-\begin{itemize}
-    \item \textbf{Restore:} At loop entry, load the most recent saved state if recovering from failure.
-    \item \textbf{Save:} At loop exit, serialize only the computed $\mathsf{CheckpointSet}$ (e.g.\ via \texttt{pickle}).
-\end{itemize}
-This preserves the original program’s structure and semantics while drastically reducing checkpoint cost. Because checkpoint locations and contents are statically determined, no runtime scanning or dependency tracking is needed.
