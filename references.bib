@@ -1476,6 +1476,24 @@ series = {SoCC '22}
   organization={Springer}
 }
 
+@inproceedings{pythonsemantics,
+author = {Melan\c{c}on, Olivier and Feeley, Marc and Serrano, Manuel},
+title = {An Executable Semantics for Faster Development of Optimizing Python Compilers},
+year = {2023},
+isbn = {9798400703966},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3623476.3623529},
+doi = {10.1145/3623476.3623529},
+abstract = {Python is a popular programming language whose performance is known to be uncompetitive in comparison to static languages such as C. Although significant efforts have already accelerated implementations of the language, more efficient ones are still required. The development of such optimized implementations is nevertheless hampered by its complex semantics and the lack of an official formal semantics. We address this issue by presenting an approach to define an executable semantics targeting the development of optimizing compilers. This executable semantics is written in a format that highlights type checks, primitive values boxing and unboxing, and function calls, which are all known sources of overhead. We also present semPy, a partial evaluator of our executable semantics that can be used to remove redundant operations when evaluating arithmetic operators. Finally, we present Zipi, a Python optimizing compiler prototype developed with the aid of semPy. On some tasks, Zipi displays performance competitive with that of state-of-the-art Python implementations.},
+booktitle = {Proceedings of the 16th ACM SIGPLAN International Conference on Software Language Engineering},
+pages = {15–28},
+numpages = {14},
+keywords = {python, partial evaluation, optimization, executable semantics, dynamic programming language, compiler},
+location = {Cascais, Portugal},
+series = {SLE 2023}
+}
+
 @book{cardelli1992extensible,
   title={Extensible records in a pure calculus of subtyping},
   author={Cardelli, Luca},

@@ -20,6 +20,8 @@ An \emph{instruction location} is denoted by $(l, i)$ for the $i$-th instruction
 Liveness analysis determines, for each program point, the set of TAC variables whose current value may be read along some future control-flow path before being overwritten.  
 We compute liveness as a standard backward dataflow analysis on the TAC, with the set of live variables at a location $(l,i)$ denoted $\mathsf{Live}_{l,i} \subseteq \mathcal{V}$.
 
+Related: \cite{pythonsemantics}.
+
 \paragraph{Gen/Kill sets.}
 For each instruction, we define:
 \begin{itemize}

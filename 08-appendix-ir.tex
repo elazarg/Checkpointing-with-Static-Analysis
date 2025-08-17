@@ -1,144 +1,315 @@
-\section{Bytecode-to-IR Translation and Semantics}
-\label{appendix:ir}
+\section{TAC Intermediate Representation}
+\label{appendix:tac-ir}
 
 \subsection{Overview}
-Our analysis operates on a three-address code (TAC) intermediate representation derived from CPython bytecode. The IR makes data flow explicit through named variables, enabling direct application of the type system (Appendix~\ref{appendix:typesystem}) and pointer analysis (Appendix~\ref{appendix:pointer}) without simulating CPython's operand stack.
+
+Our analysis operates on a Three-Address Code (TAC) intermediate representation that makes data flow explicit.
+The TAC is derived from CPython bytecode through a translation that replaces stack operations with named variables, enabling direct pointer and type analysis without stack simulation.
+
+\subsection{Meta-Notation}
+
+Optional elements are denoted by superscript question marks, e.g.\ $x^{?}$.
+Sequences are written with overlines and bounds, e.g.\ $\overline{x}_{i=1}^{n}$ where $n \geq 0$.
+We avoid ellipses in formal rules and definitions for precision.
+
+\subsection{Programs and Control Flow}
+
+A program is a control-flow graph $\mathcal{G} = (L,E,B)$ where:
+\begin{itemize}
+\item $L$ is a set of labels $\ell$ identifying basic blocks,
+\item $E \subseteq L \times L$ are control-flow edges,
+\item $B : L \to \mathcal{I}^*$ maps labels to instruction sequences.
+\end{itemize}
 
 \subsection{Syntax}
 
-\paragraph{IR Instructions.} The set of TAC instructions $\mathcal{I}$ is:
+\paragraph{Instructions.}
+The instruction set $\mathcal{I}$ is:
 \[
 \begin{aligned}
-i ::= \;& \mathsf{Assign}(\sigma, e)
-\mid \mathsf{Jump}(\ell, v)
-\mid \mathsf{For}(\sigma, v, \ell) \\
-&\mid \mathsf{Return}(v)
-\mid \mathsf{Raise}(v)
-\mid \mathsf{Nop}
+i ::= \;& \mathsf{Nop} \\
+  &\mid \mathsf{Assign}(\sigma, e, \mathit{or\_null}) \\
+  &\mid \mathsf{Jump}(\ell, c) \\
+  &\mid \mathsf{For}(\sigma, v_{\mathit{iter}}, \ell_{\mathit{exit}}) \\
+  &\mid \mathsf{Return}(v) \\
+  &\mid \mathsf{Raise}(v) \\
+  &\mid \mathsf{Del}(\overline{v}_{i=1}^{n})
 \end{aligned}
 \]
 
-\paragraph{Expressions.} TAC expressions $e \in \mathcal{E}$ are:
+The flag $\mathit{or\_null} \in \{\mathsf{true},\mathsf{false}\}$ originates from CPython's \texttt{LOAD\_FAST\_AND\_CLEAR} opcode, used in comprehensions to prevent variable capture. When $\mathit{or\_null} = \mathsf{true}$, the target is set to \texttt{None} after evaluation (see Assign semantics in Figure~\ref{fig:instruction-semantics}).
+
+\paragraph{Expressions.}
 \[
 \begin{aligned}
-e ::= \;& v \mid c
-\mid \mathsf{Attr}(v, f)
-\mid \mathsf{Subscr}(v_1, v_2) \\
-&\mid \mathsf{Call}(v, \overline{v})
-\mid \mathsf{Binary}(v_1, \mathsf{op}, v_2)
-\mid \mathsf{Unary}(\mathsf{op}, v) \\
-&\mid \mathsf{Import}(m)
-\mid \mathsf{MakeFunc}(\ldots)
+e ::= \;& v \mid c \\
+ &\mid \mathsf{Attribute}(v,f) \mid \mathsf{Subscript}(v_1,v_2) \\
+ &\mid \mathsf{Binary}(v_1,op,v_2,inplace) \\
+ &\mid \mathsf{Unary}(op,v) \\
+ &\mid \mathsf{Call}(v_f, \overline{v}_{i=1}^{n}, v_{kw}^{?})
 \end{aligned}
 \]
 
-\paragraph{Assignment Targets.} Target signatures $\sigma \in \mathcal{S}$ support destructuring:
+\paragraph{Assignment Targets.}
 \[
-\sigma ::= v \mid (\sigma_1, \ldots, \sigma_n) \mid \mathsf{Attr}(v, f) \mid \mathsf{Subscr}(v_1, v_2)
+\sigma ::= v \mid \mathsf{None} \mid \langle\overline{\sigma}_{i=1}^{n}\rangle \mid \mathsf{Attribute}(v,f) \mid \mathsf{Subscript}(v_1,v_2)
 \]
 
-\paragraph{Variables.} Variables $v \in \mathcal{V}$ are partitioned into:
+\paragraph{Variables and Constants.}
+Variables $v \in \mathcal{V}$ partition into:
 \begin{itemize}
-\item \emph{Named variables} $v \in \mathcal{V}_{\mathsf{named}}$ — Python locals/globals.
-\item \emph{Stack variables} \texttt{\$n} $\in \mathcal{V}_{\mathsf{stack}}$ — evaluation temporaries replacing operand stack entries.
+\item Named variables $x,y,z \in \mathcal{V}_{\mathit{named}}$ (Python locals/globals),
+\item Stack variables $\$0,\$1,\ldots \in \mathcal{V}_{\mathit{stack}}$ (temporaries).
 \end{itemize}
 
-\subsection{Translation Semantics}
+Constants $c \in \mathcal{C}$ include literals, \texttt{None}, \texttt{True}, \texttt{False}.
 
-\paragraph{Translation Judgment.}
-\[
-\mathsf{trans} : \mathsf{Bytecode} \times \mathsf{StackDepth} \to \mathcal{I}^*
-\]
-For bytecode instruction $b$ at stack depth $d$, $\mathsf{trans}(b, d)$ produces TAC instructions preserving $b$’s effect. Here $\mathsf{effect}(b) \in \mathbb{Z}$ denotes the net change in stack depth caused by executing $b$.
+Binary operators: \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{//}, \texttt{\%}, \texttt{**}, \texttt{<<}, \texttt{>>}, \texttt{\&}, \texttt{|}, \texttt{\^}, \texttt{@}, \texttt{in}, \texttt{==}, \texttt{!=}, \texttt{<}, \texttt{<=}, \texttt{>}, \texttt{>=}.
 
-\paragraph{Representative Translation Rules.}
-\[
-\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{LOAD\_CONST}(c), d) = [\mathsf{Assign}(\texttt{\$}n, c)]}
-\]
-\[
-\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{LOAD\_FAST}(x), d) = [\mathsf{Assign}(\texttt{\$}n, x)]}
-\]
-\[
-\frac{}{\mathsf{trans}(\mathtt{STORE\_FAST}(x), d) = [\mathsf{Assign}(x, \texttt{\$}d)]}
-\]
-\[
-\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{BINARY\_ADD}, d) =
-[\mathsf{Assign}(\texttt{\$}n, \mathsf{Binary}(\texttt{\$}_{d-1}, +, \texttt{\$}d))]}
-\]
-\[
-\frac{n = d + \mathsf{effect}(b)}{\mathsf{trans}(\mathtt{CALL}(\mathsf{argc}), d) =
-[\mathsf{Assign}(\texttt{\$}n, \mathsf{Call}(\texttt{\$}_{d-\mathsf{argc}}, \ldots, \texttt{\$}d))]}
-\]
+Unary operators: \texttt{not}, \texttt{-}, \texttt{+}, \texttt{\~}, \texttt{bool}, \texttt{iter}, \texttt{next}
 
-\paragraph{Multi-instruction Translations.}
-Some bytecodes expand to multiple TAC instructions. For example:
-\begin{verbatim}
-STORE_SUBSCR   # implements x[k] = v
-$t = Attr(x, "__setitem__")
-_  = Call($t, k, v)
-\end{verbatim}
+\subsection{Operational Semantics}
 
-\subsection{Control Flow}
-
-\paragraph{CFG Construction.}
-The control-flow graph $\mathcal{G} = (L, E, B)$ consists of:
+\paragraph{Machine State.}
+The machine state is defined as:
+\[
+\Sigma ::= \langle \mathcal{G}, pc, \rho, H \rangle \;\mid\; \mathsf{Terminated}(v)
+\]
+where:
 \begin{itemize}
-\item Labels $\ell \in L$ — basic block identifiers.
-\item Edges $(\ell_1, \ell_2) \in E$ — control transfers.
-\item Mapping $B : L \to \mathcal{I}^*$ — block contents.
+\item $pc = (\ell,i)$ is the program counter (label and instruction index),
+\item $\rho : \mathcal{V} \rightharpoonup Val$ is the variable environment,
+\item $H : Loc \rightharpoonup Obj$ is the heap,
+\item $Val ::= Loc \mid c$ (locations or constants),
+\item $Obj ::= \langle class:Name, fields: Field \rightharpoonup Val \rangle$.
 \end{itemize}
 
-Conditional \texttt{Jump} instructions produce two edges: the taken branch and the fallthrough. Unconditional jumps produce a single edge.
+\paragraph{Control Flow.}
+Control flow helpers $\mathsf{next}$ and $\mathsf{goto}$ are defined in Figure~\ref{fig:control-flow-helpers}.
 
-\subsection{Integration with Analysis}
-
-\paragraph{Variable Classification.}
+\begin{figure}[ht]
+\centering
 \[
-\mathsf{scope}(v) =
+\begin{aligned}
+\mathsf{next}(\mathcal{G}, \langle \ell,i \rangle) &=
 \begin{cases}
-\mathsf{LOCALS} & \text{if } v \in \mathcal{V}_{\mathsf{named}} \cup \mathcal{V}_{\mathsf{stack}} \\
-\mathsf{GLOBALS} & \text{if } v \in \mathcal{V}_{\mathsf{global}}
-\end{cases}
+\langle \ell,i+1 \rangle & \text{if } i+1 < |B(\ell)| \\
+\langle \ell',0 \rangle & \text{if } i+1=|B(\ell)| \land (\ell,\ell')\in E
+\end{cases} \\
+\mathsf{goto}(\ell) &= \langle \ell,0 \rangle
+\end{aligned}
 \]
+\caption{Control Flow Helpers}
+\label{fig:control-flow-helpers}
+\end{figure}
 
-\paragraph{Type System Interface.}
-\begin{itemize}
-\item $\mathsf{Attr}(v, f) \leadsto \mathsf{access}(\tau_v, f)$
-\item $\mathsf{Call}(v, \overline{v}) \leadsto \mathsf{apply}(\tau_v, \overline{\tau})$
-\item $\mathsf{Assign}(\sigma, e)$ updates the pointer graph via $\mathsf{signature}(\sigma, \mathsf{eval}(e))$
-\end{itemize}
+\paragraph{Expression Evaluation.}
+Expressions are evaluated by the rules in Figure~\ref{fig:expression-semantics}, covering constants, variables, operators, attributes, subscripts, and calls.
 
-\paragraph{Pointer Analysis Interface.}
-Each TAC instruction $i$ induces a transfer function:
+\begin{figure*}[t]
+\centering
 \[
-\llbracket i \rrbracket : \Sigma \to \Sigma
+\begin{array}{c}
+\frac{}{\rho,H \vdash c \Downarrow c,H}
+\qquad
+\frac{v=\rho(x)}{\rho,H \vdash x \Downarrow v,H}
+\\[1.5ex]
+\frac{\rho,H \vdash v_1 \Downarrow \ell_1,H_1 \quad
+      \rho,H_1 \vdash v_2 \Downarrow \ell_2,H_2 \quad
+      (v,H_3) = \mathsf{apply\_binop}(\ell_1,op,\ell_2,inplace,H_2)}
+     {\rho,H \vdash \mathsf{Binary}(v_1,op,v_2,inplace) \Downarrow v,H_3}
+\\[1.5ex]
+\frac{\rho,H \vdash v \Downarrow \ell,H_1 \quad
+      (v',H_2) = \mathsf{apply\_unop}(op,\ell,H_1)}
+     {\rho,H \vdash \mathsf{Unary}(op,v) \Downarrow v',H_2}
+\\[1.5ex]
+\frac{\rho,H \vdash v \Downarrow \ell,H_1 \quad
+      (v',H_2) = \mathsf{getattr}(\ell,f,H_1)}
+     {\rho,H \vdash \mathsf{Attribute}(v,f) \Downarrow v',H_2}
+\\[1.5ex]
+\frac{\rho,H \vdash v_1 \Downarrow \ell_1,H_1 \quad
+      \rho,H_1 \vdash v_2 \Downarrow \ell_2,H_2 \quad
+      (v,H_3) = \mathsf{getitem}(\ell_1,\ell_2,H_2)}
+     {\rho,H \vdash \mathsf{Subscript}(v_1,v_2) \Downarrow v,H_3}
+\\[1.5ex]
+\frac{\rho,H \vdash v_f \Downarrow f,H_1 \quad
+      \rho,H_1 \vdash \overline{v_i} \Downarrow \overline{\ell_i},H_2 \quad
+      (e,v_{ret}) = \mathsf{resolve}(f,\overline{\ell_i},H_2) \quad
+      H_3 = e(H_2)}
+     {\rho,H \vdash \mathsf{Call}(v_f,\overline{v}_{i=1}^{n},v_{kw}^{?}) \Downarrow v_{ret},H_3}
+\end{array}
 \]
-where $\Sigma = (G, T, D)$ is the typed pointer state (Appendix~\ref{appendix:pointer}).
+\caption{Semantics of Expression Evaluation}
+\label{fig:expression-semantics}
+\end{figure*}
+
+\paragraph{Instruction Semantics.}
+Instruction transitions are defined in Figure~\ref{fig:instruction-semantics}, including rules for \textsf{Nop}, \textsf{Assign}, \textsf{Jump}, \textsf{For}, \textsf{Return}, \textsf{Raise}, and \textsf{Del}.
+
+\begin{figure*}[t]
+\centering
+\[
+\begin{array}{c}
+\frac{}{\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Nop}} 
+        \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho,H \rangle}
+\\[2ex]
+\frac{\rho,H \vdash e \Downarrow v,H' \quad 
+      (\rho',H'') = \mathsf{write}(\sigma,v,\rho,H') \quad
+      \rho'' = \mathsf{clear\_if}(or\_null,\sigma,\rho')}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Assign}(\sigma,e,or\_null)} 
+      \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho'',H'' \rangle}
+\\[2ex]
+\frac{\rho,H \vdash c \Downarrow v,H' \quad \mathsf{truthy}(v,H') = \mathsf{true}}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Jump}(\ell,c)} 
+      \langle \mathcal{G},\mathsf{goto}(\ell),\rho,H' \rangle}
+\qquad
+\frac{\rho,H \vdash c \Downarrow v,H' \quad \mathsf{truthy}(v,H') = \mathsf{false}}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Jump}(\ell,c)} 
+      \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho,H' \rangle}
+\\[2ex]
+\frac{\rho,H \vdash \mathsf{Unary}(\mathsf{next},v_{\mathit{iter}}) \Downarrow v,H' \quad
+      v \neq \mathsf{EndIter} \quad
+      (\rho',H'') = \mathsf{write}(\sigma,v,\rho,H')}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{For}(\sigma,v_{\mathit{iter}},\ell_{\mathit{exit}})} 
+      \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho',H'' \rangle}
+\\[1.5ex]
+\frac{\rho,H \vdash \mathsf{Unary}(\mathsf{next},v_{\mathit{iter}}) \Downarrow \mathsf{EndIter},H'}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{For}(\sigma,v_{\mathit{iter}},\ell_{\mathit{exit}})} 
+      \langle \mathcal{G},\mathsf{goto}(\ell_{\mathit{exit}}),\rho,H' \rangle}
+\\[2ex]
+\frac{\rho,H \vdash v \Downarrow v',H'}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Return}(v)} 
+      \mathsf{Terminated}(v')}
+\qquad
+\frac{\rho,H \vdash v \Downarrow v',H'}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Raise}(v)} 
+      \mathsf{Terminated}(v')}
+\\[2ex]
+\frac{(\rho',H') = \mathsf{remove}(\overline{v}_{i=1}^{n},\rho,H)}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Del}(\overline{v})} 
+      \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho',H' \rangle}
+\end{array}
+\]
+\caption{Semantics of Instruction Execution}
+\label{fig:instruction-semantics}
+\end{figure*}
+
+\paragraph{Helper Functions.}
+Assignment, deletion, and conditional clearing are defined in Figure~\ref{fig:helper-functions}.
+
+\begin{figure*}[t]
+\centering
+\[
+\begin{aligned}
+\mathsf{write}(x,v,\rho,H) &= (\rho[x \mapsto v],H) \\
+\mathsf{write}(\mathsf{None},v,\rho,H) &= (\rho,H) \\
+\mathsf{write}(\langle\overline{\sigma}_{i=1}^{n}\rangle,v,\rho,H) &= \mathsf{unpack}(v,\langle\overline{\sigma}_{i=1}^{n}\rangle,\rho,H) \\
+\mathsf{write}(\mathsf{Attribute}(x,f),v,\rho,H) &= (\rho,\mathsf{setattr}(\rho(x),f,v,H)) \\
+\mathsf{write}(\mathsf{Subscript}(x,k),v,\rho,H) &= (\rho,\mathsf{setitem}(\rho(x),\rho(k),v,H)) \\[1ex]
+\mathsf{remove}(\langle\rangle, \rho, H) = (\rho, H) \\
+\mathsf{remove}(x,\rho,H) &= (\rho[x\mapsto \bot],H) \\
+\mathsf{remove}(\mathsf{Attribute}(x,f),\rho,H) &= (\rho,\mathsf{delattr}(\rho(x),f,H)) \\
+\mathsf{remove}(\mathsf{Subscript}(x,k),\rho,H) &= (\rho,\mathsf{delitem}(\rho(x),\rho(k),H)) \\
+\mathsf{remove}(\langle\overline{v}_{i=1}^{n}\rangle,\rho,H) &= \mathsf{remove}(\overline{v}_{i=1}^{n-1},\mathsf{remove}(v_n,\rho,H)) \\[1ex]
+\mathsf{clear\_if}(or\_null,\sigma,\rho) &=
+\begin{cases}
+\mathsf{write}(\sigma,\mathsf{None},\rho,H) & \text{if } or\_null = \mathsf{true} \\
+\rho & \text{otherwise}
+\end{cases}
+\end{aligned}
+\]
+\caption{Helper Functions for Assignment and Deletion}
+\label{fig:helper-functions}
+\end{figure*}
+\subsection{Translation from Bytecode}
+\label{sec:translation}
+
+\paragraph{Translation Function.}
+The function
+\[
+\mathsf{trans} : Bytecode \times \mathbb{N} \to \mathcal{I}^*
+\]
+maps a bytecode instruction at stack depth $d$ to a TAC instruction sequence.
+
+\paragraph{Stack Effect.}
+Each bytecode $b$ has a stack effect
+\[
+\mathsf{effect}(b) \in \mathbb{Z}
+\]
+which describes the change in stack depth.
+
+\paragraph{Translation Rules.}
+Representative translation rules are given in Figure~\ref{fig:translation-rules}.
+Each rule shows how a Python bytecode instruction is converted into one or more TAC instructions at stack depth $d$.
+
+\begin{figure*}[t]
+\centering
+\[
+\begin{array}{rcl}
+\mathsf{trans}(\mathtt{LOAD\_CONST}(c), d) 
+  &=& [\mathsf{Assign}(\$(d+1), c, \mathsf{false})] \\[1ex]
+
+\mathsf{trans}(\mathtt{LOAD\_FAST}(x), d) 
+  &=& [\mathsf{Assign}(\$(d+1), x, \mathsf{false})] \\[1ex]
+
+\mathsf{trans}(\mathtt{STORE\_FAST}(x), d) 
+  &=& [\mathsf{Assign}(x, \$d, \mathsf{false})] \\[1ex]
+
+\mathsf{trans}(\mathtt{BINARY\_OP}(op), d) 
+  &=& [\mathsf{Assign}(\$(d-1), \mathsf{Binary}(\$(d-1), op, \$d, \mathsf{false}), \mathsf{false})] \\[1ex]
+
+\mathsf{trans}(\mathtt{FOR\_ITER}(\ell), d) 
+  &=& [\mathsf{For}(\$(d+1), \$d, \ell)]
+\end{array}
+\]
+
+\[
+\begin{array}{rcl}
+\mathsf{trans}(\mathtt{STORE\_SUBSCR}, d) 
+  &=& \big[ \;
+     \mathsf{Assign}(\$t, \mathsf{Attribute}(\$(d-1),\mathtt{"\_\_setitem\_\_"}), \mathsf{false}), \\ 
+  && \quad \mathsf{Assign}(\mathsf{None}, 
+             \mathsf{Call}(\$t, \langle \$d, \$(d-2)\rangle, \mathsf{None}), \mathsf{false}) 
+     \;\big]
+\end{array}
+\]
+
+\caption{Translation Rules from Bytecode to TAC}
+\label{fig:translation-rules}
+\end{figure*}
 
 \subsection{Properties}
 
 \paragraph{Semantic Preservation.}
+For bytecode sequence $\overline{b}$ and compatible states:
 \[
-\forall b, s. \quad
-\mathsf{eval}_{\mathsf{py}}(b, s) \equiv
-\mathsf{eval}_{\mathsf{tac}}(\mathsf{trans}(b), \mathsf{lift}(s))
+\mathsf{eval}_{bytecode}(\overline{b}, s) \simeq \mathsf{eval}_{TAC}(\mathsf{trans}(\overline{b}), \mathsf{lift}(s))
 \]
-where $\mathsf{lift}$ maps Python VM state to TAC variable environments.
+where $\mathsf{lift}$ maps VM state to TAC environment.
 
-\paragraph{Data Flow Explicitness.}
+\paragraph{Explicit Data Dependencies.}
 \[
-\mathsf{deps}(\mathsf{Assign}(\sigma, e)) =
-\mathsf{vars}(e) \cup \mathsf{vars}(\sigma)
+\mathsf{deps}(\mathsf{Assign}(\sigma, e, \_)) = \mathsf{fv}(e) \cup \mathsf{fv}(\sigma)
 \]
-All dependencies are explicit; no stack simulation is required.
+All data flow is explicit in variable references.
 
-\subsection{Implementation Notes}
+\subsection{Design Decisions and Limitations}
 
-The translation is implemented in \texttt{tac.py} with version-specific handling for CPython~3.12. Key points:
+\paragraph{Design Choices.}
 \begin{itemize}
-\item \textbf{Stack allocation:} Stack depth tracking assigns unique \texttt{\$n}.
-\item \textbf{CFG edges:} Derived from bytecode control flow and exception tables.
-\item \textbf{Simplification:} Linear basic blocks merged post-translation.
-\item \textbf{Liveness:} Stack variables garbage-collected based on liveness.
+\item \textbf{Abstract evaluation:} Complex Python operations (descriptors, MRO, overloading) are encapsulated in helper functions rather than fully expanded.
+\item \textbf{Iterator protocol:} Uses $\mathsf{EndIter}$ instead of modeling \texttt{StopIteration} exceptions.
+\item \textbf{Effect preparation:} Call evaluation produces heap transformers, preparing for effect annotation in analysis.
+\item \textbf{Stack variables:} Automatically managed via liveness analysis for garbage collection.
 \end{itemize}
-The IR serves as the sole input to the type system and pointer analysis.
+
+\paragraph{Limitations.}
+The following Python features are simplified or omitted:
+\begin{itemize}
+\item \textbf{Exceptions:} Only terminal raises modeled; handlers not translated.
+\item \textbf{Generators/Async/await:} Not supported.
+\item \textbf{Module system:} Handled by the analysis framework, not explicitly modeled.
+\item \textbf{Metaclasses and decorators:} Treated as regular calls.
+\end{itemize}
+
+These limitations align with our focus on intraprocedural data flow analysis in synchronous, exception-free paths.
