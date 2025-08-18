@@ -108,7 +108,89 @@ o \in \mathsf{Reach}(R, P) \wedge o' \in P[o][f] \implies o' \in \mathsf{Reach}(
 \]
 We use liveness to prune the roots $R$ before reachability is computed, ensuring that dead variables do not keep their objects alive.
 
-\input{03-typesystem}
+\subsection{Type and Effect Domain}
+
+Our type domain models Python values using a small set of constructs chosen to match the subset of Python we target: nominal classes, structural protocols, callable signatures, container types, and the special \texttt{any} type for unknown values.
+Unlike general--purpose type systems, we unify the representation of parameter lists and object fields as \emph{rows}: finite ordered maps from keys (positional indices or names) to types.  
+This gives a single mechanism for lookup, subtyping, joining, and unification across functions, classes, and modules.
+
+Functions are annotated with \emph{effects} that describe their interactions with the heap: whether they allocate new objects, return existing ones, or update fields.  
+These effects are directly consumed by the checkpointing analysis to determine which heap locations may be modified and which can be safely excluded from checkpoints.
+
+\paragraph{Main type constructs.}
+The principal forms in our type language (full syntax in Appendix~\ref{appendix:typesystem}) are:
+\begin{itemize}
+  \item \textbf{Classes} $\mathsf{class}(C, R, \overline{\tau}, \overline{\alpha})$:
+        a nominal class $C$ with row $R$ of fields and optional generic parameters $\overline{\alpha}$.
+  \item \textbf{Protocols} $\mathsf{protocol}(R, \overline{\alpha})$:
+        structural interfaces requiring the listed fields with given types, independent of nominal identity.
+  \item \textbf{Modules}:
+        rows of exported names and their types.
+  \item \textbf{Functions} $\forall \overline{X}.\;R_{\mathrm{params}} \xrightarrow{\epsilon} \tau_{\mathrm{ret}}$:
+        with parameter row $R_{\mathrm{params}}$, return type $\tau_{\mathrm{ret}}$, and effect $\epsilon$.
+        Functions may appear in overload sets.
+  \item \textbf{Other forms}:
+        unions, generic instantiations, variadic packs for \texttt{*args}-style functions, and \texttt{any}.
+\end{itemize}
+
+\paragraph{Rows and subtyping.}
+A row is a finite sequence of fields indexed by name or position.  
+Width subtyping applies: a type with extra fields is a subtype of one with fewer fields, provided all shared fields match.  
+Protocols are a special case: any object with the required fields is a subtype, regardless of its nominal class.
+
+\paragraph{Call checking and binding.}
+When a call is type--checked, argument types are unified with the corresponding parameter types:
+\begin{itemize}
+  \item Type variables may be solved, yielding a substitution applied to all remaining parameters and the return type.
+  \item Parameters matched by the call are removed, producing either a \emph{residual callable} (for partial application) or the substituted return type.
+  \item Variadic packs (\texttt{*args}) may be partially bound and matched incrementally; if unmatched packs remain, the result is again a residual callable.
+\end{itemize}
+Overloaded functions are handled by attempting binding against each arm independently; the results are joined when ambiguity remains.  
+The formal residual--callable construction is given in Appendix~\ref{appendix:typesystem}.
+
+\paragraph{Effects.}
+Effects annotate functions with heap interactions:
+\begin{itemize}
+  \item \textbf{\texttt{new}}: allocates a fresh object.
+  \item \textbf{\texttt{points-to}}: returns a reference to an existing object.
+  \item \textbf{\texttt{update}}: modifies or refines a specific field, possibly changing its type.
+\end{itemize}
+Updates are instantiated with actual arguments. For example, from the builtins stub:
+
+\begin{lstlisting}[language=python]
+@update(list[T | Q], 1)
+def append[Q](self: list[T], x: Q) -> None: ...
+\end{lstlisting}
+
+If \texttt{self} initially has type \texttt{list[$\bot$]} and we call \texttt{append} with an \texttt{int}, the element type refines to \texttt{$\bot \sqcup$ list[$\bot$]} which is \texttt{list[int]}.  
+Type-changing updates are only applied when the receiver is unaliased and monomorphic, preventing unsound refinements across aliases.
+
+\paragraph{Field and attribute access.}
+For $x.f$, the pointer domain yields possible receivers; their rows are inspected:
+\begin{itemize}
+  \item If all agree on the field type, that type is returned.
+  \item If types disagree, their join is returned.
+  \item If the field is missing, join with the residual row's default (often \texttt{any}) and mark as possibly failing.
+\end{itemize}
+
+\paragraph{Example: partial application and update.}
+Consider:
+\[
+f : \forall T,U.\; (0:T, 1:U) \to T
+\]
+Calling $f$ with an \texttt{int} yields a residual $(0:U) \to \texttt{int}$.  
+Calling this residual with a \texttt{str} then yields a residual  $() \to \texttt{int}$; finally, retrieving the result yields an \texttt{int}.  
+Similarly, \texttt{list.append} with an \texttt{int} argument refines the element type from unknown to \texttt{int}.
+
+\paragraph{Precision and limits.}
+The type system can:
+\begin{enumerate}
+  \item Identify exactly which heap locations an operation may modify.
+  \item Exclude immutable structures from checkpoints.
+  \item Refine container element types across updates.
+\end{enumerate}
+Precision loss occurs when joins force widening to \texttt{any} (e.g., differing field types, many unknowns, or unknown attribute names).  
+Dynamic features such as monkey--patching, dynamic imports, or metaclass manipulation are excluded from the target subset.
 
 \subsection{Domain Interactions}
 The domains operate in a reduced product with directed information flow:
