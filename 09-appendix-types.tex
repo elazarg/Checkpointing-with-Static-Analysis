@@ -1,5 +1,5 @@
 \section{Type System}
-\label{appendix:typesystem}
+\label{sec:appendix-typesystem}
 \subsection{Background}
 This appendix specifies the type system implemented in \texttt{type\_system.py}.  
 It is designed to support precise static modeling of scientific Python code (e.g., NumPy, SciPy) while avoiding complexity unnecessary for scientific/numerical workloads with predictable control flow and limited reflection.
@@ -15,7 +15,7 @@ The system adopts several deliberate departures from common type-system practice
 \subsubsection*{Meta-properties and scope.}
 While we do not prove formal soundness, the design aims for:
 \begin{itemize}
-  \item \textbf{Decidability:} Type checking and inference are decidable for the restricted Python fragment (Appendix~\ref{appendix:assumptions}).
+  \item \textbf{Decidability:} Type checking and inference are decidable for the restricted Python fragment (Appendix~\ref{sec:appendix-assumptions}).
   \item \textbf{Termination:} Unification and join terminate over the targeted subset; the type lattice is finite and usually very short. Dimensionality tracking of NumPy arrays is intentionally excluded due to its termination and complexity implications.
   \item \textbf{Precision:} Strict effect equality and the information ordering favor simplicity and precise state reasoning over broad applicability.
   \item \textbf{Transparency:} The unknown type \textsf{any} and dynamic features act as explicit, unsound escape hatches.
@@ -33,7 +33,7 @@ callable parameter lists and for class/module member dictionaries (see §\ref{se
 In Python, both are naturally modeled as ordered typed dictionaries: finite maps from
 \emph{keys} (either positional indices or string labels) to types, with ordering
 preserved from their definition.  
-This uniform abstraction allows the same operations—$\mathsf{unify}_{\rho}$, subtyping, join/meet (Fig.~\ref{fig:auxiliary})—to apply in both contexts,  
+This uniform abstraction allows the same operations --- $\mathsf{unify}_{\rho}$, subtyping, join/meet (Fig.~\ref{fig:auxiliary-defs}) --- to apply in both contexts,  
 simplifying the formalism and aligning with the structural nature of Python's
 attribute and parameter matching rules.
 
@@ -98,82 +98,12 @@ k ::=~& \langle i\rangle \mid \langle s\rangle \mid \langle i, s\rangle
 \paragraph{Design note.}
 Effects~$\epsilon$ are \emph{not} row-polymorphic: unification is only applied to positive rows, and unification of callables requires $\epsilon_1 = \epsilon_2$.  
 This sacrifices the flexibility of row-polymorphic effect systems in exchange for higher precision in mutation and allocation tracking, which is critical to our checkpointing analysis.
+
 \subsection{Unified Row Model}
 \label{sec:unified-record}
 We use a single, uniform construct~$\rho$ to model all finite, ordered key--type mappings in Python.
 Rows appear in different \emph{roles} (arguments/fields vs.\ parameters), but they share the \emph{same} width-based order and lattice; variance is handled at function types.
 
-\paragraph{Keys.}
-A key $k$ is composite: a parameter \texttt{x} at position $0$ is $\langle 0,\text{"x"} \rangle$; a class attribute \texttt{y} is $\langle \text{"y"} \rangle$.
-Key compatibility:
-\[
-\langle k \rangle \preccurlyeq \langle k \rangle,\quad
-\langle k \rangle \preccurlyeq \langle k, \_ \rangle,\quad
-\langle k \rangle \preccurlyeq \langle \_, k \rangle.
-\]
-
-\paragraph{Row syntax.}
-\[
-\rho \;=\; \{\, k_1 : \tau_1,\ \dots,\ k_n : \tau_n \,\}
-\]
-Keys are unique; ordering is preserved for positional correctness.
-
-\paragraph{Well-formedness.}
-Let $\mathrm{dom}(\rho)$ be the set of keys in $\rho$.
-\begin{align}
-\mathsf{wellformed}(\rho) \;\equiv\;&
-\big(\forall i<j.\ \langle i\rangle,\langle j\rangle \in \mathrm{dom}(\rho) \Rightarrow \langle i{-}1\rangle \in \mathrm{dom}(\rho)\big)\ \wedge\ 
-\big(\forall k\in\mathrm{dom}(\rho).\ \mathsf{wellformed}(\rho(k))\big).
-\end{align}
-Contiguous-position predicate:
-\[
-\mathsf{posrow}(\rho) \;\equiv\; \mathrm{dom}(\rho)\cap\mathbb{N} \;=\; \{0,\dots,n{-}1\}\ \text{for some } n.
-\]
-
-\paragraph{Row order (width subtyping).}
-Rows use a single width/depth order:
-\[
-\rho_1 \;\le_\rho\; \rho_2 \;\;\iff\;\;
-\mathrm{dom}(\rho_2)\subseteq \mathrm{dom}(\rho_1)
-\ \wedge\
-\forall k\in\mathrm{dom}(\rho_2).\ \rho_1(k)\ \le\ \rho_2(k).
-\]
-Intuition: more keys and/or more specific member types $\Rightarrow$ a more specific row.
-
-\paragraph{Row lattice.}
-Rows form a lattice $(\mathcal{R}, \le_\rho, \sqcup_\rho, \sqcap_\rho, \top_\rho, \bot_\rho)$:
-\[
-\begin{array}{lcl}
-\top_\rho &=& \{\}\ \ \text{(empty row)}\\[0.2em]
-\bot_\rho &=& \text{inconsistent row}\\[0.2em]
-\mathrm{dom}(\rho_1 \sqcup_\rho \rho_2) &=& \mathrm{dom}(\rho_1)\cap\mathrm{dom}(\rho_2)\\
-(\rho_1 \sqcup_\rho \rho_2)[k] &=& \rho_1[k]\ \sqcup\ \rho_2[k]\quad (k\ \text{shared})\\[0.2em]
-\mathrm{dom}(\rho_1 \sqcap_\rho \rho_2) &=& \mathrm{dom}(\rho_1)\cup\mathrm{dom}(\rho_2)\\
-(\rho_1 \sqcap_\rho \rho_2)[k] &=& \rho_1[k]\ \sqcap\ \rho_2[k]\quad (k\ \text{shared})
-\end{array}
-\]
-
-\paragraph{Function variance (where contravariance lives).}
-Contravariance arises at the function constructor, not at rows:
-\[
-(\rho_1 \xrightarrow{\epsilon} \tau_1)\ \le\ (\rho_2 \xrightarrow{\epsilon} \tau_2)
-\quad\iff\quad
-\rho_2\ \le_\rho\ \rho_1\ \ \wedge\ \ \tau_1\ \le\ \tau_2.
-\]
-(Effects are compared as specified elsewhere; we require $\epsilon$ equality in our implementation.)
-
-\paragraph{Protocols (structural).}
-Let $\Pi[\overline{\sigma}]$ have required row $R_\Pi$ (after instantiation), and let $R_T$ be the provided member row of $T$.
-Then
-\begin{align*}
-\Gamma \vdash T \;<:\; \Pi[\overline{\sigma}] \quad\iff & \\
-& \mathrm{dom}(R_\Pi)\subseteq \mathrm{dom}(R_T)\ \ \wedge \\
-& \forall k\in\mathrm{dom}(R_\Pi).\ \Gamma \vdash R_T(k)\ <: \ R_\Pi(k)
-\end{align*}
-
-with method members checked by the function subtyping rule above.
-
-\subsection{Application Rules}
 
 \begin{figure*}[t]
 \centering
@@ -224,11 +154,79 @@ with method members checked by the function subtyping rule above.
 \label{fig:app-rules}
 \end{figure*}
 
+\paragraph{Keys.}
+A key $k$ is composite: a parameter \texttt{x} at position $0$ is $\langle 0,\text{"x"} \rangle$; a class attribute \texttt{y} is $\langle \text{"y"} \rangle$.
+Key compatibility:
+\[
+\langle k \rangle \preccurlyeq \langle k \rangle,\quad
+\langle k \rangle \preccurlyeq \langle k, \_ \rangle,\quad
+\langle k \rangle \preccurlyeq \langle \_, k \rangle.
+\]
+
+\paragraph{Row syntax.}
+\[
+\rho \;=\; \{\, k_1 : \tau_1,\ \dots,\ k_n : \tau_n \,\}
+\]
+Keys are unique; ordering is preserved for positional correctness.
+
+\paragraph{Well-formedness.}
+Let $\mathrm{dom}(\rho)$ be the set of keys in $\rho$.
+\begin{align}
+\mathsf{wellformed}(\rho) \;\equiv\;&
+\big(\forall i<j.\ \langle i\rangle,\langle j\rangle \in \mathrm{dom}(\rho) \Rightarrow \langle i{-}1\rangle \in \mathrm{dom}(\rho)\big)\ \wedge\ 
+\big(\forall k\in\mathrm{dom}(\rho).\ \mathsf{wellformed}(\rho(k))\big).
+\end{align}
+Contiguous-position predicate:
+\[
+\mathsf{posrow}(\rho) \;\equiv\; \mathrm{dom}(\rho)\cap\mathbb{N} \;=\; \{0,\dots,n{-}1\}\ \text{for some } n.
+\]
+
+\paragraph{Row order (width subtyping).}
+Rows use a single width/depth order:
+\begin{align*}
+\rho_1 \;\le_\rho\; \rho_2 \;\;\iff\;\;
+& \mathrm{dom}(\rho_2)\subseteq \mathrm{dom}(\rho_1) \\
+\wedge \; & \forall k\in\mathrm{dom}(\rho_2).\ \rho_1(k)\ \le\ \rho_2(k)
+\end{align*}
+Intuition: more keys and/or more specific member types $\Rightarrow$ a more specific row.
+
+\paragraph{Row lattice.}
+Rows form a lattice $(\mathcal{R}, \le_\rho, \sqcup_\rho, \sqcap_\rho, \top_\rho, \bot_\rho)$:
+\[
+\begin{array}{lcl}
+\top_\rho &=& \{\}\ \ \text{(empty row)}\\[0.2em]
+\bot_\rho &=& \text{inconsistent row}\\[0.2em]
+\mathrm{dom}(\rho_1 \sqcup_\rho \rho_2) &=& \mathrm{dom}(\rho_1)\cap\mathrm{dom}(\rho_2)\\
+(\rho_1 \sqcup_\rho \rho_2)[k] &=& \rho_1[k]\ \sqcup\ \rho_2[k]\quad (k\ \text{shared})\\[0.2em]
+\mathrm{dom}(\rho_1 \sqcap_\rho \rho_2) &=& \mathrm{dom}(\rho_1)\cup\mathrm{dom}(\rho_2)\\
+(\rho_1 \sqcap_\rho \rho_2)[k] &=& \rho_1[k]\ \sqcap\ \rho_2[k]\quad (k\ \text{shared})
+\end{array}
+\]
+
+\paragraph{Function variance (where contravariance lives).}
+Contravariance arises at the function constructor:
+\[
+(\rho_1 \xrightarrow{\epsilon} \tau_1)\ \le\ (\rho_2 \xrightarrow{\epsilon} \tau_2)
+\quad\iff\quad
+\rho_2\ \le_\rho\ \rho_1\ \ \wedge\ \ \tau_1\ \le\ \tau_2.
+\]
+(Effects are compared as specified elsewhere; we require $\epsilon$ equality in our implementation.)
+
+\paragraph{Protocols (structural).}
+Let $\Pi[\overline{\sigma}]$ have required row $R_\Pi$ (after instantiation), and let $R_T$ be the provided member row of $T$.
+Then
+\begin{align*}
+\Gamma \vdash T \;<:\; \Pi[\overline{\sigma}] \quad\iff & \mathrm{dom}(R_\Pi)\subseteq \mathrm{dom}(R_T) \\
+\wedge \; & \forall k\in\mathrm{dom}(R_\Pi).\ \Gamma \vdash R_T(k)\ <: \ R_\Pi(k)
+\end{align*}
+
+with method members checked by the function subtyping rule above.
+
 \subsection{Type Parametricity}
 Given $\forall\overline{X}.\,\rneg \mid \rdef \xrightarrow{\epsilon} \tau_r$ and arguments $\rpos_A$:
 
 \paragraph{Binding.}
-$\theta = \mathsf{matchRows}(\forall\overline{X}.\rneg,\rpos_A)$ yields residual $\rneg'$.
+$(\theta, \rneg') = \mathsf{matchRows}(\forall\overline{X}.\rneg,\rpos_A)$.
 
 \paragraph{Effects.}
 Apply $\theta$ to $\epsilon$, then $\mathsf{project}$ to $\rneg'$.
@@ -296,7 +294,6 @@ We distinguish three entity forms:
 \end{itemize}
 
 \paragraph{Common mechanism: member access.}
-\label{par:member-access}
 All three entity kinds share the same lookup mechanism on their member row~$\rho$ (see \S\ref{sec:unified-record}).  
 Given an entity type~$\tau$ and a key~$k$ (positional index or string label; cf.\ Fig.~\ref{fig:metavars}), the lookup judgment
 \[
@@ -357,7 +354,7 @@ As in \S\ref{sec:unified-record}, rows form a lattice $(\mathcal{\rho}, \sqsubse
 \begin{itemize}
   \item $\top_\rho$ = empty row
   \item $\bot_\rho$ = inconsistent row
-  \item \textbf{Join} ($\sqcup$): intersection of domains, join types pointwise (join as in Fig.~\ref{fig:auxiliary})
+  \item \textbf{Join} ($\sqcup$): intersection of domains, join types pointwise (join as in Fig.~\ref{fig:auxiliary-defs})
   \item \textbf{Meet} ($\sqcap$): union of domains, meet types pointwise
 \end{itemize}
 
@@ -392,7 +389,7 @@ $\mathsf{unify}_{\mathrm{type}}(\tau_1,\tau_2)$ & Binary type unification (Fig.~
 $\mathsf{unify}_{\rho}(\rho_1,\rho_2)$ & Field-wise unification on $\mathrm{dom}(\rho_1) \cap \mathrm{dom}(\rho_2)$
 \end{tabular}
 \caption{Common predicates and operations for member access and structural satisfaction.}
-\label{fig:auxiliary}
+\label{fig:auxiliary-defs}
 \end{figure}
 
 \subsection{Static Semantics}
@@ -400,7 +397,7 @@ $\mathsf{unify}_{\rho}(\rho_1,\rho_2)$ & Field-wise unification on $\mathrm{dom}
 
 \paragraph{Scope and soundness.}
 The typing rules are intended to be sound for the restricted Python subset
-defined in Appendix \ref{appendix:assumptions}, but we make no claims for full Python.
+defined in Appendix \ref{sec:appendix-assumptions}, but we make no claims for full Python.
 Features such as \textsf{any} and dynamic attribute creation are explicitly
 unsound escape hatches, admitted for practicality in scientific code.  
 All rules are designed to ensure decidable type checking and termination of unification
@@ -491,7 +488,7 @@ lattice reasoning at the cost of omitting Python’s permissive keyword matching
 
 \paragraph{Type operations.}  
 Joins~$\sqcup$ compute least upper bounds; meets~$\sqcap$ compute greatest lower bounds.  
-For $\rho$ rows, these are as in Fig.~\ref{fig:auxiliary}; otherwise joins are simple unions.
+For $\rho$ rows, these are as in Fig.~\ref{fig:auxiliary-defs}; otherwise joins are simple unions.
 
 In the implementation, union types are \emph{normalized} after construction: duplicates are removed, nested unions are flattened, and singleton unions collapse to the member type.  
 This normalization ensures canonical forms for lattice comparisons and avoids spurious distinctions between equivalent unions.
@@ -555,7 +552,7 @@ Overload resolution is a two-stage process:
   $\mathsf{unify}_{\rho}(\mathsf{params}(\varphi_i), A)$ from \S\ref{sec:unified-record}.  
   Successful arms produce residual cases; these are grouped by identical matched-parameter sets, allowing partially applied overloads to be resolved without re-analyzing unrelated arms.
 \item \textbf{Dynamic selection:}  
-  At an actual call site, the saturated arms --- residuals where \textsf{FinishApp} is applicable --- from the relevant group are taken, and their return types are joined pointwise using the type join from Fig.~\ref{fig:auxiliary}.
+  At an actual call site, the saturated arms --- residuals where \textsf{FinishApp} is applicable --- from the relevant group are taken, and their return types are joined pointwise using the type join from Fig.~\ref{fig:auxiliary-defs}.
 \end{enumerate}
 This mirrors Python’s runtime dispatch but enables precise static joins over all viable arms.
 
@@ -565,8 +562,8 @@ This mirrors Python’s runtime dispatch but enables precise static joins over a
 \mathsf{resolve}(\{\varphi_1, \ldots, \varphi_n\}, A) =
 \bigsqcup\{\mathsf{return}(\varphi_i) \mid \mathsf{unify}_{\rho}(\mathsf{params}(\varphi_i), A) \ \text{succeeds}\}
 \]
-\caption{Dynamic-semantics view of overload resolution. $A$ is the argument row. $\bigsqcup$ is the type join from Fig.~\ref{fig:auxiliary}.}
-\label{fig:dynamic}
+\caption{Dynamic-semantics view of overload resolution. $A$ is the argument row. $\bigsqcup$ is the type join from Fig.~\ref{fig:auxiliary-defs}.}
+\label{fig:dynamic-semantics}
 \end{figure*}
 
 \paragraph{Attribute and index access.}  
@@ -601,14 +598,14 @@ Joins are computed pointwise over Boolean components, and via an optional-type j
 \[
 \tau_1^? \sqcup^? \tau_2^? =
 \begin{cases}
-\tau_1 \sqcup \tau_2 & \text{if both defined (join as in Fig.~\ref{fig:auxiliary})},\\
+\tau_1 \sqcup \tau_2 & \text{if both defined (join as in Fig.~\ref{fig:auxiliary-defs})},\\
 \tau_i & \text{if only $\tau_i$ defined},\\
 \bot & \text{if neither defined}.
 \end{cases}
 \]
-If the $\mathsf{update}$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from Fig.~\ref{fig:auxiliary}.
+If the $\mathsf{update}$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from Fig.~\ref{fig:auxiliary-defs}.
 
-\begin{table*}[h]
+\begin{table*}[ht]
 \centering
 \begin{tabular}{|l|l|l|}
 \hline

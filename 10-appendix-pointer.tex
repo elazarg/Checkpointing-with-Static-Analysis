@@ -1,13 +1,13 @@
 \section{Pointer and Dirty Domains}
-\label{appendix:pointer}
+\label{sec:appendix-pointer}
 
 This appendix specifies the abstract domains and transfer functions for the pointer
 and dirty components of our analysis.
 Together they track heap shape, object types, and mutations since the last checkpoint.
 The domains form a reduced product with the type system
-(Appendix~\ref{appendix:typesystem}),
+(Appendix~\ref{sec:appendix-typesystem}),
 and are parameterised by the TAC intermediate representation
-(Appendix~\ref{appendix:tac-ir}) and liveness information
+(Appendix~\ref{sec:appendix-tac-ir}) and liveness information
 (\S\ref{sec:analysis}).
 
 \subsection{Abstract Objects}
@@ -78,7 +78,7 @@ Each object has a type, used for attribute and effect resolution:
 T : \mathcal{O} \to \mathit{TypeExpr},
 \]
 where $\mathit{TypeExpr}$ is the type language of
-Appendix~\ref{appendix:typesystem}.
+Appendix~\ref{sec:appendix-typesystem}.
 Join and order are lifted pointwise from the type lattice.
 
 \subsection{Dirty Domain}
@@ -207,14 +207,14 @@ with fields updated to drop edges targeting objects outside $S$.
 \subsection{Soundness Sketch}
 
 The abstraction is designed so that for any concrete TAC semantics
-(Appendix~\ref{appendix:tac-ir}),
+(Appendix~\ref{sec:appendix-tac-ir}),
 execution preserves the invariant:
 \[
 \gamma(\Sigma^\#) \supseteq
 \{\, \text{concrete states corresponding to }\Sigma^\# \,\}.
 \]
 This extends the semantic preservation property of
-Appendix~\ref{appendix:tac-ir} by incorporating heap shape,
+Appendix~\ref{sec:appendix-tac-ir} by incorporating heap shape,
 types, and mutation tracking.
 In particular, if a concrete field has been written,
 the corresponding abstract field is marked dirty:

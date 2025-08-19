@@ -125,7 +125,7 @@ Functions are annotated with \emph{effects} that describe their interactions wit
 These effects are directly consumed by the checkpointing analysis to determine which heap locations may be modified and which can be safely excluded from checkpoints.
 
 \paragraph{Main type constructs.}
-The principal forms in our type language (full syntax in Appendix~\ref{appendix:typesystem}) are:
+The principal forms in our type language (full syntax in Appendix~\ref{sec:appendix-typesystem}) are:
 \begin{itemize}
   \item \textbf{Classes} $\mathsf{class}(C, R, \overline{\tau}, \overline{\alpha})$:
         a nominal class $C$ with row $R$ of fields and optional generic parameters $\overline{\alpha}$.
@@ -153,7 +153,7 @@ When a call is type--checked, argument types are unified with the corresponding 
   \item Variadic packs (\texttt{*args}) may be partially bound and matched incrementally; if unmatched packs remain, the result is again a residual callable.
 \end{itemize}
 Overloaded functions are handled by attempting binding against each arm independently; the results are joined when ambiguity remains.  
-The formal residual--callable construction is given in Appendix~\ref{appendix:typesystem}.
+The formal residual--callable construction is given in Appendix~\ref{sec:appendix-typesystem}.
 
 \paragraph{Effects.}
 Effects annotate functions with heap interactions:

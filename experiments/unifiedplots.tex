@@ -2,7 +2,7 @@
 
 % \PlotExp{<Title>}{<CSV path>}{<Prefix>}
 \newcommand{\PlotExp}[3]{%
-  \DependOnCSV{#2}% ensures rebuild if the CSV changes
+  % \DependOnCSV{#2}% ensures rebuild if the CSV changes
   \nextgroupplot[title={#1}]
   \pgfplotstableread[col sep=comma,trim cells]{#2}\datatable
 
@@ -48,7 +48,7 @@
     ] table[x=i, y=instrumented]{\datatable};
 }
 
-\tikzsetnextfilename{benchmarks-fourpanel} % cache file: tikz-cache/benchmarks-fourpanel.pdf
+% \tikzsetnextfilename{benchmarks-fourpanel} % cache file: tikz-cache/benchmarks-fourpanel.pdf
 \begin{tikzpicture}
 \begin{groupplot}[
     group style={
