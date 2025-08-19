@@ -440,8 +440,8 @@ within the targeted subset.
 \mathsf{bind\_self}(\tau_{\mathit{recv}}, \tau_{\mathit{self}}, R, \overline{X}) & \text{Receiver binding (\S\ref{sec:receiver-binding})} \\
 \mathsf{property}(\phi) & \text{Predicate: callable flagged as a property} \\
 \mathsf{subscr}(\tau, \tau_i) & \text{Subscript via fields or \_\_getitem\_\_ (\S\ref{sec:rows-generic-access})} \\
-\mathsf{binop}(\tau_1, \mathit{op}, \tau_2) & \text{Binary operation via dunder methods} \\
-\mathsf{unop}(\mathit{op}, \tau) & \text{Unary operation via dunder methods}
+\mathsf{binop}(\tau_1, \mathit{op}, \tau_2) & \text{Two-step: } \tau_1 \cdot \langle\mathtt{"\_\_}\mathit{op}\mathtt{\_\_"}\rangle \triangleright \{0:\tau_2\} \text{ (via \textsc{PartialApp})} \\
+\mathsf{unop}(\mathit{op}, \tau) & \text{Two-step: } \tau \cdot \langle\mathtt{"\_\_}\mathit{op}\mathtt{\_\_"}\rangle \triangleright \{\} \text{ (via \textsc{PartialApp})}
 \end{array}
 \end{array}
 \]
@@ -450,6 +450,9 @@ within the targeted subset.
 \end{figure*}
 
 Typing judgments are described in Figure \ref{fig:typing-rules}.
+
+\paragraph{Binary and unary operations.}
+Binary and unary operations are resolved through a two-step process that makes dunder method lookup explicit. For binary operations $e_1 \mathit{\,op\,} e_2$: first, the appropriate dunder method (e.g., \texttt{\_\_add\_\_} for \texttt{+}) is looked up on the left operand type via member access; second, the \textsc{PartialApp} rule is applied with the right operand as argument. Unary operations follow the same pattern but with no arguments. This approach unifies operator overloading with the general function application mechanism. Effects (allocation, mutation, aliasing) are extracted from the resolved function type and forwarded to the analysis domain, while the typing rules above show only the return types.
 
 \paragraph{Subtyping.}  
 Subtyping supports reflexivity, transitivity, union decomposition, record width/depth subtyping, and structural subtyping for protocols.  
