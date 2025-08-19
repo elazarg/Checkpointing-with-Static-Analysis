@@ -1,27 +1,36 @@
 \section{TAC Intermediate Representation}
 \label{sec:appendix-tac-ir}
 
-\subsection{Overview}
+\subsection{Overview and Motivation}
 
-Our analysis operates on a Three-Address Code (TAC) intermediate representation that makes data flow explicit.
-The TAC is derived from CPython bytecode through a translation that replaces stack operations with named variables, enabling direct pointer and type analysis without stack simulation.
+Our static analysis framework requires an intermediate representation that makes data flow and heap access patterns explicit. While we could analyze Python source code directly, the dynamic nature of Python's bytecode—with its stack-based execution model and implicit temporaries—complicates dataflow analysis. 
 
-\subsection{Meta-Notation}
+To address this, we translate CPython bytecode into a Three-Address Code (TAC) intermediate representation. This TAC serves three key purposes for our checkpointing analysis:
+\begin{enumerate}
+    \item \textbf{Explicit data flow:} All variable reads and writes are manifest, enabling precise liveness analysis.
+    \item \textbf{Simplified heap reasoning:} Object field accesses and method calls are represented uniformly, facilitating pointer analysis.
+    \item \textbf{Control flow clarity:} Loop structures and conditional branches are explicit in the control-flow graph, supporting iteration-aware analysis.
+\end{enumerate}
 
-Optional elements are denoted by superscript question marks, e.g.\ $x^{?}$.
-Sequences are written with overlines and bounds, e.g.\ $\overline{x}_{i=1}^{n}$ where $n \geq 0$.
-We avoid ellipses in formal rules and definitions for precision.
+The TAC translation replaces Python's stack-based operations with register-based instructions using explicit variables, making all data dependencies visible for analysis. This explicit representation directly enables the liveness, pointer, and type analyses used in our checkpointing optimization framework, as described in the main paper.
 
 \subsection{Programs and Control Flow}
 
+A TAC program is represented as a control-flow graph that makes execution paths explicit for dataflow analysis. This representation directly supports our liveness analysis (which requires predecessor/successor relationships) and loop-aware checkpointing (which needs to identify iteration boundaries).
+
 A program is a control-flow graph $\mathcal{G} = (L,E,B)$ where:
 \begin{itemize}
-\item $L$ is a set of labels $\ell$ identifying basic blocks,
-\item $E \subseteq L \times L$ are control-flow edges,
-\item $B : L \to \mathcal{I}^*$ maps labels to instruction sequences.
+\item $L$ is a finite set of labels $\ell$ identifying basic blocks,
+\item $E \subseteq L \times L$ are directed control-flow edges representing possible execution transitions,
+\item $B : L \to \mathcal{I}^*$ maps each label to its sequence of TAC instructions.
 \end{itemize}
 
+Basic blocks contain straight-line instruction sequences with no internal control flow. Control transfers occur only at block boundaries via explicit \textsf{Jump} instructions or sequential fall-through to successor blocks. This structure enables efficient dataflow analysis by providing clear program points where analysis state must be merged or propagated.
+
 \subsection{Syntax}
+
+\paragraph{Meta-Notation.}
+In the formal definitions that follow, optional elements are denoted by superscript question marks (e.g.\ $x^{?}$), and sequences are written with overlines and bounds (e.g.\ $\overline{x}_{i=1}^{n}$ where $n \geq 0$). We avoid ellipses in formal rules for precision.
 
 \paragraph{Instructions.}
 The instruction set $\mathcal{I}$ is:
@@ -29,7 +38,7 @@ The instruction set $\mathcal{I}$ is:
 \begin{aligned}
 i ::= \;& \mathsf{Nop} \\
   &\mid \mathsf{Assign}(\sigma, e, \mathit{or\_null}) \\
-  &\mid \mathsf{Jump}(\ell, c) \\
+  &\mid \mathsf{Jump}(\ell, e) \\
   &\mid \mathsf{For}(\sigma, v_{\mathit{iter}}, \ell_{\mathit{exit}}) \\
   &\mid \mathsf{Return}(v) \\
   &\mid \mathsf{Raise}(v) \\
@@ -37,7 +46,14 @@ i ::= \;& \mathsf{Nop} \\
 \end{aligned}
 \]
 
-The flag $\mathit{or\_null} \in \{\mathsf{true},\mathsf{false}\}$ originates from CPython's \texttt{LOAD\_FAST\_AND\_CLEAR} opcode, used in comprehensions to prevent variable capture. When $\mathit{or\_null} = \mathsf{true}$, the target is set to \texttt{None} after evaluation (see Assign semantics in Figure~\ref{fig:instruction-semantics}).
+Key design elements include:
+\begin{itemize}
+    \item \textbf{Assignment targets} $\sigma$ support Python's flexible assignment patterns, including tuple unpacking and attribute/subscript assignment.
+    \item \textbf{Expressions} $e$ cover all Python operations needed for numerical code: arithmetic, attribute access, subscripting, and function calls.
+    \item \textbf{Control flow} is explicit via \textsf{Jump} and \textsf{For} instructions, with loop exit labels clearly marked.
+\end{itemize}
+
+The $\mathit{or\_null}$ flag originates from CPython's \texttt{LOAD\_FAST\_AND\_CLEAR} opcode, used in comprehensions to prevent variable capture. When $\mathit{or\_null} = \mathsf{true}$, the target is cleared to \texttt{None} after assignment.
 
 \paragraph{Expressions.}
 \[
@@ -46,7 +62,7 @@ e ::= \;& v \mid c \\
  &\mid \mathsf{Attribute}(v,f) \mid \mathsf{Subscript}(v_1,v_2) \\
  &\mid \mathsf{Binary}(v_1,op,v_2,inplace) \\
  &\mid \mathsf{Unary}(op,v) \\
- &\mid \mathsf{Call}(v_f, \overline{v}_{i=1}^{n}, v_{kw}^{?})
+ &\mid \mathsf{Call}(v_f, \overline{v}_{i=1}^{n}, v_{kw}^{?})\footnote{Keyword arguments ($v_{kw}^{?}$) are included in the syntax for completeness but not modeled in the semantics; in the evaluation we used non-keyword arguments wherever possible.}
 \end{aligned}
 \]
 
@@ -58,11 +74,11 @@ e ::= \;& v \mid c \\
 \paragraph{Variables and Constants.}
 Variables $v \in \mathcal{V}$ partition into:
 \begin{itemize}
-\item Named variables $x,y,z \in \mathcal{V}_{\mathit{named}}$ (Python locals/globals),
-\item Stack variables $\$0,\$1,\ldots \in \mathcal{V}_{\mathit{stack}}$ (temporaries).
+\item \textbf{Named variables} $x,y,z \in \mathcal{V}_{\mathit{named}}$ correspond to Python function locals and globals. Since these can be accessed via reflection (\texttt{locals()}) or captured by closures, precise liveness analysis requires assumptions about program structure (see Appendix~\ref{sec:appendix-assumptions}).
+\item \textbf{Stack variables} $\$0,\$1,\ldots \in \mathcal{V}_{\mathit{stack}}$ are compiler-generated temporaries that replace Python's evaluation stack. These cannot be aliased, captured, or accessed via reflection, making liveness analysis sound without additional assumptions.
 \end{itemize}
 
-Constants $c \in \mathcal{C}$ include literals, \texttt{None}, \texttt{True}, \texttt{False}.
+Constants $c \in \mathcal{C}$ include Python literals (\texttt{42}, \texttt{"hello"}), singletons (\texttt{None}, \texttt{True}, \texttt{False}), and other immutable values.
 
 Binary operators: \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{//}, \texttt{\%}, \texttt{**}, \texttt{<<}, \texttt{>>}, \texttt{\&}, \texttt{|}, \texttt{\^}, \texttt{@}, \texttt{in}, \texttt{==}, \texttt{!=}, \texttt{<}, \texttt{<=}, \texttt{>}, \texttt{>=}.
 
@@ -70,21 +86,27 @@ Unary operators: \texttt{not}, \texttt{-}, \texttt{+}, \texttt{\~}, \texttt{bool
 
 \subsection{Operational Semantics}
 
+The operational semantics define how TAC programs execute, providing the foundation for our static analysis. The execution model explicitly tracks variable bindings and heap structure, making it straightforward for our analysis domains to abstract these concrete operations.
+
 \paragraph{Machine State.}
-The machine state is defined as:
+Program execution operates over a machine state that cleanly separates program control, variable storage, and heap management:
 \[
 \Sigma ::= \langle \mathcal{G}, pc, \rho, H \rangle \;\mid\; \mathsf{Terminated}(v)
 \]
-where:
+The components are:
 \begin{itemize}
-\item $pc = (\ell,i)$ is the program counter (label and instruction index),
-\item $\rho : \mathcal{V} \rightharpoonup Val$ is the variable environment,
-\item $H : Loc \rightharpoonup Obj$ is the heap,
-\item $Val ::= Loc \mid c$ (locations or constants),
-\item $Obj ::= \langle class:Name, fields: Field \rightharpoonup Val \rangle$.
+\item $pc = (\ell,i)$ is the program counter, tracking the current basic block label $\ell$ and instruction index $i$ within that block,
+\item $\rho : \mathcal{V} \rightharpoonup Val$ maps variables to their current values (partial function, with $\bot$ for undefined variables),
+\item $H : Loc \rightharpoonup Obj$ represents the heap as a mapping from locations to objects,
+\item $Val ::= Loc \mid c$ are values: either heap locations or immediate constants,
+\item $Obj ::= \langle class:Name, fields: Field \rightharpoonup Val \rangle$ are objects with a class name and field map.
 \end{itemize}
 
+This structure directly supports our analysis goals: the variable environment $\rho$ enables liveness analysis, the heap $H$ enables pointer analysis, and their separation allows each analysis domain to focus on its relevant component.
+
 \paragraph{Control Flow.}
+The TAC models only static, intraprocedural control flow to keep analysis tractable. Exceptions terminate execution (via \textsf{Raise}) rather than unwinding to handlers—we do not model \texttt{try}/\texttt{except} constructs. Interprocedural analysis is handled through function type signatures and effect annotations rather than explicit call graphs. This design choice allows our analysis domains to focus on local data flow without the complexity of exception propagation or cross-function state tracking.
+
 Control flow helpers $\mathsf{next}$ and $\mathsf{goto}$ are defined in Figure~\ref{fig:control-flow-helpers}.
 
 \begin{figure}[ht]
@@ -104,7 +126,7 @@ Control flow helpers $\mathsf{next}$ and $\mathsf{goto}$ are defined in Figure~\
 \end{figure}
 
 \paragraph{Expression Evaluation.}
-Expressions are evaluated by the rules in Figure~\ref{fig:expression-semantics}, covering constants, variables, operators, attributes, subscripts, and calls.
+Expression evaluation follows standard operational semantics, with each expression form producing a value and potentially updating the heap. The evaluation rules in Figure~\ref{fig:expression-semantics} handle constants (no heap effects), variable lookups (reading from $\rho$), arithmetic and logical operations, attribute access and subscripting (heap reads), and function calls (which may have arbitrary heap effects as determined by their annotations).
 
 \begin{figure*}[t]
 \centering
@@ -116,8 +138,8 @@ Expressions are evaluated by the rules in Figure~\ref{fig:expression-semantics},
 \\[1.5ex]
 \frac{\rho,H \vdash v_1 \Downarrow \ell_1,H_1 \quad
       \rho,H_1 \vdash v_2 \Downarrow \ell_2,H_2 \quad
-      (v,H_3) = \mathsf{apply\_binop}(\ell_1,op,\ell_2,inplace,H_2)}
-     {\rho,H \vdash \mathsf{Binary}(v_1,op,v_2,inplace) \Downarrow v,H_3}
+      (v',H_3) = \mathsf{apply\_binop}(\ell_1,op,\ell_2,inplace,H_2)}
+     {\rho,H \vdash \mathsf{Binary}(v_1,op,v_2,inplace) \Downarrow v',H_3}
 \\[1.5ex]
 \frac{\rho,H \vdash v \Downarrow \ell,H_1 \quad
       (v',H_2) = \mathsf{apply\_unop}(op,\ell,H_1)}
@@ -129,14 +151,14 @@ Expressions are evaluated by the rules in Figure~\ref{fig:expression-semantics},
 \\[1.5ex]
 \frac{\rho,H \vdash v_1 \Downarrow \ell_1,H_1 \quad
       \rho,H_1 \vdash v_2 \Downarrow \ell_2,H_2 \quad
-      (v,H_3) = \mathsf{getitem}(\ell_1,\ell_2,H_2)}
-     {\rho,H \vdash \mathsf{Subscript}(v_1,v_2) \Downarrow v,H_3}
+      (v',H_3) = \mathsf{getitem}(\ell_1,\ell_2,H_2)}
+     {\rho,H \vdash \mathsf{Subscript}(v_1,v_2) \Downarrow v',H_3}
 \\[1.5ex]
 \frac{\rho,H \vdash v_f \Downarrow f,H_1 \quad
       \rho,H_1 \vdash \overline{v_i} \Downarrow \overline{\ell_i},H_2 \quad
-      (e,v_{ret}) = \mathsf{resolve}(f,\overline{\ell_i},H_2) \quad
+      (e,v') = \mathsf{resolve}(f,\overline{\ell_i},H_2) \quad
       H_3 = e(H_2)}
-     {\rho,H \vdash \mathsf{Call}(v_f,\overline{v}_{i=1}^{n},v_{kw}^{?}) \Downarrow v_{ret},H_3}
+     {\rho,H \vdash \mathsf{Call}(v_f,\overline{v}_{i=1}^{n},v_{kw}^{?}) \Downarrow v',H_3}
 \end{array}
 \]
 \caption{Semantics of Expression Evaluation}
@@ -144,7 +166,7 @@ Expressions are evaluated by the rules in Figure~\ref{fig:expression-semantics},
 \end{figure*}
 
 \paragraph{Instruction Semantics.}
-Instruction transitions are defined in Figure~\ref{fig:instruction-semantics}, including rules for \textsf{Nop}, \textsf{Assign}, \textsf{Jump}, \textsf{For}, \textsf{Return}, \textsf{Raise}, and \textsf{Del}.
+Each instruction transforms the machine state according to its operational meaning. Figure~\ref{fig:instruction-semantics} provides the complete transition rules: \textsf{Nop} advances the program counter, \textsf{Assign} evaluates expressions and updates variables/heap, \textsf{Jump} implements conditional control flow, \textsf{For} handles iterator-based loops, \textsf{Return} and \textsf{Raise} terminate execution, and \textsf{Del} removes variable bindings. These rules explicitly show all state changes, making them straightforward to abstract in our analysis domains.
 
 \begin{figure*}[t]
 \centering
@@ -155,16 +177,16 @@ Instruction transitions are defined in Figure~\ref{fig:instruction-semantics}, i
 \\[2ex]
 \frac{\rho,H \vdash e \Downarrow v,H' \quad 
       (\rho',H'') = \mathsf{write}(\sigma,v,\rho,H') \quad
-      \rho'' = \mathsf{clear\_if}(or\_null,\sigma,\rho')}
+      (\rho'',H''') = \mathsf{clear\_if}(or\_null,\sigma,\rho',H'')}
      {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Assign}(\sigma,e,or\_null)} 
-      \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho'',H'' \rangle}
+      \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho'',H''' \rangle}
 \\[2ex]
-\frac{\rho,H \vdash c \Downarrow v,H' \quad \mathsf{truthy}(v,H') = \mathsf{true}}
-     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Jump}(\ell,c)} 
+\frac{\rho,H \vdash e \Downarrow v,H' \quad \mathsf{truthy}(v,H') = \mathsf{true}}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Jump}(\ell,e)} 
       \langle \mathcal{G},\mathsf{goto}(\ell),\rho,H' \rangle}
 \qquad
-\frac{\rho,H \vdash c \Downarrow v,H' \quad \mathsf{truthy}(v,H') = \mathsf{false}}
-     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Jump}(\ell,c)} 
+\frac{\rho,H \vdash e \Downarrow v,H' \quad \mathsf{truthy}(v,H') = \mathsf{false}}
+     {\langle \mathcal{G},pc,\rho,H \rangle \xrightarrow{\mathsf{Jump}(\ell,e)} 
       \langle \mathcal{G},\mathsf{next}(\mathcal{G},pc),\rho,H' \rangle}
 \\[2ex]
 \frac{\rho,H \vdash \mathsf{Unary}(\mathsf{next},v_{\mathit{iter}}) \Downarrow v,H' \quad
@@ -195,7 +217,17 @@ Instruction transitions are defined in Figure~\ref{fig:instruction-semantics}, i
 \end{figure*}
 
 \paragraph{Helper Functions.}
-Assignment, deletion, and conditional clearing are defined in Figure~\ref{fig:helper-functions}.
+The instruction semantics rely on helper functions that encapsulate Python's complex assignment and deletion behaviors. Figure~\ref{fig:helper-functions} defines these operations: \textsf{write} handles assignment to various target forms (variables, attributes, subscripts, tuple unpacking), \textsf{remove} implements deletion with similar target flexibility, \textsf{clear\_if} supports the comprehension-related \texttt{or\_null} flag, and \textsf{unpack} recursively assigns sequence elements to target patterns.
+
+The expression and instruction evaluation also rely on abstract helper functions that encapsulate Python's dynamic behavior:
+\begin{itemize}
+\item $\mathsf{apply\_binop}(\ell_1,op,\ell_2,inplace,H)$ applies binary operators, handling operator overloading and in-place mutations
+\item $\mathsf{apply\_unop}(op,\ell,H)$ applies unary operators, including iterator protocol operations like $\mathsf{next}$
+\item $\mathsf{getattr}(\ell,f,H)$ and $\mathsf{setattr}(\ell,f,v,H)$ handle attribute access with descriptor protocol
+\item $\mathsf{getitem}(\ell_1,\ell_2,H)$ and $\mathsf{setitem}(\ell_1,\ell_2,v,H)$ handle subscript operations
+\item $\mathsf{resolve}(f,\overline{\ell},H)$ performs function call resolution and produces heap transformation effects
+\end{itemize}
+These abstractions preserve the heap effects visible to static analysis while avoiding the complexity of full Python semantic modeling.
 
 \begin{figure*}[t]
 \centering
@@ -210,11 +242,16 @@ Assignment, deletion, and conditional clearing are defined in Figure~\ref{fig:he
 \mathsf{remove}(x,\rho,H) &= (\rho[x\mapsto \bot],H) \\
 \mathsf{remove}(\mathsf{Attribute}(x,f),\rho,H) &= (\rho,\mathsf{delattr}(\rho(x),f,H)) \\
 \mathsf{remove}(\mathsf{Subscript}(x,k),\rho,H) &= (\rho,\mathsf{delitem}(\rho(x),\rho(k),H)) \\
-\mathsf{remove}(\langle\overline{v}_{i=1}^{n}\rangle,\rho,H) &= \mathsf{remove}(\overline{v}_{i=1}^{n-1},\mathsf{remove}(v_n,\rho,H)) \\[1ex]
-\mathsf{clear\_if}(or\_null,\sigma,\rho) &=
+\mathsf{remove}(\langle\overline{v}_{i=1}^{n}\rangle,\rho,H) &= \text{let } (\rho',H') = \mathsf{remove}(v_n,\rho,H) \text{ in } \mathsf{remove}(\overline{v}_{i=1}^{n-1},\rho',H') \\[1ex]
+\mathsf{clear\_if}(or\_null,\sigma,\rho,H) &=
 \begin{cases}
 \mathsf{write}(\sigma,\mathsf{None},\rho,H) & \text{if } or\_null = \mathsf{true} \\
-\rho & \text{otherwise}
+(\rho,H) & \text{otherwise}
+\end{cases} \\[1ex]
+\mathsf{unpack}(v,\langle\overline{\sigma}_{i=1}^{n}\rangle,\rho,H) &= 
+\begin{cases}
+(\rho,H) & \text{if } n = 0 \\
+\text{let } (\rho',H') = \mathsf{write}(\sigma_1,v[0],\rho,H) \text{ in } \mathsf{unpack}(v,\langle\overline{\sigma}_{i=2}^{n}\rangle,\rho',H') & \text{if } n > 0
 \end{cases}
 \end{aligned}
 \]
@@ -224,23 +261,20 @@ Assignment, deletion, and conditional clearing are defined in Figure~\ref{fig:he
 \subsection{Translation from Bytecode}
 \label{sec:translation}
 
+The TAC is generated by translating CPython bytecode, which operates on an implicit evaluation stack. CPython's bytecode adheres to stack discipline, and using shortest-path analysis over stack effects, we can assign a unique variable name to each stack location. This property, standard in stack-based VMs like the JVM, enables sound translation from implicit stack operations to explicit register operations.
+
 \paragraph{Translation Function.}
-The function
+The core translation function
 \[
 \mathsf{trans} : Bytecode \times \mathbb{N} \to \mathcal{I}^*
 \]
-maps a bytecode instruction at stack depth $d$ to a TAC instruction sequence.
+maps each bytecode instruction at stack depth $d$ to a sequence of TAC instructions. The stack depth parameter ensures consistent stack variable assignment: an instruction consuming stack slots reads from the appropriate $\$$ variables, while producers write to the next available stack location.
 
 \paragraph{Stack Effect.}
-Each bytecode $b$ has a stack effect
-\[
-\mathsf{effect}(b) \in \mathbb{Z}
-\]
-which describes the change in stack depth.
+Each bytecode instruction $b$ has a well-defined stack effect $\mathsf{effect}(b) \in \mathbb{Z}$ describing its stack depth change. Combined with stack discipline, this enables the shortest-path algorithm to compute unique stack depths at each program point, ensuring our stack variable assignments are unambiguous.
 
 \paragraph{Translation Rules.}
-Representative translation rules are given in Figure~\ref{fig:translation-rules}.
-Each rule shows how a Python bytecode instruction is converted into one or more TAC instructions at stack depth $d$.
+Figure~\ref{fig:translation-rules} shows representative translation patterns. Simple operations like \texttt{LOAD\_CONST} become direct assignments, while complex instructions like \texttt{STORE\_SUBSCR} expand into sequences that explicitly resolve method calls and argument passing.
 
 \begin{figure*}[t]
 \centering
@@ -273,6 +307,7 @@ Each rule shows how a Python bytecode instruction is converted into one or more 
      \;\big]
 \end{array}
 \]
+where $\$t$ is a fresh stack temporary.
 
 \caption{Translation Rules from Bytecode to TAC}
 \label{fig:translation-rules}
@@ -280,18 +315,21 @@ Each rule shows how a Python bytecode instruction is converted into one or more 
 
 \subsection{Properties}
 
-\paragraph{Semantic Preservation.}
-For bytecode sequence $\overline{b}$ and compatible states:
+The TAC translation aims to preserve the essential properties needed for sound static analysis while making implicit dependencies explicit.
+
+\paragraph{Intended Semantic Preservation.}
+Our translation is designed to preserve behavioral equivalence with the original bytecode:
 \[
 \mathsf{eval}_{bytecode}(\overline{b}, s) \simeq \mathsf{eval}_{TAC}(\mathsf{trans}(\overline{b}), \mathsf{lift}(s))
 \]
-where $\mathsf{lift}$ maps VM state to TAC environment.
+where $\mathsf{lift}$ maps Python VM state to TAC machine state. However, we have not attempted a formal proof of this property, as it would require a complete formal semantics for Python bytecode, which is beyond the scope of this work.
 
 \paragraph{Explicit Data Dependencies.}
+Unlike bytecode, where data flow occurs through implicit stack operations, TAC makes all variable dependencies syntactically explicit:
 \[
 \mathsf{deps}(\mathsf{Assign}(\sigma, e, \_)) = \mathsf{fv}(e) \cup \mathsf{fv}(\sigma)
 \]
-All data flow is explicit in variable references.
+This property is crucial for our dataflow analyses and can be verified directly from the TAC syntax.
 
 \subsection{Design Decisions and Limitations}
 
@@ -300,7 +338,7 @@ All data flow is explicit in variable references.
 \item \textbf{Abstract evaluation:} Complex Python operations (descriptors, MRO, overloading) are encapsulated in helper functions rather than fully expanded.
 \item \textbf{Iterator protocol:} Uses $\mathsf{EndIter}$ instead of modeling \texttt{StopIteration} exceptions.
 \item \textbf{Effect preparation:} Call evaluation produces heap transformers, preparing for effect annotation in analysis.
-\item \textbf{Stack variables:} Automatically managed via liveness analysis for garbage collection.
+\item \textbf{Stack variables:} Explicit representation of temporaries facilitates later static analyses that can determine when these values are no longer needed.
 \end{itemize}
 
 \paragraph{Limitations.}
