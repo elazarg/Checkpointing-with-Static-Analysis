@@ -165,12 +165,12 @@ Contravariance arises at the function constructor, not at rows:
 \paragraph{Protocols (structural).}
 Let $\Pi[\overline{\sigma}]$ have required row $R_\Pi$ (after instantiation), and let $R_T$ be the provided member row of $T$.
 Then
-\[
-\Gamma \vdash T \;<:\; \Pi[\overline{\sigma}]
-\quad\iff\quad
-\mathrm{dom}(R_\Pi)\subseteq \mathrm{dom}(R_T)\ \ \wedge\ \ 
-\forall k\in\mathrm{dom}(R_\Pi).\ \Gamma \vdash R_T(k)\ <: \ R_\Pi(k),
-\]
+\begin{align*}
+\Gamma \vdash T \;<:\; \Pi[\overline{\sigma}] \quad\iff & \\
+& \mathrm{dom}(R_\Pi)\subseteq \mathrm{dom}(R_T)\ \ \wedge \\
+& \forall k\in\mathrm{dom}(R_\Pi).\ \Gamma \vdash R_T(k)\ <: \ R_\Pi(k)
+\end{align*}
+
 with method members checked by the function subtyping rule above.
 
 \subsection{Application Rules}
@@ -228,19 +228,16 @@ with method members checked by the function subtyping rule above.
 Given $\forall\overline{X}.\,\rneg \mid \rdef \xrightarrow{\epsilon} \tau_r$ and arguments $\rpos_A$:
 
 \paragraph{Binding.}
-$\theta = \mathsf{matchRows}(\forall\overline{X}.\rneg,\ \rpos_A)$ yields residual $\rneg'$.
+$\theta = \mathsf{matchRows}(\forall\overline{X}.\rneg,\rpos_A)$ yields residual $\rneg'$.
 
 \paragraph{Effects.}
 Apply $\theta$ to $\epsilon$, then $\mathsf{project}$ to $\rneg'$.
 
-\paragraph{Residual.}
-\[
-\forall(\overline{X} \setminus \mathrm{dom}(\theta)).~\rneg' \mid \rdef' \xrightarrow{\epsilon'} \tau_r[\theta]
-\]
+\paragraph{Residual.} $\forall(\overline{X} \setminus \mathrm{dom}(\theta)).~\rneg' \mid \rdef' \xrightarrow{\epsilon'} \tau_r[\theta]$
 where $\rdef'$ is $\rdef$ restricted/reindexed to $\rneg'$.
 
 \paragraph{Finish.}
-If $\mathsf{matchRows}(\rdef,\ \rneg')$ has empty residual, return $\tau_r[\theta]$.
+If $\mathsf{matchRows}(\rdef,\rneg')$ has empty residual, return $\tau_r[\theta]$.
 
 \subsection{Variadic Packs}
 If $\rneg$ has one variadic positional $i:X^*$:

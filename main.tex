@@ -11,11 +11,13 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{external}
+\tikzexternalize[prefix=tikz-cache/] % folder for cached figures
 \usepgfplotslibrary{groupplots}
 \usepackage{pgfplotstable}
 \usepgfplotslibrary{fillbetween}
 \usepackage{subcaption}
-\pgfplotsset{compat=1.18}
 \usetikzlibrary{positioning}
 \usepackage[scaled=.8]{beramono}
 \usepackage{svg}
@@ -26,6 +28,8 @@
 \usepackage{comment}
 \usepackage{verbatim}
 \usepackage{url}
+
+\newcommand{\DependOnCSV}[1]{\tikzexternaldependsonfile{#1}}
 
 \title{Using Static Analysis of Python Programs for Efficient Checkpointing}
 \author{}
