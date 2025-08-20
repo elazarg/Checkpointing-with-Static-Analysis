@@ -9,7 +9,7 @@
 \label{sec:analysis}
 
 Our static analysis framework combines several interacting domains to determine the minimal set of program variables that must be included in a checkpoint.  
-We present the domains in an order that matches their conceptual dependencies, starting from the IR, then moving to liveness, explaining objects, and general domain conventions before introducing the specific domains for dirty tracking, pointers, and types. Figure~\ref{fig:overview} shows the full pipeline, from source code through IR, liveness, and the reduced product, to the extracted invariants used for checkpoint minimization.
+We present the domains in an order that matches their conceptual dependencies, starting from the IR, then moving to liveness, explaining objects, and general domain conventions before introducing the specific domains for dirty tracking, pointers, and types. \autoref{fig:overview} shows the full pipeline, from source code through IR, liveness, and the reduced product, to the extracted invariants used for checkpoint minimization.
 
 \subsection{Intermediate Representation}
 Our analyses operate not on Python source or bytecode directly, but on a simplified register-based \emph{three-address code} (TAC).
@@ -84,7 +84,7 @@ In our analyses, the value type $V$ may itself be another map, a set of objects,
 \subsection{Dirty Domain}
 The \emph{dirty} domain maps each object to the set of fields written since the last checkpoint.
 An update marks the corresponding field as dirty; deletions are treated as writes.
-The domain itself does not decide which dirty objects must be checkpointed—this decision is deferred until pointer reachability and liveness are taken into account.
+The domain itself does not decide which dirty objects must be checkpointed; this decision is deferred until pointer reachability and liveness are taken into account.
 \subsection{Pointer Domain}
 The \emph{pointer domain} models the shape of the heap as a map
 \[
@@ -127,7 +127,7 @@ Functions are annotated with \emph{effects} that describe their interactions wit
 These effects are directly consumed by the checkpointing analysis to determine which heap locations may be modified and which can be safely excluded from checkpoints.
 
 \paragraph{Main type constructs.}
-The principal forms in our type language (full syntax in Appendix~\ref{sec:appendix-typesystem}) are:
+The principal forms in our type language (full syntax in \autoref{sec:appendix-typesystem}) are:
 \begin{itemize}
   \item \textbf{Classes} $\mathsf{class}(C, R, \overline{\tau}, \overline{\alpha})$:
         a nominal class $C$ with row $R$ of fields and optional generic parameters $\overline{\alpha}$.
@@ -155,7 +155,7 @@ When a call is type--checked, argument types are unified with the corresponding 
   \item Variadic packs (\texttt{*args}) may be partially bound and matched incrementally; if unmatched packs remain, the result is again a residual callable.
 \end{itemize}
 Overloaded functions are handled by attempting binding against each arm independently; the results are joined when ambiguity remains.  
-The formal residual--callable construction is given in Appendix~\ref{sec:appendix-typesystem}.
+The formal residual--callable construction is given in \autoref{sec:appendix-typesystem}.
 
 \paragraph{Effects.}
 Effects annotate functions with heap interactions:

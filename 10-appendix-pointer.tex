@@ -51,13 +51,13 @@ D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 
 \subsection{Overview and Motivation}
 
-The pointer analysis is a cornerstone of our static analysis framework, designed to support checkpointing optimization in Python programs by modeling the heap and tracking object mutations. Operating on the Three-Address Code (TAC) intermediate representation (Appendix~\ref{sec:appendix-tac-ir}) and integrated with the type system (Appendix~\ref{sec:appendix-typesystem}), it constructs a precise model of heap shape, object references, and field updates. This enables the identification of minimal live variables and objects requiring checkpointing, critical for efficient state preservation in numerical workloads.
+The pointer analysis is a cornerstone of our static analysis framework, designed to support checkpointing optimization in Python programs by modeling the heap and tracking object mutations. Operating on the Three-Address Code (TAC) intermediate representation (\autoref{sec:appendix-tac-ir}) and integrated with the type system (\autoref{sec:appendix-typesystem}), it constructs a precise model of heap shape, object references, and field updates. This enables the identification of minimal live variables and objects requiring checkpointing, critical for efficient state preservation in numerical workloads.
 
 Python’s dynamic features such as dynamic typing, reflection, and runtime object modification pose significant challenges for static heap analysis. The pointer analysis addresses these by combining pointer, type, and dirty domains into a reduced product. This synergy enhances precision by leveraging type information for attribute resolution and liveness for pruning unreachable objects. The analysis is flow-sensitive and intraprocedural, focusing on synchronous, exception-free paths to ensure tractability while maintaining soundness within defined assumptions.
 
 \subsection{Notation}
 
-Consistent with Appendices~\ref{sec:appendix-tac-ir} and~\ref{sec:appendix-typesystem}, we use:
+Consistent with \autoref{sec:appendix-tac-ir} and \autoref{sec:appendix-typesystem}, we use:
 \begin{itemize}
     \item $\mathcal{V}$: Variables, split into named locals $\mathcal{V}_{\mathit{named}}$ (e.g., $x$) and stack temporaries $\mathcal{V}_{\mathit{stack}}$ (e.g., $\$0$).
     \item $\mathcal{O}$: Abstract objects, including:
@@ -88,7 +88,7 @@ Abstract objects represent equivalence classes of concrete heap locations:
     \item $\mathsf{Scope}(s)$: Distinguished root objects for variable namespaces, whose fields correspond to variables.
 \end{itemize}
 
-The domains are described in Figure~\ref{fig:abstract-domains}. The pointer domain $P$ models heap shape, where $P[o][f]$ is the set of possible targets of field $f$ of object $o$. The wildcard field $\star$ summarizes collection elements. The type domain $T$ assigns types to objects, with ordering and join operations defined over the type lattice (see Appendix~\ref{sec:appendix-typesystem}). The dirty domain $D$ tracks which fields may have been mutated. Bottom elements: $\bot_\mathcal{P}$ maps every $(o,f)$ to $\emptyset$, $\bot_{\mathcal{T}}$ maps each object to $\bot_{\mathit{Type}}$, and $\bot_\mathcal{D}$ maps each object to $\emptyset$. The reduced product $\Sigma$ combines all three domains with component-wise operations.
+The domains are described in \autoref{fig:abstract-domains}. The pointer domain $P$ models heap shape, where $P[o][f]$ is the set of possible targets of field $f$ of object $o$. The wildcard field $\star$ summarizes collection elements. The type domain $T$ assigns types to objects, with ordering and join operations defined over the type lattice (see \autoref{sec:appendix-typesystem}). The dirty domain $D$ tracks which fields may have been dirty. Bottom elements: $\bot_\mathcal{P}$ maps every $(o,f)$ to $\emptyset$, $\bot_{\mathcal{T}}$ maps each object to $\bot_{\mathit{Type}}$, and $\bot_\mathcal{D}$ maps each object to $\emptyset$. The reduced product $\Sigma$ combines all three domains with component-wise operations.
 
 \subsection{Abstract Semantics}
 
@@ -103,7 +103,7 @@ where:
     \item $\Delta_e \in \mathcal{D}$: fields potentially dirtied.
 \end{itemize}
 
-Key evaluation rules are shown in Figure~\ref{fig:expr-semantics}. Note that the choice of Imm() is guided by the type system; Const() are just a special case where it is syntactically foced. 
+Key evaluation rules are shown in \autoref{fig:expr-semantics}. Note that the choice of Imm() is guided by the type system; Const() are just a special case where it is syntactically foced. 
 
 \begin{figure}[t]
 \centering
@@ -152,7 +152,7 @@ Key evaluation rules are shown in Figure~\ref{fig:expr-semantics}. Note that the
 \end{figure}
 
 \paragraph{Instruction Semantics.}
-Instruction transfer functions $\mathsf{Trans}^\#(\Sigma,i,\ell) \to \Sigma'$ update the abstract state, as shown in Figure~\ref{fig:trans-semantics}.
+Instruction transfer functions $\mathsf{Trans}^\#(\Sigma,i,\ell) \to \Sigma'$ update the abstract state, as shown in \autoref{fig:trans-semantics}.
 
 \begin{figure*}[t]
 \centering

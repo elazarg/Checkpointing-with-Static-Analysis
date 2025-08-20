@@ -30,9 +30,9 @@
 \usepackage{verbatim}
 \usepackage{url}
 
-\newcommand{\DependOnCSV}[1]{\tikzexternaldependsonfile{#1}}
+\lstset{basicstyle={\ttfamily\fontsize{9pt}{9pt}\selectfont},language=python}
 
-\title{Using Static Analysis of Python Programs for Efficient Checkpointing}
+\title{Selective Checkpointing for Numerical Python via Static Analysis}
 \author{}
 \date{August 2025}
 
@@ -40,6 +40,7 @@
 
 \maketitle
 
+\input{macros}
 \input{00-abstract}
 \input{01-introduction}
 \input{02-running-example}

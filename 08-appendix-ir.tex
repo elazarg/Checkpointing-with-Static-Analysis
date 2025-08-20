@@ -20,7 +20,7 @@ This IR serves three purposes for our checkpointing analysis:
     \item \textbf{Stable substrate for inference.} With stack effects eliminated, type and effect inference can operate directly on visible dependencies.
 \end{enumerate}
 
-TAC is the common foundation for the liveness, pointer, and type domains that drive our checkpointing optimization framework (\S\ref{sec:analysis}, Appendix~\ref{sec:appendix-typesystem}).
+TAC is the common foundation for the liveness, pointer, and type domains that drive our checkpointing optimization framework (\autoref{sec:analysis}, \autoref{sec:appendix-typesystem}).
 
 In this appendix we present the syntax and operational semantics of TAC, followed by its translation from CPython bytecode.  
 We conclude with key properties of the IR and a discussion of design choices and limitations.
@@ -99,7 +99,7 @@ Assignment targets $\sigma$ are kept deliberately flat to simplify analysis. Com
 \paragraph{Variables and Constants.}
 We define $\mathcal{V}$ to be precisely the set of variables that appear in the program. Variables $v \in \mathcal{V}$ partition into:
 \begin{itemize}
-    \item \textbf{Named variables} $x,y,z \in \mathcal{V}_{\mathit{named}}$ correspond to Python function locals and globals. Since these can be accessed via reflection (\texttt{locals()}) or captured by closures, precise liveness analysis requires assumptions about program structure (see Appendix~\ref{sec:appendix-assumptions}).
+    \item \textbf{Named variables} $x,y,z \in \mathcal{V}_{\mathit{named}}$ correspond to Python function locals and globals. Since these can be accessed via reflection (\texttt{locals()}) or captured by closures, precise liveness analysis requires assumptions about program structure (see \autoref{sec:appendix-assumptions}).
     \item \textbf{Stack variables} $\mathsf{\$}0,\mathsf{\$}1,\ldots \in \mathcal{V}_{\mathit{stack}}$ are compiler-generated temporaries that replace Python's evaluation stack. These cannot be aliased, captured by closures, or accessed via reflection, making liveness analysis sound without additional assumptions about program behavior.
 \end{itemize}
 Constants $c$ include Python literals (\texttt{42}, \texttt{"hello"}), singletons (\texttt{None}, \texttt{True}, \texttt{False}), and other immutable values.
@@ -348,7 +348,7 @@ The core translation function
 maps each bytecode instruction at stack depth $d$ to a sequence of TAC instructions. The stack discipline ensures consistent stack variable assignment: instructions consuming stack slots read from the appropriate stack variables, while producers write to the next available stack location.
 
 \paragraph{Translation Rules.}
-Figure~\ref{fig:translation-rules} shows representative translation patterns. Simple operations like \texttt{LOAD_CONST} become direct assignments, while complex instructions like \texttt{STORE_SUBSCR} expand into sequences that explicitly resolve method calls and argument passing.
+\autoref{fig:translation-rules} shows representative translation patterns. Simple operations like \texttt{LOAD_CONST} become direct assignments, while complex instructions like \texttt{STORE_SUBSCR} expand into sequences that explicitly resolve method calls and argument passing.
 
 \begin{figure*}[t]
 \centering

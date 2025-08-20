@@ -17,7 +17,14 @@
   publisher={IEEE}
 }
 
-@INPROCEEDINGS{803700,  author={Hauck, S. and Wilson, W.D.},  booktitle={Seventh Annual IEEE Symposium on Field-Programmable Custom Computing Machines (Cat. No.PR00375)},   title={Runlength compression techniques for FPGA configurations},   year={1999},  volume={},  number={},  pages={286-287},  doi={10.1109/FPGA.1999.803700}}
+@INPROCEEDINGS{803700,
+author={Hauck, S. and Wilson, W.D.}, 
+booktitle={Seventh Annual IEEE Symposium on Field-Programmable Custom Computing Machines (Cat. No.PR00375)},   title={Runlength compression techniques for FPGA configurations},
+year={1999},
+volume={},
+number={},
+pages={286-287},
+doi={10.1109/FPGA.1999.803700}}
 
 @INPROCEEDINGS{9582173,
   author={Ozawa, Yosuke and Shinagawa, Takahiro},
@@ -1658,4 +1665,205 @@ series = {SLE 2023}
   booktitle={Proceedings of the Workshop on Dynamic Languages and Applications},
   pages={1--10},
   year={2014}
+}
+
+% --- proposed
+
+% Foundations: data-flow / abstract interpretation
+@inproceedings{Kildall1973, 
+  author    = {Gary A. Kildall},
+  title     = {A Unified Approach to Global Program Optimization},
+  booktitle = {Proceedings of the 1st ACM SIGACT-SIGPLAN Symposium on Principles of Programming Languages (POPL)},
+  year      = {1973},
+  pages     = {194--206},
+  publisher = {ACM},
+  doi       = {10.1145/512927.512945}
+}
+
+% Points-to / alias analysis (classics and efficient strong updates)
+@phdthesis{Andersen1994,
+  author = {Lars Ole Andersen},
+  title  = {Program Analysis and Specialization for the C Programming Language},
+  school = {University of Copenhagen},
+  year   = {1994},
+  address= {Copenhagen, Denmark},
+  note   = {DIKU Report 94/19},
+  url    = {https://www.cs.cornell.edu/courses/cs711/2005fa/papers/andersen-thesis94.pdf}
+}
+
+@inproceedings{Steensgaard1996,
+  author    = {Bjarne Steensgaard},
+  title     = {Points-to Analysis in Almost Linear Time},
+  booktitle = {Proceedings of the 23rd ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL)},
+  year      = {1996},
+  pages     = {32--41},
+  publisher = {ACM},
+  doi       = {10.1145/237721.237727}
+}
+
+@inproceedings{LhotakChung2011,
+  author    = {Ond{\v{r}}ej Lhot{\'a}k and K.-C. Andrew Chung},
+  title     = {Points-to Analysis with Efficient Strong Updates},
+  booktitle = {Proceedings of the 38th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL)},
+  year      = {2011},
+  pages     = {3--16},
+  publisher = {ACM},
+  doi       = {10.1145/1926385.1926389},
+  url       = {https://plg.uwaterloo.ca/~olhotak/pubs/popl11.pdf}
+}
+
+% Static analysis for dynamic languages (context/comparison)
+
+@inproceedings{JensenMoellerThiemann2009,
+  author    = {Simon Holm Jensen and Anders M{\o}ller and Peter Thiemann},
+  title     = {Type Analysis for {JavaScript}},
+  booktitle = {Static Analysis Symposium (SAS)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {5673},
+  pages     = {238--255},
+  publisher = {Springer},
+  year      = {2009},
+  doi       = {10.1007/978-3-642-03237-0_17}
+}
+
+% (The LIPIcs page is live with DOI; if the proceedings volume number is posted before camera-ready, swap this with the official LIPIcs BibTeX from that page.)
+@inproceedings{RakAmnouykit2025PoTo,
+  author    = {Isariya Rak-amnouykit and Elazar Gershuni and Edd Barrett and Pierre Ganty and Fabio Maldini and Omer Tripp},
+  title     = {PoTo: A Hybrid Andersen's Points-To Analysis for Python},
+  booktitle = {39th European Conference on Object-Oriented Programming (ECOOP 2025)},
+  series    = {Leibniz International Proceedings in Informatics (LIPIcs)},
+  volume    = {???},
+  pages     = {27:1--27:29},
+  publisher = {Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik},
+  year      = {2025},
+  doi       = {10.4230/LIPIcs.ECOOP.2025.27},
+  url       = {https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ECOOP.2025.27},
+  note      = {To appear; use LIPIcs BibTeX once final volume/issue metadata are fixed}
+}
+
+% Python/CPython references
+
+@misc{PEP484,
+  author = {Guido van Rossum and Jukka Lehtosalo and {\L}ukasz Langa},
+  title  = {{PEP} 484 -- Type Hints},
+  howpublished = {\url{https://peps.python.org/pep-0484/}},
+  year   = {2015},
+  note   = {Accessed 2025-08-20}
+}
+
+@misc{PEP574,
+  author = {Antoine Pitrou},
+  title  = {{PEP} 574 -- Pickle protocol 5 with out-of-band data},
+  howpublished = {\url{https://peps.python.org/pep-0574/}},
+  year   = {2019},
+  note   = {Accessed 2025-08-20}
+}
+
+@misc{PythonDis,
+  title        = {dis --- Disassembler for Python bytecode},
+  howpublished = {\url{https://docs.python.org/3/library/dis.html}},
+  note         = {CPython documentation, accessed 2025-08-20},
+  year         = {2025}
+}
+
+@misc{PythonPickleDocs,
+  title        = {pickle --- Python object serialization},
+  howpublished = {\url{https://docs.python.org/3/library/pickle.html}},
+  note         = {CPython documentation, accessed 2025-08-20},
+  year         = {2025}
+}
+
+% Numerical/ML libraries actually used in evaluation (NumPy, scikit-learn)
+
+@article{Harris2020NumPy,
+  author  = {Charles R. Harris and K. Jarrod Millman and St{\'e}fan J. van der Walt and Ralf Gommers and Pauli Virtanen and David Cournapeau and Eric Wieser and Julian Taylor and Sebastian Berg and Nathaniel J. Smith and Robert Kern and Matti Picus and Stephan Hoyer and Marten H. van Kerkwijk and Matthew Brett and Allan Haldane and Jaime Fern{\'a}ndez del R{\'\i}o and Mark Wiebe and Pearu Peterson and Pierre G{\'e}rard-Marchant and Kevin Sheppard and Tyler Reddy and Warren Weckesser and Hameer Abbasi and Christoph Gohlke and Travis E. Oliphant},
+  title   = {Array programming with {NumPy}},
+  journal = {Nature},
+  volume  = {585},
+  number  = {7825},
+  pages   = {357--362},
+  year    = {2020},
+  doi     = {10.1038/s41586-020-2649-2}
+}
+
+@article{Pedregosa2011Sklearn,
+  author  = {Fabian Pedregosa and Ga{\"e}l Varoquaux and Alexandre Gramfort and Vincent Michel and Bertrand Thirion and Olivier Grisel and Mathieu Blondel and Peter Prettenhofer and Ron Weiss and Vincent Dubourg and Jake VanderPlas and Alexandre Passos and David Cournapeau and Matthieu Brucher and Matthieu Perrot and {\'E}douard Duchesnay},
+  title   = {Scikit-learn: Machine Learning in {P}ython},
+  journal = {Journal of Machine Learning Research},
+  volume  = {12},
+  pages   = {2825--2830},
+  year    = {2011},
+  url     = {http://jmlr.org/papers/v12/pedregosa11a.html}
+}
+
+% Algorithmic baselines (optional but tidy to cite)
+@inproceedings{Pati1993OMP,
+  author    = {Y. C. Pati and R. Rezaiifar and P. S. Krishnaprasad},
+  title     = {Orthogonal Matching Pursuit: Recursive Function Approximation with Applications to Wavelet Decomposition},
+  booktitle = {27th Asilomar Conference on Signals, Systems and Computers},
+  year      = {1993},
+  pages     = {40--44},
+  publisher = {IEEE}
+}
+
+@inproceedings{10.1007/978-3-540-30115-8_22,
+author = {Klimt, Bryan and Yang, Yiming},
+title = {The enron corpus: a new dataset for email classification research},
+year = {2004},
+isbn = {3540231056},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/978-3-540-30115-8_22},
+doi = {10.1007/978-3-540-30115-8_22},
+abstract = {Automated classification of email messages into user-specific folders and information extraction from chronologically ordered email streams have become interesting areas in text learning research. However, the lack of large benchmark collections has been an obstacle for studying the problems and evaluating the solutions. In this paper, we introduce the Enron corpus as a new test bed. We analyze its suitability with respect to email folder prediction, and provide the baseline results of a state-of-the-art classifier (Support Vector Machines) under various conditions, including the cases of using individual sections (From, To, Subject and body) alone as the input to the classifier, and using all the sections in combination with regression weights.},
+booktitle = {Proceedings of the 15th European Conference on Machine Learning},
+pages = {217–226},
+numpages = {10},
+location = {Pisa, Italy},
+series = {ECML'04}
+}
+
+% Checkpointing/snapshot baselines
+
+@inproceedings{AnselAryaCooperman2009DMTCP,
+  author    = {Jason Ansel and Kapil Arya and Gene Cooperman},
+  title     = {{DMTCP}: Transparent Checkpointing for Cluster Computations and the Desktop},
+  booktitle = {2009 IEEE International Symposium on Parallel \& Distributed Processing (IPDPS)},
+  year      = {2009},
+  pages     = {1--12},
+  publisher = {IEEE},
+  doi       = {10.1109/IPDPS.2009.5160916},
+  url       = {https://people.csail.mit.edu/jansel/papers/2009ipdps-dmtcp.pdf}
+}
+
+@misc{CRIUProject,
+  title        = {{CRIU} --- Checkpoint/Restore in Userspace},
+  howpublished = {\url{https://criu.org/Main_Page}},
+  note         = {Project documentation, accessed 2025-08-20},
+  year         = {2025}
+}
+
+@article{Andrijauskas2024CRIUOSG,
+  author  = {Fedor Andrijauskas and others},
+  title   = {{CRIU} -- Checkpoint Restore in Userspace for {HTCondor/OSPool}},
+  journal = {arXiv},
+  year    = {2024},
+  eprint  = {2402.05244},
+  url     = {https://arxiv.org/abs/2402.05244}
+}
+
+% Python object/aliasing semantics you appeal to (mutability; bytecode; pickling protocol 5)
+
+@misc{PythonDataModel,
+  title        = {The Python Language Reference --- Data model},
+  howpublished = {\url{https://docs.python.org/3/reference/datamodel.html}},
+  note         = {Accessed 2025-08-20},
+  year         = {2025}
+}
+
+@misc{NumPyViewsDocs,
+  title        = {NumPy User Guide --- Copies and Views},
+  howpublished = {\url{https://numpy.org/doc/stable/user/basics.copies.html}},
+  note         = {Accessed 2025-08-20},
+  year         = {2025}
 }

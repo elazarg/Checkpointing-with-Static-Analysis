@@ -1,7 +1,5 @@
 
 
-\newcommand{\VMDIFF}[0]{{\textDelta VM}}
-\newcommand{\PROCDIFF}[0]{{\textDelta Proc}}
 
 
 \begin{table*}
@@ -20,7 +18,7 @@
                                 & 127.29$\times$ & 231.64$\times$ &	36191.01$\times$  \\
 \bottomrule
 \end{tabular}
-\caption{Average checkpoint sizes (in bytes) across filtered iterations. "Instr" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory diffs at the process and virtual machine levels respectively.}
+\caption{Average checkpoint sizes (in bytes) across filtered iterations.}
 \label{tab:checkpoint-sizes}
 \end{table*}
 
@@ -58,7 +56,7 @@ The use of TCP to trigger VM-level checkpoints may introduce a nontrivial fixed 
 
 \subsection{Checkpoint Size Comparison}
 
-Table~\ref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both LocalVars Python checkpointing and simulated Process- and VM-level methods.
+\autoref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both LocalVars Python checkpointing and simulated Process- and VM-level methods. "Instr" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory diffs at the process and virtual machine levels respectively.
 
 For the noploop benchmark, our analysis incurs a fixed overhead (iterator) that exceeds 
 the minimal state changes, making process-level diffing more efficient. This 
@@ -76,14 +74,14 @@ The results support the following observations:
 
 \begin{itemize}
   \item \textbf{Static analysis can yield substantial reductions} in checkpoint size when recomputation is cheap and allocation is disciplined. This aligns with common usage patterns in numerical and data science code.
-  \item \textbf{VM- and Process-level diffs greatly overapproximate state necessity}: they include any mutated memory, even if transient or unused, leading to high checkpoint costs.
+  \item \textbf{VM- and Process-level diffs greatly overapproximate state necessity}: they include any dirty memory, even if transient or unused, leading to high checkpoint costs.
   \item \textbf{Analysis precision is workload-sensitive}: the benefits are most pronounced when mutable state is well-localized, heap aliasing is limited, and control structure is predictable.
 \end{itemize}
 
 \subsection{Limitations and Threats to Validity}
 \label{sec:threats}
 
-Our system assumes that all side effects are either annotated or internal to the function body. If external state is mutated (e.g., global variables, files, sockets) and not captured by the type system, recovery may be unsound.
+Our system assumes that all side effects are either annotated or internal to the function body. If external state is dirty (e.g., global variables, files, sockets) and not captured by the type system, recovery may be unsound.
 
 Additionally, our analysis does not verify behavioral equivalence post-recovery. We produce an explicitly instrumented code so the programmers can double-check it by themselves. we rely on programmer discipline and the assumption that the relevant control path is idempotent from the checkpoint location onward.
 

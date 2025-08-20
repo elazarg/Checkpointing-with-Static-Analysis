@@ -15,7 +15,7 @@ The system adopts several deliberate departures from common type-system practice
 \subsubsection*{Meta-properties and scope.}
 While we do not prove formal soundness, the design aims for:
 \begin{itemize}
-  \item \textbf{Decidability:} Type checking and inference are decidable for the restricted Python fragment (Appendix~\ref{sec:appendix-assumptions}).
+  \item \textbf{Decidability:} Type checking and inference are decidable for the restricted Python fragment (\autoref{sec:appendix-assumptions}).
   \item \textbf{Termination:} Unification and join terminate over the targeted subset; the type lattice is finite and usually very short. Dimensionality tracking of NumPy arrays is intentionally excluded due to its termination and complexity implications.
   \item \textbf{Precision:} Strict effect equality and the information ordering favor simplicity and precise state reasoning over broad applicability.
   \item \textbf{Transparency:} The unknown type \textsf{any} and dynamic features act as explicit, unsound escape hatches.
@@ -23,17 +23,17 @@ While we do not prove formal soundness, the design aims for:
 
 \subsection{Syntax}
 % TODO: which to use, \mathcal{T} or \tau and when?
-Figure \ref{fig:type-syntax} defines the syntax of the type system. Type expressions $\mathcal{T}$ cover constants, variables (both ordinary and variadic), unions, records, classes, modules, polymorphic functions, overloads, instantiations, and literal values.  
+\autoref{fig:type-syntax} defines the syntax of the type system. Type expressions $\mathcal{T}$ cover constants, variables (both ordinary and variadic), unions, records, classes, modules, polymorphic functions, overloads, instantiations, and literal values.  
 Record types map field keys to types, where keys may carry both positional and nominal components.  
 Effects annotate callable types with allocation and mutation.
 
 \paragraph{Uniform use of rows.}
 Rows~$\rho$ are the \emph{only} finite mapping construct in the type system, used both for
-callable parameter lists and for class/module member dictionaries (see §\ref{sec:unified-record}).  
+callable parameter lists and for class/module member dictionaries (see \autoref{sec:unified-record}).  
 In Python, both are naturally modeled as ordered typed dictionaries: finite maps from
 \emph{keys} (either positional indices or string labels) to types, with ordering
 preserved from their definition.  
-This uniform abstraction allows the same operations --- $\mathsf{unify}_{\rho}$, subtyping, join/meet (Fig.~\ref{fig:auxiliary-defs}) --- to apply in both contexts,  
+This uniform abstraction allows the same operations --- $\mathsf{unify}_{\rho}$, subtyping, join/meet (\autoref{fig:auxiliary-defs}) --- to apply in both contexts,  
 simplifying the formalism and aligning with the structural nature of Python's
 attribute and parameter matching rules.
 
@@ -44,12 +44,7 @@ for arguments, missing keys may indicate partial application;
 for parameters, missing keys indicate an invalid call;
 for fields, missing keys indicate absent attributes (yielding~$\bot$ on lookup).
 
-The syntax of the type system is given in Figures~\ref{fig:metavars} and~\ref{fig:type-syntax}.
-% ==== Row macros (safe in subscripts/superscripts) ====
-\newcommand{\rpos}{\mathord{\rho^{+}}}   % arguments, fields
-\newcommand{\rneg}{\mathord{\rho^{-}}}   % parameters
-\newcommand{\rdef}{\mathord{\rho^{=}}}   % defaults
-\newcommand{\rowany}{\mathord{\rho}}     % generic row metavariable
+The syntax of the type system is given in \autoref{fig:metavars} and \autoref{fig:type-syntax}.
 
 \begin{figure}[t]
 \centering
@@ -290,12 +285,12 @@ We distinguish three entity forms:
 \begin{itemize}
     \item \textbf{Classes} are nominal in that they do not support structural subtyping: two classes are related if and only if they have \emph{exactly} the same name (and their type parameters can be unified). We model no nontrivial superclass relations. Class members are given by a row~$\rho$; classes may be generic over type parameters~$\overline{\alpha}$.
     \item \textbf{Modules} are singletons: a module $\mathsf{module}(C, \rho)$ has a fixed row of members and no generic parameters.
-    \item \textbf{Protocols} are structural interfaces with optional type parameters. Satisfaction is by structural subtyping (\S\ref{fig:subtyping}), not by nominal identity.
+    \item \textbf{Protocols} are structural interfaces with optional type parameters. Satisfaction is by structural subtyping (\autoref{fig:subtyping}), not by nominal identity.
 \end{itemize}
 
 \paragraph{Common mechanism: member access.}
-All three entity kinds share the same lookup mechanism on their member row~$\rho$ (see \S\ref{sec:unified-record}).  
-Given an entity type~$\tau$ and a key~$k$ (positional index or string label; cf.\ Fig.~\ref{fig:metavars}), the lookup judgment
+All three entity kinds share the same lookup mechanism on their member row~$\rho$ (see \autoref{sec:unified-record}).  
+Given an entity type~$\tau$ and a key~$k$ (positional index or string label; cf.\ \autoref{fig:metavars}), the lookup judgment
 \[
 \tau \cdot k \Downarrow v
 \]
@@ -315,8 +310,8 @@ C[\overline{\sigma}] \cdot k &= (\mathsf{class}(C, \rho, \overline{\alpha}, \ove
   &&\text{(instantiated classes)}
 \end{align*}
 
-If $\rho \cdot k$ yields an overload set, the overload combination rules of \S\ref{sec:overload-resolution} apply.  
-If the member is callable, receiver binding (\S\ref{sec:receiver-binding}) is applied, treating the receiver as the first positional argument~$\langle 0\rangle$.  
+If $\rho \cdot k$ yields an overload set, the overload combination rules of \autoref{sec:overload-resolution} apply.  
+If the member is callable, receiver binding (\autoref{sec:receiver-binding}) is applied, treating the receiver as the first positional argument~$\langle 0\rangle$.  
 If the member is a property, the property-access rule applies.
 
 \paragraph{Generic classes.}
@@ -350,11 +345,11 @@ A type $T$ satisfies $\Pi[\overline{\sigma}]$ iff, writing $R_\Pi$ for the insta
 where method members are checked by function subtyping (parameters contravariant, result covariant). Protocol type parameters are instantiated with $\overline{\sigma}$ before checking satisfaction.
 
 \paragraph{Lattice structure of rows.}
-As in \S\ref{sec:unified-record}, rows form a lattice $(\mathcal{\rho}, \sqsubseteq, \sqcup, \sqcap, \top, \bot)$ under the information ordering: more keys $\Rightarrow$ more specific.
+As in \autoref{sec:unified-record}, rows form a lattice $(\mathcal{\rho}, \sqsubseteq, \sqcup, \sqcap, \top, \bot)$ under the information ordering: more keys $\Rightarrow$ more specific.
 \begin{itemize}
   \item $\top_\rho$ = empty row
   \item $\bot_\rho$ = inconsistent row
-  \item \textbf{Join} ($\sqcup$): intersection of domains, join types pointwise (join as in Fig.~\ref{fig:auxiliary-defs})
+  \item \textbf{Join} ($\sqcup$): intersection of domains, join types pointwise (join as in \autoref{fig:auxiliary-defs})
   \item \textbf{Meet} ($\sqcap$): union of domains, meet types pointwise
 \end{itemize}
 
@@ -385,7 +380,7 @@ $\theta[\tau]$ & Capture-avoiding substitution of $\theta$ into $\tau$ \\
 $\theta_1 \sqcup \theta_2$ & Substitution join: defined iff same RHS for overlapping vars (up to $\alpha$) \\
 $R_1 \sqcup R_2$ & Row join: keep common keys, join their types \\
 $R_1 \sqcap R_2$ & Row meet: union of keys, meet their types \\
-$\mathsf{unify}_{\mathrm{type}}(\tau_1,\tau_2)$ & Binary type unification (Fig.~\ref{fig:unification}) \\
+$\mathsf{unify}_{\mathrm{type}}(\tau_1,\tau_2)$ & Binary type unification (\autoref{fig:unification}) \\
 $\mathsf{unify}_{\rho}(\rho_1,\rho_2)$ & Field-wise unification on $\mathrm{dom}(\rho_1) \cap \mathrm{dom}(\rho_2)$
 \end{tabular}
 \caption{Common predicates and operations for member access and structural satisfaction.}
@@ -397,7 +392,7 @@ $\mathsf{unify}_{\rho}(\rho_1,\rho_2)$ & Field-wise unification on $\mathrm{dom}
 
 \paragraph{Scope and soundness.}
 The typing rules are intended to be sound for the restricted Python subset
-defined in Appendix \ref{sec:appendix-assumptions}, but we make no claims for full Python.
+defined in \autoref{sec:appendix-assumptions}, but we make no claims for full Python.
 Features such as \textsf{any} and dynamic attribute creation are explicitly
 unsound escape hatches, admitted for practicality in scientific code.  
 All rules are designed to ensure decidable type checking and termination of unification
@@ -436,10 +431,10 @@ within the targeted subset.
 
 \textbf{Auxiliary Operations} \\[0.5em]
 \begin{array}{ll}
-\tau \cdot a \Downarrow \phi & \text{Member lookup (\S\ref{sec:rows-generic-access})} \\
-\mathsf{bind\_self}(\tau_{\mathit{recv}}, \tau_{\mathit{self}}, R, \overline{X}) & \text{Receiver binding (\S\ref{sec:receiver-binding})} \\
+\tau \cdot a \Downarrow \phi & \text{Member lookup (\autoref{sec:rows-generic-access})} \\
+\mathsf{bind\_self}(\tau_{\mathit{recv}}, \tau_{\mathit{self}}, R, \overline{X}) & \text{Receiver binding (\autoref{sec:receiver-binding})} \\
 \mathsf{property}(\phi) & \text{Predicate: callable flagged as a property} \\
-\mathsf{subscr}(\tau, \tau_i) & \text{Subscript via fields or \_\_getitem\_\_ (\S\ref{sec:rows-generic-access})} \\
+\mathsf{subscr}(\tau, \tau_i) & \text{Subscript via fields or \_\_getitem\_\_ (\autoref{sec:rows-generic-access})} \\
 \mathsf{binop}(\tau_1, \mathit{op}, \tau_2) & \text{Two-step: } \tau_1 \cdot \langle\mathtt{"\_\_}\mathit{op}\mathtt{\_\_"}\rangle \triangleright \{0:\tau_2\} \text{ (via \textsc{PartialApp})} \\
 \mathsf{unop}(\mathit{op}, \tau) & \text{Two-step: } \tau \cdot \langle\mathtt{"\_\_}\mathit{op}\mathtt{\_\_"}\rangle \triangleright \{\} \text{ (via \textsc{PartialApp})}
 \end{array}
@@ -449,7 +444,7 @@ within the targeted subset.
 \label{fig:typing-rules}
 \end{figure*}
 
-Typing judgments are described in Figure \ref{fig:typing-rules}.
+Typing judgments are described in \autoref{fig:typing-rules}.
 
 \paragraph{Binary and unary operations.}
 Binary and unary operations are resolved through a two-step process that makes dunder method lookup explicit. For binary operations $e_1 \mathit{\,op\,} e_2$: first, the appropriate dunder method (e.g., \texttt{\_\_add\_\_} for \texttt{+}) is looked up on the left operand type via member access; second, the \textsc{PartialApp} rule is applied with the right operand as argument. Unary operations follow the same pattern but with no arguments. This approach unifies operator overloading with the general function application mechanism. Effects (allocation, mutation, aliasing) are extracted from the resolved function type and forwarded to the analysis domain, while the typing rules above show only the return types.
@@ -478,7 +473,7 @@ Protocol satisfaction is checked structurally: a type $T$ is a subtype of $\Pi[\
       \quad \forall k \in \mathrm{dom}(R_{\Pi[\overline{\sigma}]})\ .\ \Gamma \vdash R_T(k) \;<:\; (R_{\Pi[\overline{\sigma}]}\!)(k)}
      {\Gamma \vdash T \;<:\; \Pi[\overline{\sigma}]} \quad \text{(Protocol)}
 \]
-\caption{Implemented subtyping rules. Rows use $\mathrm{dom}$ and $<:_\rho$ as in \S\ref{sec:unified-record}. Protocol satisfaction is structural, using member access + $\mathsf{unify}_{\rho}$.}
+\caption{Implemented subtyping rules. Rows use $\mathrm{dom}$ and $<:_\rho$ as in \autoref{sec:unified-record}. Protocol satisfaction is structural, using member access + $\mathsf{unify}_{\rho}$.}
 \label{fig:subtyping}
 \end{figure*}
 
@@ -491,14 +486,14 @@ lattice reasoning at the cost of omitting Python’s permissive keyword matching
 
 \paragraph{Type operations.}  
 Joins~$\sqcup$ compute least upper bounds; meets~$\sqcap$ compute greatest lower bounds.  
-For $\rho$ rows, these are as in Fig.~\ref{fig:auxiliary-defs}; otherwise joins are simple unions.
+For $\rho$ rows, these are as in \autoref{fig:auxiliary-defs}; otherwise joins are simple unions.
 
 In the implementation, union types are \emph{normalized} after construction: duplicates are removed, nested unions are flattened, and singleton unions collapse to the member type.  
 This normalization ensures canonical forms for lattice comparisons and avoids spurious distinctions between equivalent unions.
 
 \paragraph{Quantified function application.}
 Application of a quantified function $\forall\overline{X}.~\rho \xrightarrow{\epsilon^\#} \tau_r$
-is governed by the binding algorithm in Appendix~\ref{sec:receiver-binding},
+is governed by the binding algorithm in \autoref{sec:receiver-binding},
 which handles instantiation, partial application, variadic packs, overloads, and receiver binding.
 \paragraph{Unification.}  
 Unification $\Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta$ computes substitutions $\theta : \mathcal{V} \to \mathcal{T}$ and supports variadic parameters, instantiation, functions, and $\rho$ rows.  
@@ -531,7 +526,7 @@ For other structured types such as unions or classes, unification proceeds compo
 \frac{\forall k \in \mathrm{dom}(R_1) \cap \mathrm{dom}(R_2).\ \Delta \vdash R_1(k) \doteq R_2(k) \leadsto \theta_k}
      {\Delta \vdash R_1 \mathrel{\mathsf{unify}_{\rho}} R_2 \leadsto \bigsqcup_k \theta_k} \quad \text{(Record)}
 \]
-\caption{Unification rules, using $\mathrm{dom}$ and fieldwise $\mathsf{unify}_{\rho}$ as in \S\ref{sec:unified-record}. Function unification requires equal effects; other structured types (e.g., unions, classes) are unified componentwise. Unification is undefined when type constructors differ.}
+\caption{Unification rules, using $\mathrm{dom}$ and fieldwise $\mathsf{unify}_{\rho}$ as in \autoref{sec:unified-record}. Function unification requires equal effects; other structured types (e.g., unions, classes) are unified componentwise. Unification is undefined when type constructors differ.}
 \label{fig:unification}
 \end{figure*}
 
@@ -544,7 +539,7 @@ Dynamic semantics here covers the runtime-analogous steps for overload resolutio
 \paragraph{Property evaluation.}
 If $\tau \cdot k$ yields a callable $(\xrightarrow{\epsilon^\#} \sigma)$, 
 the result of $\tau \cdot k$ is $\sigma$ (implicit call with empty arguments).  
-Otherwise, if it is callable but not a property, $\tau \cdot k$ yields the bound method, with the receiver already bound via the mechanism described in \S\ref{sec:receiver-binding}.
+Otherwise, if it is callable but not a property, $\tau \cdot k$ yields the bound method, with the receiver already bound via the mechanism described in \autoref{sec:receiver-binding}.
 
 \paragraph{Overload resolution.}
 \label{sec:overload-resolution}
@@ -552,16 +547,16 @@ Overload resolution is a two-stage process:
 \begin{enumerate}
 \item \textbf{Static grouping:}  
   Given an overload set $\{\varphi_1, \ldots, \varphi_n\}$ (e.g., from $\tau \cdot k$), each arm $\varphi_i$ is unified with the argument row $A$ via  
-  $\mathsf{unify}_{\rho}(\mathsf{params}(\varphi_i), A)$ from \S\ref{sec:unified-record}.  
+  $\mathsf{unify}_{\rho}(\mathsf{params}(\varphi_i), A)$ from \autoref{sec:unified-record}.  
   Successful arms produce residual cases; these are grouped by identical matched-parameter sets, allowing partially applied overloads to be resolved without re-analyzing unrelated arms.
 \item \textbf{Dynamic selection:}  
-  At an actual call site, the saturated arms --- residuals where \textsf{FinishApp} is applicable --- from the relevant group are taken, and their return types are joined pointwise using the type join from Fig.~\ref{fig:auxiliary-defs}.
+  At an actual call site, the saturated arms --- residuals where \textsf{FinishApp} is applicable --- from the relevant group are taken, and their return types are joined pointwise using the type join from \autoref{fig:auxiliary-defs}.
 \end{enumerate}
 This mirrors Python’s runtime dispatch but enables precise static joins over all viable arms.
 
 \paragraph{Attribute and index access.}  
 \label{sec:rows-generic-access}
-Attribute access $\tau \cdot k$ is resolved by the row lookup rules of \S\ref{sec:modules-classes-protocols}.  
+Attribute access $\tau \cdot k$ is resolved by the row lookup rules of \autoref{sec:modules-classes-protocols}.  
 Indexing $\tau[i]$ is modeled as:
 \[
 \tau[i] \;=\;
@@ -570,7 +565,7 @@ Indexing $\tau[i]$ is modeled as:
 \mathsf{apply}(\tau \cdot \langle \mathrm{"\_\_getitem\_\_"}\rangle,\ \mathsf{type}(i)) & \text{otherwise}
 \end{cases}
 \]
-where keys $\langle i\rangle$ and $\langle \mathrm{"\_\_getitem\_\_"}\rangle$ follow the syntax in Fig.~\ref{fig:metavars} and \S\ref{sec:unified-record}.
+where keys $\langle i\rangle$ and $\langle \mathrm{"\_\_getitem\_\_"}\rangle$ follow the syntax in \autoref{fig:metavars} and \autoref{sec:unified-record}.
 
 \subsubsection*{Effects}
 \label{sec:effects}
@@ -591,12 +586,12 @@ Joins are computed pointwise over Boolean components, and via an optional-type j
 \[
 \tau_1^? \sqcup^? \tau_2^? =
 \begin{cases}
-\tau_1 \sqcup \tau_2 & \text{if both defined (join as in Fig.~\ref{fig:auxiliary-defs})},\\
+\tau_1 \sqcup \tau_2 & \text{if both defined (join as in \autoref{fig:auxiliary-defs})},\\
 \tau_i & \text{if only $\tau_i$ defined},\\
 None & \text{if neither defined}.
 \end{cases}
 \]
-If the $\mathsf{update}$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from Fig.~\ref{fig:auxiliary-defs}.
+If the $\mathsf{update}$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from \autoref{fig:auxiliary-defs}.
 
 % \begin{table*}[ht]
 % \centering
