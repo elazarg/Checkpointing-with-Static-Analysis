@@ -84,19 +84,19 @@ s & \text{string label} \in \mathcal{L} \\
 \\[0.5em]
 \rowany ::=~& \{ k_1 : \tau_1, \ldots, k_n : \tau_n \} \quad\text{(ordered typed dictionary)}
 \\[0.5em]
-F ::=~& \forall \overline{X}.\,\rneg \mid \rdef \xrightarrow{\epsilon} \tau
+F ::=~& \forall \overline{X}.\,\rneg \mid \rdef \xrightarrow{\epsilon^\#} \tau
 \quad\text{(function signature)}\\
- & \mid \forall \overline{X}\xrightarrow{\epsilon} \tau \quad\text{(property signature)}
+ & \mid \forall \overline{X}\xrightarrow{\epsilon^\#} \tau \quad\text{(property signature)}
 \\
 k ::=~& \langle i\rangle \mid \langle s\rangle \mid \langle i, s\rangle
 \quad\text{(field key)}
 \end{align*}
-\caption{Type system syntax. Effects $\epsilon$ are described in \autoref{sec:effects}.}
+\caption{Type system syntax. Effects $\epsilon^\#$ are described in \autoref{sec:effects}.}
 \label{fig:type-syntax}
 \end{figure}
 
 \paragraph{Design note.}
-Effects~$\epsilon$ are \emph{not} row-polymorphic: unification is only applied to positive rows, and unification of callables requires $\epsilon_1 = \epsilon_2$.  
+Effects~$\epsilon^\#$ are \emph{not} row-polymorphic: unification is only applied to positive rows, and unification of callables requires $\epsilon^\#_1 = \epsilon^\#_2$.  
 This sacrifices the flexibility of row-polymorphic effect systems in exchange for higher precision in mutation and allocation tracking, which is critical to our checkpointing analysis.
 
 \subsection{Unified Row Model}
@@ -114,13 +114,13 @@ Rows appear in different \emph{roles} (arguments/fields vs.\ parameters), but th
   \mathsf{posrow}(\rpos_A) \quad
   \mathsf{matchRows}(\forall\overline{X}.\rneg \mid \rdef,\ \rpos_A) \Downarrow (\theta, \rneg')
 }{
-  \forall\overline{X}.~\rneg \mid \rdef \xrightarrow{\ \epsilon\ } \tau
+  \forall\overline{X}.~\rneg \mid \rdef \xrightarrow{\ \epsilon^\#\ } \tau
   \ \triangleright\ 
   \rpos_A
   \ \Downarrow\
   \forall(\overline{X}\setminus\mathrm{dom}(\theta)).~
   \rneg' \mid \rdef'
-  \xrightarrow{\ \mathsf{project}(\epsilon[\theta],\,\rneg')\ }
+  \xrightarrow{\ \mathsf{project}(\epsilon^\#[\theta],\,\rneg')\ }
   \tau[\theta]
 }
 \quad \textsc{(PartialApp)}
@@ -130,7 +130,7 @@ Rows appear in different \emph{roles} (arguments/fields vs.\ parameters), but th
 \frac{
   \mathsf{matchRows}(\rdef,\ \rneg_{\mathrm{rem}}) \Downarrow (\_,\ \varnothing)
 }{
-  \rneg_{\mathrm{rem}} \mid \rdef \xrightarrow{\ \epsilon\ } \tau \ \triangleright\ \varnothing \ \Downarrow\ \tau
+  \rneg_{\mathrm{rem}} \mid \rdef \xrightarrow{\ \epsilon^\#\ } \tau \ \triangleright\ \varnothing \ \Downarrow\ \tau
 }
 \quad \textsc{(FinishApp)}
 \\[1.5em]
@@ -146,7 +146,7 @@ Rows appear in different \emph{roles} (arguments/fields vs.\ parameters), but th
 \end{array}
 \\
 \mathsf{residual}(\rpos,\rneg) & \mathsf{subtract\_indices}(\rneg \setminus \mathrm{dom}(\rpos),\ \mathrm{dom}(\rpos)\cap\mathbb{N}) \\
-\mathsf{project}(\epsilon,\rneg) & \text{drop/rename parameter-indexed components to match }\rneg \\
+\mathsf{project}(\epsilon^\#,\rneg) & \text{drop/rename parameter-indexed components to match }\rneg \\
 \end{array}
 \end{array}
 \]
@@ -206,11 +206,11 @@ Rows form a lattice $(\mathcal{R}, \le_\rho, \sqcup_\rho, \sqcap_\rho, \top_\rho
 \paragraph{Function variance (where contravariance lives).}
 Contravariance arises at the function constructor:
 \[
-(\rho_1 \xrightarrow{\epsilon} \tau_1)\ \le\ (\rho_2 \xrightarrow{\epsilon} \tau_2)
+(\rho_1 \xrightarrow{\epsilon^\#} \tau_1)\ \le\ (\rho_2 \xrightarrow{\epsilon^\#} \tau_2)
 \quad\iff\quad
 \rho_2\ \le_\rho\ \rho_1\ \ \wedge\ \ \tau_1\ \le\ \tau_2.
 \]
-(Effects are compared as specified elsewhere; we require $\epsilon$ equality in our implementation.)
+(Effects are compared as specified elsewhere; we require $\epsilon^\#$ equality in our implementation.)
 
 \paragraph{Protocols (structural).}
 Let $\Pi[\overline{\sigma}]$ have required row $R_\Pi$ (after instantiation), and let $R_T$ be the provided member row of $T$.
@@ -223,15 +223,15 @@ Then
 with method members checked by the function subtyping rule above.
 
 \subsection{Type Parametricity}
-Given $\forall\overline{X}.\,\rneg \mid \rdef \xrightarrow{\epsilon} \tau_r$ and arguments $\rpos_A$:
+Given $\forall\overline{X}.\,\rneg \mid \rdef \xrightarrow{\epsilon^\#} \tau_r$ and arguments $\rpos_A$:
 
 \paragraph{Binding.}
 $(\theta, \rneg') = \mathsf{matchRows}(\forall\overline{X}.\rneg,\rpos_A)$.
 
 \paragraph{Effects.}
-Apply $\theta$ to $\epsilon$, then $\mathsf{project}$ to $\rneg'$.
+Apply $\theta$ to $\epsilon^\#$, then $\mathsf{project}$ to $\rneg'$.
 
-\paragraph{Residual.} $\forall(\overline{X} \setminus \mathrm{dom}(\theta)).~\rneg' \mid \rdef' \xrightarrow{\epsilon'} \tau_r[\theta]$
+\paragraph{Residual.} $\forall(\overline{X} \setminus \mathrm{dom}(\theta)).~\rneg' \mid \rdef' \xrightarrow{\epsilon^{\#'}} \tau_r[\theta]$
 where $\rdef'$ is $\rdef$ restricted/reindexed to $\rneg'$.
 
 \paragraph{Finish.}
@@ -258,7 +258,7 @@ For overload $\{\varphi_1,\dots,\varphi_m\}$ and $\rpos_A$:
 \label{sec:receiver-binding}
 Methods have first parameter as receiver:
 \[
-\forall \overline{X}.\,(0:\tau_{\mathit{self}},\,\rneg') \mid \rdef \xrightarrow{\epsilon} \tau_r
+\forall \overline{X}.\,(0:\tau_{\mathit{self}},\,\rneg') \mid \rdef \xrightarrow{\epsilon^\#} \tau_r
 \]
 Bind receiver, drop/reindex, continue as partial application.
 
@@ -268,13 +268,13 @@ Unmatched arguments $\to$ error; unmatched parameters $\to$ residual callable (p
 \subsection{Example}
 To illustrate partial application, consider a generic function taking two parameters. Let:
 \[
-\varphi = \forall T,U.~(0:T,\,1:U) \mid \{\} \xrightarrow{\epsilon} T
+\varphi = \forall T,U.~(0:T,\,1:U) \mid \{\} \xrightarrow{\epsilon^\#} T
 \]
 Apply $\{0:\mathsf{int}\}$:
 \[
 \theta=\{T\mapsto \mathsf{int}\},\quad \rneg'=\{0:U\}
 \]
-Residual: $\forall U.~(0:U) \mid \{\} \xrightarrow{\epsilon[\theta]} \mathsf{int}$.
+Residual: $\forall U.~(0:U) \mid \{\} \xrightarrow{\epsilon^\#[\theta]} \mathsf{int}$.
 
 Apply $\{0:\mathsf{str}\}$:
 \[
@@ -332,12 +332,12 @@ C[\overline{\sigma}] = (\mathsf{class}(C, \rho, \overline{\alpha}, \overline{X})
 \]
 Substitution applies to all member types and to any effects:
 \[
-(\rho \xrightarrow{\epsilon} \tau)[\alpha \mapsto \sigma] \;=\; (\rho[\alpha \mapsto \sigma]) \xrightarrow{\epsilon[\alpha \mapsto \sigma]} (\tau[\alpha \mapsto \sigma]).
+(\rho \xrightarrow{\epsilon^\#} \tau)[\alpha \mapsto \sigma] \;=\; (\rho[\alpha \mapsto \sigma]) \xrightarrow{\epsilon^\#[\alpha \mapsto \sigma]} (\tau[\alpha \mapsto \sigma]).
 \]
 Class parameters are in scope for all members.
 
 \paragraph{Method parameter shadowing.}
-If a method is quantified $\forall\overline{\beta}.\,\rho \xrightarrow{\epsilon} \tau$ and $\overline{\beta} \cap \overline{\alpha} \neq \varnothing$, each $\beta_i$ shadows the corresponding $\alpha_j$ within the method’s scope; no automatic renaming is performed.
+If a method is quantified $\forall\overline{\beta}.\,\rho \xrightarrow{\epsilon^\#} \tau$ and $\overline{\beta} \cap \overline{\alpha} \neq \varnothing$, each $\beta_i$ shadows the corresponding $\alpha_j$ within the method’s scope; no automatic renaming is performed.
 
 \paragraph{Protocols.}
 A protocol $\Pi[\overline{\alpha}]: \rho$ is a structural interface.
@@ -362,12 +362,12 @@ As in \S\ref{sec:unified-record}, rows form a lattice $(\mathcal{\rho}, \sqsubse
 \[
 \begin{aligned}
 \text{Definition:} \quad & \mathsf{class}\; \mathsf{List}[T] :
-\\ & \{\langle \mathrm{"append"} \rangle : (\mathrm{self}:\mathsf{List}[T],\ x:T) \xrightarrow{\epsilon} \mathsf{None} \} \\[0.5em]
+\\ & \{\langle \mathrm{"append"} \rangle : (\mathrm{self}:\mathsf{List}[T],\ x:T) \xrightarrow{\epsilon^\#} \mathsf{None} \} \\[0.5em]
 \text{Instantiation:} \quad & \mathsf{List}[\mathsf{int}] =
-\\ & \{\langle \mathrm{"append"} \rangle : (\mathrm{self}:\mathsf{List}[\mathsf{int}],\ x:\mathsf{int}) \xrightarrow{\epsilon} \mathsf{None} \} \\[0.5em]
+\\ & \{\langle \mathrm{"append"} \rangle : (\mathrm{self}:\mathsf{List}[\mathsf{int}],\ x:\mathsf{int}) \xrightarrow{\epsilon^\#} \mathsf{None} \} \\[0.5em]
 \text{Lookup:} \quad & \mathsf{List}[\mathsf{int}] \cdot \langle \mathrm{"append"} \rangle =
-\\ & (\mathrm{self}:\mathsf{List}[\mathsf{int}],\ x:\mathsf{int}) \xrightarrow{\epsilon} \mathsf{None} \\[0.5em]
-\text{Bind self:} \quad & \langle x\rangle:\mathsf{int} \;\xrightarrow{\epsilon}\; \mathsf{None}
+\\ & (\mathrm{self}:\mathsf{List}[\mathsf{int}],\ x:\mathsf{int}) \xrightarrow{\epsilon^\#} \mathsf{None} \\[0.5em]
+\text{Bind self:} \quad & \langle x\rangle:\mathsf{int} \;\xrightarrow{\epsilon^\#}\; \mathsf{None}
 \end{aligned}
 \]
 
@@ -416,7 +416,7 @@ within the targeted subset.
 \displaystyle\frac{\Gamma \vdash e : \tau \quad \tau \cdot a \Downarrow \phi \quad \phi \text{ is not callable}}{\Gamma \vdash e.a : \phi} \quad \textsc{(Member-Field)}
 \\[1.5em]
 
-\displaystyle\frac{\Gamma \vdash e : \tau \quad \tau \cdot a \Downarrow \forall\overline{X}.(0:\tau_{\mathit{self}}, R') \xrightarrow{\epsilon} \sigma \quad \mathsf{bind\_self}(\tau, \tau_{\mathit{self}}, R', \overline{X}) = (R'', \overline{Y}, \theta)}{\Gamma \vdash e.a : \forall\overline{Y}.R'' \xrightarrow{\epsilon[\theta]} \sigma[\theta]} \quad \textsc{(Member-Method)}
+\displaystyle\frac{\Gamma \vdash e : \tau \quad \tau \cdot a \Downarrow \forall\overline{X}.(0:\tau_{\mathit{self}}, R') \xrightarrow{\epsilon^\#} \sigma \quad \mathsf{bind\_self}(\tau, \tau_{\mathit{self}}, R', \overline{X}) = (R'', \overline{Y}, \theta)}{\Gamma \vdash e.a : \forall\overline{Y}.R'' \xrightarrow{\epsilon^\#[\theta]} \sigma[\theta]} \quad \textsc{(Member-Method)}
 \\[1.5em]
 
 \displaystyle\frac{\Gamma \vdash e : \tau \quad \tau \cdot a \Downarrow \forall() \xrightarrow \sigma}{\Gamma \vdash e.a : \sigma} \quad \textsc{(Member-Property)}
@@ -497,12 +497,12 @@ In the implementation, union types are \emph{normalized} after construction: dup
 This normalization ensures canonical forms for lattice comparisons and avoids spurious distinctions between equivalent unions.
 
 \paragraph{Quantified function application.}
-Application of a quantified function $\forall\overline{X}.~\rho \xrightarrow{\epsilon} \tau_r$
+Application of a quantified function $\forall\overline{X}.~\rho \xrightarrow{\epsilon^\#} \tau_r$
 is governed by the binding algorithm in Appendix~\ref{sec:receiver-binding},
 which handles instantiation, partial application, variadic packs, overloads, and receiver binding.
 \paragraph{Unification.}  
 Unification $\Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta$ computes substitutions $\theta : \mathcal{V} \to \mathcal{T}$ and supports variadic parameters, instantiation, functions, and $\rho$ rows.  
-For functions, unification \emph{requires} $\epsilon_1 = \epsilon_2$; effects are not joined at this stage.  
+For functions, unification \emph{requires} $\epsilon^\#_1 = \epsilon^\#_2$; effects are not joined at this stage.  
 For other structured types such as unions or classes, unification proceeds componentwise over their parameters, and is \emph{undefined} when type constructors differ.
 
 \begin{figure*}[t]
@@ -524,8 +524,8 @@ For other structured types such as unions or classes, unification proceeds compo
      {\Delta \vdash X^* \doteq \mathsf{star}(\overline{\tau}) \leadsto \theta[X^* \mapsto \mathsf{star}(\overline{\tau})]} \quad \text{(Var-Star)}
 \]
 \[
-\frac{\Delta \vdash R_1 \mathrel{\mathsf{unify}_{\rho}} R_2 \leadsto \theta_1 \quad \Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta_2 \quad \epsilon_1 = \epsilon_2}
-     {\Delta \vdash (R_1 \xrightarrow{\epsilon_1} \tau_1) \doteq (R_2 \xrightarrow{\epsilon_2} \tau_2) \leadsto \theta_1 \cup \theta_2} \quad \text{(Fun)}
+\frac{\Delta \vdash R_1 \mathrel{\mathsf{unify}_{\rho}} R_2 \leadsto \theta_1 \quad \Delta \vdash \tau_1 \doteq \tau_2 \leadsto \theta_2 \quad \epsilon^\#_1 = \epsilon^\#_2}
+     {\Delta \vdash (R_1 \xrightarrow{\epsilon^\#_1} \tau_1) \doteq (R_2 \xrightarrow{\epsilon^\#_2} \tau_2) \leadsto \theta_1 \cup \theta_2} \quad \text{(Fun)}
 \]
 \[
 \frac{\forall k \in \mathrm{dom}(R_1) \cap \mathrm{dom}(R_2).\ \Delta \vdash R_1(k) \doteq R_2(k) \leadsto \theta_k}
@@ -542,7 +542,7 @@ For other structured types such as unions or classes, unification proceeds compo
 Dynamic semantics here covers the runtime-analogous steps for overload resolution, attribute/index access, and effect composition, as modeled in our abstract interpreter.
 
 \paragraph{Property evaluation.}
-If $\tau \cdot k$ yields a callable $(\xrightarrow{\epsilon} \sigma)$, 
+If $\tau \cdot k$ yields a callable $(\xrightarrow{\epsilon^\#} \sigma)$, 
 the result of $\tau \cdot k$ is $\sigma$ (implicit call with empty arguments).  
 Otherwise, if it is callable but not a property, $\tau \cdot k$ yields the bound method, with the receiver already bound via the mechanism described in \S\ref{sec:receiver-binding}.
 
@@ -559,16 +559,6 @@ Overload resolution is a two-stage process:
 \end{enumerate}
 This mirrors Python’s runtime dispatch but enables precise static joins over all viable arms.
 
-\begin{figure*}[t]
-\centering
-\[
-\mathsf{resolve}(\{\varphi_1, \ldots, \varphi_n\}, A) =
-\bigsqcup\{\mathsf{return}(\varphi_i) \mid \mathsf{unify}_{\rho}(\mathsf{params}(\varphi_i), A) \ \text{succeeds}\}
-\]
-\caption{Dynamic-semantics view of overload resolution. $A$ is the argument row. $\bigsqcup$ is the type join from Fig.~\ref{fig:auxiliary-defs}.}
-\label{fig:dynamic-semantics}
-\end{figure*}
-
 \paragraph{Attribute and index access.}  
 \label{sec:rows-generic-access}
 Attribute access $\tau \cdot k$ is resolved by the row lookup rules of \S\ref{sec:modules-classes-protocols}.  
@@ -584,9 +574,9 @@ where keys $\langle i\rangle$ and $\langle \mathrm{"\_\_getitem\_\_"}\rangle$ fo
 
 \subsubsection*{Effects}
 \label{sec:effects}
-An effect $\epsilon$ is a tuple
+An effect $\epsilon^\#$ is a tuple
 \[
-\epsilon = (\mathsf{new},\ \mathsf{update},\ \mathsf{points\_to\_args},\ \mathsf{bound\_method})
+\epsilon^\# = (\mathsf{new},\ \mathsf{update},\ \mathsf{points\_to\_args},\ \mathsf{bound\_method})
 \]
 where:
 \begin{itemize}
@@ -603,27 +593,27 @@ Joins are computed pointwise over Boolean components, and via an optional-type j
 \begin{cases}
 \tau_1 \sqcup \tau_2 & \text{if both defined (join as in Fig.~\ref{fig:auxiliary-defs})},\\
 \tau_i & \text{if only $\tau_i$ defined},\\
-\bot & \text{if neither defined}.
+None & \text{if neither defined}.
 \end{cases}
 \]
 If the $\mathsf{update}$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from Fig.~\ref{fig:auxiliary-defs}.
 
-\begin{table*}[ht]
-\centering
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Python Construct} & \textbf{Type Representation} & \textbf{Key Operations} \\
-\hline
-\texttt{def f(x: T) -> U} & $\forall\varnothing.\ \{0:T\} \mid \{\} \xrightarrow{\epsilon} U$ & Application, partial eval \\
-\texttt{class C: ...} & $\mathsf{class}(C, \rho_{\mathit{members}}, [], [])$ & Member access, instantiation \\
-\texttt{@property} & $\forall\varnothing.\ \xrightarrow{\epsilon} \tau$ & Auto-call on access \\
-\texttt{@overload} & $\mathsf{overload}(\{\varphi_1, \ldots, \varphi_n\})$ & Two-stage resolution \\
-\texttt{*args} & $\{i: X^*\}$ in params & Incremental binding \\
-\texttt{x.attr} & $\tau \cdot \langle\text{``attr''}\rangle$ & Row lookup \\
-\texttt{x[i]} & $\tau \cdot \langle i\rangle$ or \texttt{\_\_getitem\_\_} & Dual resolution \\
-Module import & $\mathsf{module}(M, \rho)$ & Singleton with members \\
-Protocol & $\mathsf{protocol}(\rho, [], [])$ & Structural satisfaction \\
-\hline
-\end{tabular}
-\caption{Mapping between Python constructs and their type system representations}
-\end{table*}
+% \begin{table*}[ht]
+% \centering
+% \begin{tabular}{|l|l|l|}
+% \hline
+% \textbf{Python Construct} & \textbf{Type Representation} & \textbf{Key Operations} \\
+% \hline
+% \texttt{def f(x: T) -> U} & $\forall\varnothing.\ \{0:T\} \mid \{\} \xrightarrow{\epsilon^\#} U$ & Application, partial eval \\
+% \texttt{class C: ...} & $\mathsf{class}(C, \rho_{\mathit{members}}, [], [])$ & Member access, instantiation \\
+% \texttt{@property} & $\forall\varnothing.\ \xrightarrow{\epsilon^\#} \tau$ & Auto-call on access \\
+% \texttt{@overload} & $\mathsf{overload}(\{\varphi_1, \ldots, \varphi_n\})$ & Two-stage resolution \\
+% \texttt{*args} & $\{i: X^*\}$ in params & Incremental binding \\
+% \texttt{x.attr} & $\tau \cdot \langle\text{``attr''}\rangle$ & Row lookup \\
+% \texttt{x[i]} & $\tau \cdot \langle i\rangle$ or \texttt{\_\_getitem\_\_} & Dual resolution \\
+% Module import & $\mathsf{module}(M, \rho)$ & Singleton with members \\
+% Protocol & $\mathsf{protocol}(\rho, [], [])$ & Structural satisfaction \\
+% \hline
+% \end{tabular}
+% \caption{Mapping between Python constructs and their type system representations}
+% \end{table*}

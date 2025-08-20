@@ -23,7 +23,9 @@ Each instruction reads and writes explicit \emph{variables} $v \in \mathcal{V}$,
 Control flow is represented explicitly in a \emph{control-flow graph} (CFG) $G = (L, E)$ with directed edges for possible execution paths.
 We write $\mathsf{succ}(l)$ and $\mathsf{pred}(l)$ for the successors and predecessors of a label $l$ in $G$.
 An \emph{instruction location} is denoted by $(l, i)$ for the $i$-th instruction in block $l$.
+
 \subsection{Liveness Analysis}
+\label{sec:liveness}
 Liveness analysis determines, for each program point, the set of TAC variables whose current value may be read along some future control-flow path before being overwritten.  
 We compute liveness as a standard backward dataflow analysis on the TAC, with the set of live variables at a location $(l,i)$ denoted $\mathsf{Live}_{l,i} \subseteq \mathcal{V}$.
 
@@ -200,7 +202,7 @@ Precision loss occurs when joins force widening to \texttt{any} (e.g., differing
 Dynamic features such as monkey--patching, dynamic imports, or metaclass manipulation are excluded from the target subset.
 
 \subsection{Domain Interactions}
-The domains operate in a reduced product with directed information flow:
+The domains operate in a reduced product (each domain refines the others) with directed information flow:
 \begin{itemize}
     \item \emph{Liveness $\rightarrow$ Pointer:} prunes unreachable roots and their edges.
     \item \emph{Type $\rightarrow$ Pointer:} constrains possible targets based on type-level field shape.

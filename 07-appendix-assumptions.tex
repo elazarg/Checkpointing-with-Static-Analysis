@@ -11,6 +11,8 @@ Our analysis requires that programs adhere to the following properties, which en
     \item \textbf{Statically-Resolvable Calls:} Function calls must be resolvable at analysis time using the provided type signatures. The framework does not model complex higher-order control flow where functions are passed as first-class values to unknown call sites.
     \item \textbf{Explicit Generic Instantiations:} To avoid relying on runtime type propagation, generic collections must be explicitly instantiated with their type parameters (e.g., \texttt{list[int]()}), especially when empty.
     \item \textbf{Simplified NumPy Aliasing:} The analysis assumes that NumPy array variables refer to distinct memory objects unless explicitly constructed via view-creating operations. It does not model view-based aliasing where multiple arrays may share the same underlying data buffer.
+    \item \textbf{Operator implementation is regular:} operator lookup rules in Python are complex. Usually, however, one can assume that all candidate implementations do generally the same thing. Similar assumptions are required for soundness in type checkers such as MyPy.
+    \item \textbf{No reentrance} function called can be overapproximated using effect annotation, and do not depend on the behavior of the callsite except the information explicitly passed through arguments and self-binding.
 \end{itemize}
 
 These assumptions are satisfied by a wide class of numerical programs that follow idiomatic NumPy usage: preallocated buffers, explicit data copying, no implicit sharing, and simple iteration over typed arrays. These assumptions enable a sound, precise static analysis tailored to checkpointing in deterministic, structured Python programs.
