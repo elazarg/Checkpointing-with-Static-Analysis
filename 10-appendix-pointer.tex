@@ -1,4 +1,3 @@
-
 \begin{figure*}[t]
 \centering
 
@@ -45,6 +44,8 @@ D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 \label{fig:abstract-domains}
 \end{figure*}
 
+\newpage
+
 \section{Pointer Analysis}
 \label{sec:appendix-pointer}
 
@@ -58,51 +59,51 @@ Python’s dynamic features such as dynamic typing, reflection, and runtime obje
 
 Consistent with Appendices~\ref{sec:appendix-tac-ir} and~\ref{sec:appendix-typesystem}, we use:
 \begin{itemize}
-    \item \(\mathcal{V}\): Variables, split into named locals \(\mathcal{V}_{\mathit{named}}\) (e.g., \(x\)) and stack temporaries \(\mathcal{V}_{\mathit{stack}}\) (e.g., \(\$0\)).
-    \item \(\mathcal{O}\): Abstract objects, including:
+    \item $\mathcal{V}$: Variables, split into named locals $\mathcal{V}_{\mathit{named}}$ (e.g., $x$) and stack temporaries $\mathcal{V}_{\mathit{stack}}$ (e.g., $\$0$).
+    \item $\mathcal{O}$: Abstract objects, including:
     \begin{itemize}
-        \item \(\mathsf{Loc}(\ell,i)\): Object allocated at instruction \(i\) in TAC block labeled \(\ell\).
-        \item \(\mathsf{Param}(p)\): Parameter \(p\).
-        \item \(\mathsf{Imm}(\tau)\): Immutable object of type \(\tau\).
-        \item \(\mathsf{Scope}(s)\): Root object for variable namespaces (e.g., \(\mathtt{LOCALS}\), \(\mathtt{GLOBALS}\)).
+        \item $\mathsf{Loc}(\ell,i)$: Object allocated at instruction $i$ in TAC block labeled $\ell$.
+        \item $\mathsf{Param}(p)$: Parameter $p$.
+        \item $\mathsf{Imm}(\tau)$: Immutable object of type $\tau$.
+        \item $\mathsf{Scope}(s)$: Root object for variable namespaces (e.g., $\mathtt{LOCALS}$, $\mathtt{GLOBALS}$).
     \end{itemize}
-    \item \(\mathcal{F}\): Fields, including attribute names, dictionary keys, and wildcard \(\star\) for collections.
-    \item \(\mathcal{G} = (L, E, B)\): Control-flow graph, where \(L\) is the set of labels, \(E \subseteq L \times L\) edges, and \(B: L \to \mathcal{I}^*\) block bodies.
-    \item \((l, i)\): Instruction location, where \(l \in L\) and \(i\) indexes into \(B(l)\).
-    \item \(\mathsf{Live}_{l,i} \subseteq \mathcal{V}\): Live variables at \((l,i)\).
-    \item \(\mathsf{Reach}(R, P)\): Reachable objects from roots \(R \subseteq \mathcal{O}\) under pointer map \(P\).
-    \item \(\mathsf{DirtyRoots}(\Sigma, R)\): Live roots reaching dirty objects in state \(\Sigma\).
+    \item $\mathcal{F}$: Fields, including attribute names, dictionary keys, and wildcard $\star$ for collections.
+    \item $\mathcal{G} = (L, E, B)$: Control-flow graph, where $L$ is the set of labels, $E \subseteq L \times L$ edges, and $B: L \to \mathcal{I}^*$ block bodies.
+    \item $(l, i)$: Instruction location, where $l \in L$ and $i$ indexes into $B(l)$.
+    \item $\mathsf{Live}_{l,i} \subseteq \mathcal{V}$: Live variables at $(l,i)$.
+    \item $\mathsf{Reach}(R, P)$: Reachable objects from roots $R \subseteq \mathcal{O}$ under pointer map $P$.
+    \item $\mathsf{DirtyRoots}(\Sigma, R)$: Live roots reaching dirty objects in state $\Sigma$.
 \end{itemize}
 
 \subsection{Abstract Domains}
 
-The pointer analysis models heap behavior through a reduced product \(\Sigma = (P, T, D)\), combining pointer, type, and dirty domains to support checkpointing.
+The pointer analysis models heap behavior through a reduced product $\Sigma = (P, T, D)$, combining pointer, type, and dirty domains to support checkpointing.
 
-\paragraph{Abstract Objects (\(\mathcal{O}\)).}
+\paragraph{Abstract Objects ($\mathcal{O}$).}
 Abstract objects represent equivalence classes of concrete heap locations:
 \begin{itemize}
-    \item \(\mathsf{Loc}(\ell,i)\): Objects allocated at instruction \((\ell,i)\), merging all runtime instances allocated there.
-    \item \(\mathsf{Param}(p)\): Placeholders for function parameters, modeling unknown external inputs.
-    \item \(\mathsf{Imm}(\tau)\): Canonical immutable objects of type \(\tau\) (e.g., \(\mathtt{42}\), \(\mathtt{True}\)).
-    \item \(\mathsf{Scope}(s)\): Distinguished root objects for variable namespaces, whose fields correspond to variables.
+    \item $\mathsf{Loc}(\ell,i)$: Objects allocated at instruction $(\ell,i)$, merging all runtime instances allocated there.
+    \item $\mathsf{Param}(p)$: Placeholders for function parameters, modeling unknown external inputs.
+    \item $\mathsf{Imm}(\tau)$: Immutable objects of type $\tau$ (e.g., any \texttt{int}, $\mathtt{True}$).
+    \item $\mathsf{Scope}(s)$: Distinguished root objects for variable namespaces, whose fields correspond to variables.
 \end{itemize}
 
 The domains are described in Figure~\ref{fig:abstract-domains}. The pointer domain $P$ models heap shape, where $P[o][f]$ is the set of possible targets of field $f$ of object $o$. The wildcard field $\star$ summarizes collection elements. The type domain $T$ assigns types to objects, with ordering and join operations defined over the type lattice (see Appendix~\ref{sec:appendix-typesystem}). The dirty domain $D$ tracks which fields may have been mutated. Bottom elements: $\bot_\mathcal{P}$ maps every $(o,f)$ to $\emptyset$, $\bot_{\mathcal{T}}$ maps each object to $\bot_{\mathit{Type}}$, and $\bot_\mathcal{D}$ maps each object to $\emptyset$. The reduced product $\Sigma$ combines all three domains with component-wise operations.
 
 \subsection{Abstract Semantics}
 
-\paragraph{Expression Evaluation} \(\mathsf{Expr}^\#(\Sigma, e, \ell)\) produces a triple:
+\paragraph{Expression Evaluation} $\mathsf{Expr}^\#(\Sigma, e, \ell)$ produces a triple:
 \[
 \mathsf{Expr}^\#(\Sigma, e, \ell) = \big(O_e,\ \tau_e,\ \Delta_e\big)
 \]
 where:
 \begin{itemize}
-    \item \(O_e \subseteq \mathcal{O}\): objects reachable via \(e\),
-    \item \(\tau_e \in \mathit{TypeExpr}\): inferred static type,
-    \item \(\Delta_e \in \mathcal{D}\): fields potentially dirtied.
+    \item $O_e \subseteq \mathcal{O}$: objects reachable via $e$,
+    \item $\tau_e \in \mathit{TypeExpr}$: inferred static type,
+    \item $\Delta_e \in \mathcal{D}$: fields potentially dirtied.
 \end{itemize}
 
-Key evaluation rules are shown in Figure~\ref{fig:expr-semantics}.
+Key evaluation rules are shown in Figure~\ref{fig:expr-semantics}. Note that the choice of Imm() is guided by the type system; Const() are just a special case where it is syntactically foced. 
 
 \begin{figure}[t]
 \centering
@@ -151,7 +152,7 @@ Key evaluation rules are shown in Figure~\ref{fig:expr-semantics}.
 \end{figure}
 
 \paragraph{Instruction Semantics.}
-Instruction transfer functions \(\mathsf{Trans}^\#(\Sigma,i,\ell) \to \Sigma'\) update the abstract state, as shown in Figure~\ref{fig:trans-semantics}.
+Instruction transfer functions $\mathsf{Trans}^\#(\Sigma,i,\ell) \to \Sigma'$ update the abstract state, as shown in Figure~\ref{fig:trans-semantics}.
 
 \begin{figure*}[t]
 \centering
@@ -222,13 +223,13 @@ Abstract garbage collection prunes unreachable objects:
 \quad
 S = \mathsf{Reach}(R,P)
 \]
-where roots \(R\) are derived from liveness:
+where roots $R$ are derived from liveness:
 \[
 R = \big\{ P[\mathsf{Scope}(\mathtt{LOCALS})][v] \mid v \in \mathsf{Live}_{l,i} \big\}
 \]
 
 \paragraph{Checkpointing Roots.}
-The function \(\mathsf{DirtyRoots}(\Sigma,R)\) identifies variables whose reachable sub-heaps have pending mutations:
+The function $\mathsf{DirtyRoots}(\Sigma,R)$ identifies variables whose reachable sub-heaps have pending mutations:
 \[
 \mathsf{DirtyRoots}(\Sigma,R)
     = \{ v \in R \mid \exists o \in \mathsf{Reach}(\{P[\mathsf{Scope}(\mathtt{LOCALS})][v]\},P),\ D[o] \neq \emptyset \}
@@ -239,17 +240,17 @@ This supports efficient checkpointing by focusing only on modified reachable obj
 
 Pointer analysis integrates tightly with the type system via effectful operations:
 \begin{itemize}
-    \item \(\mathsf{Access}(\tau,f)\): Resolves type of attribute or field \(f\) of type \(\tau\).
-    \item \(\mathsf{Apply}(\tau_f,\langle\overline{\tau_i}\rangle)\): Returns function result type \(\tau'\) and an effect \(\epsilon\).
-    \item \(\mathsf{resolve}(O_f,\langle\overline{O_i}\rangle,\epsilon)\): Determines target objects based on effect \(\epsilon\).
-    \item \(\mathsf{update}(\epsilon)\): Extracts dirty fields from the update set of \(\epsilon\).
+    \item $\mathsf{Access}(\tau,f)$: Resolves type of attribute $f$ of type $\tau$.
+    \item $\mathsf{Apply}(\tau_f,\langle\overline{\tau_i}\rangle)$: Returns function result type and effect.
+    \item $\mathsf{resolve}(O_f,\langle\overline{O_i}\rangle,\epsilon)$: Determines target objects based on effect $\epsilon$.
+    \item $\mathsf{update}(\epsilon)$: Extracts dirty fields from the update set of $\epsilon$.
 \end{itemize}
-Effects \(\epsilon = (\mathsf{new},\mathsf{update},\mathsf{points\_to\_args},\mathsf{bound\_method})\) guide heap updates and ensure that mutations are precisely tracked.
+Effects $\epsilon = (\mathsf{new},\mathsf{update},\mathsf{points\_to\_args},\mathsf{bound\_method})$ guide heap updates and ensure that mutations are precisely tracked.
 
 \subsection{Soundness}
 
 \paragraph{Abstract Soundness Guarantee.}
-We define a concretization function \(\gamma: \Sigma \mapsto 2^{\mathit{Heap}}\) mapping abstract states to sets of possible concrete heaps.  
+We define a concretization function $\gamma: \Sigma \mapsto 2^{\mathit{Heap}}$ mapping abstract states to sets of possible concrete heaps.  
 Soundness requires:
 \[
 \forall \Sigma^\#,\ \forall H \in \gamma(\Sigma^\#):
@@ -257,19 +258,19 @@ Soundness requires:
 \]
 That is, the abstract state over-approximates all reachable concrete objects and all field writes:
 \begin{itemize}
-    \item If a concrete field write occurs, it is reflected in \(D[o]\).
-    \item If a concrete pointer relation exists, it is represented in \(P\).
+    \item If a concrete field write occurs, it is reflected in $D[o]$.
+    \item If a concrete pointer relation exists, it is represented in $P$.
 \end{itemize}
-Soundness follows from the monotonicity of \(\mathsf{Expr}^\#\) and \(\mathsf{Trans}^\#\), and the compatibility of TAC with the reduced product lattice.
+Soundness follows from the monotonicity of $\mathsf{Expr}^\#$ and $\mathsf{Trans}^\#$, and the compatibility of TAC with the reduced product lattice.
 
 \subsection{Design Decisions and Limitations}
 
 \paragraph{Design Choices.}
 \begin{itemize}
     \item \textbf{Abstract Evaluation:} Complex Python semantics (e.g., descriptors, MRO) are handled by dedicated helpers while preserving heap effects.
-    \item \textbf{Iterator Simplification:} Iterators terminate at \(\mathsf{EndIter}\), avoiding modeling of \texttt{StopIteration}.
+    \item \textbf{Iterator Simplification:} Iterators terminate at $\mathsf{EndIter}$, avoiding modeling of \texttt{StopIteration}.
     \item \textbf{Intraprocedural Focus:} Interprocedural effects are modeled through type signatures rather than full call graph expansion.
-    \item \textbf{Reduced Product:} Combines \(P\), \(T\), and \(D\) for precision via mutual refinement.
+    \item \textbf{Reduced Product:} Combines $P$, $T$, and $D$ for precision via mutual refinement.
 \end{itemize}
 
 \paragraph{Limitations.}
@@ -299,17 +300,17 @@ y = x           # Alias
 
 TAC translation:
 \begin{itemize}
-    \item \(\mathsf{Assign}(x,\mathsf{Call}(\mathtt{list},\langle1,2\rangle,\mathsf{None}),\mathsf{false})\) at \((l_1,0)\).
-    \item \(\mathsf{Assign}(\mathsf{None},\mathsf{Call}(\mathsf{Attribute}(x,\mathtt{append}),\langle3\rangle,\mathsf{None}),\mathsf{false})\).
-    \item \(\mathsf{Assign}(y,x,\mathsf{false})\).
+    \item $\mathsf{Assign}(x,\mathsf{Call}(\mathtt{list},\langle1,2\rangle,\mathsf{None}),\mathsf{false})$ at $(l_1,0)$.
+    \item $\mathsf{Assign}(\mathsf{None},\mathsf{Call}(\mathsf{Attribute}(x,\mathtt{append}),\langle3\rangle,\mathsf{None}),\mathsf{false})$.
+    \item $\mathsf{Assign}(y,x,\mathsf{false})$.
 \end{itemize}
 
 Pointer analysis yields:
 \begin{itemize}
-    \item \(P[\mathsf{Scope}(\mathtt{LOCALS})][x] = \{\mathsf{Loc}(l_1)\}\).
-    \item \(P[\mathsf{Loc}(l_1)][\star] = \{\mathsf{Imm}(\mathtt{int})\}\).
-    \item After \texttt{append}, \(D[\mathsf{Loc}(l_1)] = \{\star\}\).
-    \item After \(y = x\), \(P[\mathsf{Scope}(\mathtt{LOCALS})][y] = \{\mathsf{Loc}(l_1)\}\).
-    \item \(\mathsf{DirtyRoots}(\Sigma,\mathsf{Live}_{l,i}) = \{x,y\}\).
+    \item $P[\mathsf{Scope}(\mathtt{LOCALS})][x] = \{\mathsf{Loc}(l_1)\}$.
+    \item $P[\mathsf{Loc}(l_1)][\star] = \{\mathsf{Imm}(\mathtt{int})\}$.
+    \item After \texttt{append}, $D[\mathsf{Loc}(l_1)] = \{\star\}$.
+    \item After $y = x$, $P[\mathsf{Scope}(\mathtt{LOCALS})][y] = \{\mathsf{Loc}(l_1)\}$.
+    \item $\mathsf{DirtyRoots}(\Sigma,\mathsf{Live}_{l,i}) = \{x,y\}$.
 \end{itemize}
 Thus, both \texttt{x} and \texttt{y} are marked as roots for checkpointing.

@@ -85,6 +85,6 @@ The results support the following observations:
 
 Our system assumes that all side effects are either annotated or internal to the function body. If external state is mutated (e.g., global variables, files, sockets) and not captured by the type system, recovery may be unsound.
 
-Additionally, our analysis does not verify behavioral equivalence post-recovery. We rely on programmer discipline and the assumption that the relevant control path is idempotent from the checkpoint location onward.
+Additionally, our analysis does not verify behavioral equivalence post-recovery. We produce an explicitly instrumented code so the programmers can double-check it by themselves. we rely on programmer discipline and the assumption that the relevant control path is idempotent from the checkpoint location onward.
 
 Our analysis takes a few seconds per benchmark function, and can be run entirely ahead-of-time. This is fast enough to be usable in practice and supports iterative development. We do not report fine-grained performance numbers, as the tool is not designed to operate online or scale to large codebases; rather, its value lies in enabling precise transformations in tightly scoped, performance-critical numerical kernels.
