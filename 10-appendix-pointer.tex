@@ -101,11 +101,11 @@ Key evaluation rules are shown in \autoref{fig:expr-semantics}. Note that the ch
 \begin{mathpar}
 \inferrule*[right=Var]
   { o = P[\mathtt{LOCALS}][v] }
-  { \mathsf{Expr}^\#(\Sigma, v, \ell) = (\{o\}, T[o], \bot_\mathcal{D}) }
+  { \mathsf{Expr}^\#((P, D, T), v, \ell) = (\{o\}, T[o], \bot_\mathcal{D}) }
 
 \inferrule*[right=Const]
   { \tau_c = \mathsf{type}(c) }
-  { \mathsf{Expr}^\#(\Sigma, c, \ell) = (\{\mathsf{Imm}(\tau_c)\}, \tau_c, \bot_\mathcal{D}) }
+  { \mathsf{Expr}^\#((P, D, T), c, \ell) = (\{\mathsf{Imm}(\tau_c)\}, \tau_c, \bot_\mathcal{D}) }
 
 \inferrule*[right=Attr]
   { O = P[\mathtt{LOCALS}][v] \\
@@ -143,19 +143,19 @@ Instruction transfer functions $\mathsf{Trans}^\#(\Sigma,i,\ell) \to \Sigma'$ up
 \end{align}
 \begin{mathpar}
 \inferrule*[right=Assign-Var]
-  { \mathsf{Expr}^\#(\Sigma,e,\ell) = (O,\tau,\Delta)}
-  { \mathsf{Trans}^\#(\Sigma,\mathsf{Assign}(x,e,\mathsf{false}),\ell) = (P[\mathtt{LOCALS}][x \mapsto O],T[O \mapsto \tau],D \sqcup \Delta) } \\
+  { \mathsf{Expr}^\#((P, D, T),e,\ell) = (O,\tau,\Delta)}
+  { \mathsf{Trans}^\#((P, D, T),\mathsf{Assign}(x,e,\mathsf{false}),\ell) = (P[\mathtt{LOCALS}][x \mapsto O],T[O \mapsto \tau],D \sqcup \Delta) } \\
 \inferrule*[right=Assign-Subscr]
   { O_1 = P[\mathtt{LOCALS}][v_1] \quad O_2 = P[\mathtt{LOCALS}][v_2]  \\
     P' = \mathsf{UpdateSubscr}(P, O_1, O_2, P[\mathtt{LOCALS}][v]) \\
     D' = \mathsf{Update}(D, O_1, \text{deps}, O_2) }
-  { \mathsf{Trans}^\#(\Sigma, \mathsf{Assign}(\mathsf{Subscript}(v_1, v_2), v, \mathsf{false}), \ell)
+  { \mathsf{Trans}^\#((P, D, T), \mathsf{Assign}(\mathsf{Subscript}(v_1, v_2), v, \mathsf{false}), \ell)
     = (P', T, D') } \\
 \inferrule*[right=Assign-Attr]
   { O_1 = P[\mathtt{LOCALS}][v_1] \\
     P' = \mathsf{Update}(P, O_1, f, P[\mathtt{LOCALS}][v]) \\
     D' = \mathsf{Update}(D, O_1, \text{deps}, \{f\}) }
-  { \mathsf{Trans}^\#(\Sigma,\mathsf{Assign}(\mathsf{Attribute}(v_1,f),v,\mathsf{false}),\ell)
+  { \mathsf{Trans}^\#((P, D, T),\mathsf{Assign}(\mathsf{Attribute}(v_1,f),v,\mathsf{false}),\ell)
     = (P',T,D') }
 \end{mathpar}
 \caption{Selected instruction transfer rules for pointer analysis using weak updates.}

@@ -1,7 +1,7 @@
 \begin{figure}[t]
     \centering
     \input{pipeline.tex}
-    \caption{Analysis pipeline. Python source is compiled to bytecode, lowered to TAC, and analyzed in three interacting domains.}
+    \caption{Analysis pipeline. Python source is compiled to bytecode, lowered to TAC, and analyzed in three interacting domains, and finally instrumented.}
     \label{fig:overview}
 \end{figure}
 
@@ -144,14 +144,13 @@ The principal forms in our type language (full syntax in \autoref{sec:appendix-t
 
 \paragraph{Rows and subtyping.}
 A row is a finite sequence of fields indexed by name or position.  
-Width subtyping applies: a type with extra fields is a subtype of one with fewer fields, provided all shared fields match.  
-Protocols are a special case: any object with the required fields is a subtype, regardless of its nominal class.
+Width subtyping applies: a type with extra fields is a subtype of one with fewer fields, provided all shared fields match.
 
 \paragraph{Call checking and binding.}
 When a call is type--checked, argument types are unified with the corresponding parameter types:
 \begin{itemize}
   \item Type variables may be solved, yielding a substitution applied to all remaining parameters and the return type.
-  \item Parameters matched by the call are removed, producing either a \emph{residual callable} (for partial application) or the substituted return type.
+  \item Parameters matched by the call are removed, producing a \emph{residual callable}.
   \item Variadic packs (\texttt{*args}) may be partially bound and matched incrementally; if unmatched packs remain, the result is again a residual callable.
 \end{itemize}
 Overloaded functions are handled by attempting binding against each arm independently; the results are joined when ambiguity remains.  
@@ -194,7 +193,7 @@ Similarly, \texttt{list.append} with an \texttt{int} argument refines the elemen
 \paragraph{Precision and limits.}
 The type system can:
 \begin{enumerate}
-  \item Identify exactly which heap locations an operation may modify.
+  \item Identify an overapproximation of the set of heap locations an operation may modify.
   \item Exclude immutable structures from checkpoints.
   \item Refine container element types across updates.
 \end{enumerate}
@@ -205,7 +204,7 @@ Dynamic features such as monkey--patching, dynamic imports, or metaclass manipul
 The domains operate in a reduced product (each domain refines the others) with directed information flow:
 \begin{itemize}
     \item \emph{Liveness $\rightarrow$ Pointer:} prunes unreachable roots and their edges.
-    \item \emph{Type $\rightarrow$ Pointer:} constrains possible targets based on type-level field shape.
+    \item \emph{Type $\rightarrow$ Pointer:} constrains possible targets based on typed effect annotations.
     \item \emph{Type $\rightarrow$ Dirty:} immutable objects never become dirty.
     \item \emph{Pointer $\rightarrow$ Type:} dynamic dispatch resolution is narrowed to types of reachable receivers.
 \end{itemize}

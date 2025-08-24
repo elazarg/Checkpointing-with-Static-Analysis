@@ -32,20 +32,19 @@ We conclude with key properties of the IR and a discussion of design choices and
 \begin{aligned}
 \textbf{Instructions:} && \\
 cmd ::= \;& \mathsf{Assign}(\sigma, e) \\
-      &\mid \mathsf{Jump}(\ell, e) \\
-      &\mid \mathsf{For}(\sigma, v_{\mathit{iter}}, \ell_{\mathit{exit}}) \\
+      &\mid \mathsf{Assume}(\$b, true|false) \\
+      &\mid \mathsf{For}(\$n, \$s_{\mathit{iter}}, \ell_{\mathit{exit}}) \\
       &\mid \mathsf{Exit} \\[1ex]
 \textbf{Expressions:} && \\
-e ::= \;& v \mid c \\
- &\mid \mathsf{Attribute}(v,f) \\
- &\mid \mathsf{Subscript}(v_1,v_2) \\
- &\mid \mathsf{Binary}(v_1,op,v_2,inplace) \\
- &\mid \mathsf{Unary}(op,v) \\
- &\mid \mathsf{Call}(v_f, \overline{v}_{i=1}^{n}) \\[1ex]
+e ::= \;& s \mid v \mid c \\
+ &\mid \mathsf{Attribute}(s, f) \\
+ &\mid \mathsf{Subscript}(s_1, s_k) \\
+ &\mid \mathsf{Binary}(op, s_1, s_2, inplace) \\
+ &\mid \mathsf{Unary}(op, s) \\
+ &\mid \mathsf{Call}(s_f, \overline{s}, \ell) \\[1ex]
 \textbf{Assignment Targets:} && \\
-v ::= \;& \mathsf{\$}i \mid id \\
-lhs ::= \;& v \mid \mathsf{None} \mid \mathsf{Attribute}(v,f) \mid \mathsf{Subscript}(v_1,v_2) \\
-\sigma ::= \;& lhs \mid \langle\overline{lhs}_{i=1}^{n}\rangle
+s ::= \;& \mathsf{\$}i \\
+\sigma ::= \;& id \mid \mathsf{Attribute}(s,f) \mid \mathsf{Subscript}(s_1,s_2) \mid \langle\overline{s}\rangle
 \end{aligned}
 \]
 \caption{TAC Syntax}
@@ -55,15 +54,8 @@ lhs ::= \;& v \mid \mathsf{None} \mid \mathsf{Attribute}(v,f) \mid \mathsf{Subsc
 \subsection{Programs and Control Flow}
 
 A TAC program is represented as a control-flow graph that makes execution paths explicit for dataflow analysis. This representation directly supports our liveness analysis (which requires predecessor/successor relationships) and loop-aware checkpointing (which needs to identify iteration boundaries).
-
-A program is a control-flow graph $(L,E,B)$ where:
-\begin{itemize}
-\item $L$ is a finite set of labels $\ell$ identifying basic blocks,
-\item $E \subseteq L \times L$ are directed control-flow edges representing possible execution transitions,
-\item $B : L \to \mathcal{C}^*$ maps each label to its sequence of TAC instructions.
-\end{itemize}
-
-Basic blocks contain straight-line instruction sequences with no internal control flow. Control transfers occur only at block boundaries via explicit \textsf{Jump} instructions or sequential fall-through to successor blocks. This structure enables efficient dataflow analysis by providing clear program points where analysis state must be merged or propagated.
+A program is a control-flow graph whose edges are annotated with TAC instructions.
+Basic blocks contain straight-line instruction sequences with no internal control flow. Control transfers occur only at block boundaries via explicit edges in the graph. This structure enables efficient dataflow analysis by providing clear program points where analysis state must be merged or propagated.
 Raising exceptions is allowed, but handling them is not; \texttt{raise} is handled as a terminating instruction. \texttt{yield} is unsupported. Both decisions prevent the control flow from becoming unmanageable. 
 
 \subsection{Syntax}
@@ -78,7 +70,7 @@ to eliminate incidental stack mechanics. This makes dataflow explicit and simpli
 analysis. The instruction set includes:
 \begin{itemize}
     \item \textbf{\textsf{Assign}$(\sigma, e)$}: Evaluates expression $e$ and writes the result to target $\sigma$. Targets may include tuple unpacking and attribute/subscript assignments.~\footnote{The implementation also handles CPython's \texttt{LOAD\_FAST\_AND\_CLEAR} opcode, used in comprehensions to prevent variable capture, using a flag to handle push-pop of a potentially nonexistent named variable. We omit this detail in the formal description for simplicity.}
-    \item \textbf{\textsf{Jump}$(\ell, e)$}: Transfers control to label $\ell$. If $e$ is present, the jump is conditional; otherwise, it is unconditional.
+    \item \textbf{\textsf{Assume}$(\$b, true)$}: continues execution iff $\$b$ is exactly the object corresponding to Python's \texttt{True} (and similarly \textsf{Assume}$(\$b, false)$).
     \item \textbf{\textsf{For}$(\sigma, v_{\mathit{iter}}, \ell_{\mathit{exit}})$}: Implements a Python \texttt{for} loop by binding each value from the iterator $v_{\mathit{iter}}$ to target $\sigma$. Control jumps to $\ell_{\mathit{exit}}$ when the iterator is exhausted.
     \item \textbf{\textsf{Exit}}: Terminates the current control-flow path (function return or raising an exception).
 \end{itemize}
@@ -87,7 +79,7 @@ Key design elements include:
 \begin{itemize}
     \item \textbf{Assignment targets} $\sigma$ support Python's flexible assignment patterns, including tuple unpacking and attribute/subscript assignment.
     \item \textbf{Expressions} $e$ cover all Python operations needed for numerical code: arithmetic, attribute access, subscripting, and function calls.
-    \item \textbf{Control flow} is explicit via \textsf{Jump} and \textsf{For} instructions, with loop exit labels clearly marked.
+    \item \textbf{Control flow} is statically known via graph edges.
 \end{itemize}
 
 \paragraph{Expressions.}
@@ -124,46 +116,48 @@ The operational semantics define how TAC programs execute, providing the foundat
 \begin{mathpar}
 \inferrule*[right=Const]{ }{ \rho,H \vdash c \Downarrow c,H }
 
-\inferrule*[right=Var]{ }{ \rho,H \vdash x \Downarrow \rho(x),H }
+\inferrule*[right=StackVar]{ }{ \rho,H \vdash \$n \Downarrow \rho(\$n),H }
+
+\inferrule*[right=Var]{ }{ \rho,H \vdash x \Downarrow H(\mathsf{LOCALS})(x),H }
 
 \inferrule*[right=Call]
-  { (r,H')=\mathsf{invoke}(\rho(v_f),\,\rho(\overline v_i),\,H) }
-  { \rho,H \vdash \mathsf{Call}(v_f,\overline v_{i=1}^n) \Downarrow r,H' }
+  { (r,H')=\mathsf{invoke}(\rho(\$f),\,\rho(\overline {\$a}),\,H) }
+  { \rho,H \vdash \mathsf{Call}(\$f,\overline {\$a}) \Downarrow r,H' }
 
 \inferrule*[right=Unary]
   {
-    C=\mathsf{resolve\_unop}(op,\,\rho(v),\,H) \\
-    (r,H')=\mathsf{invoke}(C,\,\langle \rho(v)\rangle,\,H)
+    C=\mathsf{resolve\_unop}(op,\,\rho(\$n),\,H) \\
+    (r,H')=\mathsf{invoke}(C,\,\langle \rho(\$n)\rangle,\,H)
   }
-  { \rho,H \vdash \mathsf{Unary}(op,v) \Downarrow r,H' }
+  { \rho,H \vdash \mathsf{Unary}(op,\$n) \Downarrow r,H' }
 
 \inferrule*[right=Binary]
   {
-    C=\mathsf{resolve\_binop}(\rho(v_1),\,op,\,\rho(v_2),\,\mathit{inplace},\,H) \\
-    (r,H')=\mathsf{invoke}(C,\,\langle \rho(v_1),\rho(v_2)\rangle,\,H)
+    C=\mathsf{resolve\_binop}(op,\,\rho(\$n),\,\rho(\$k),\,\mathit{inplace},\,H) \\
+    (r,H')=\mathsf{invoke}(C,\,\langle \rho(\$n),\rho(\$k)\rangle,\,H)
   }
-  { \rho,H \vdash \mathsf{Binary}(v_1,op,v_2,\mathit{inplace}) \Downarrow r,H' }
+  { \rho,H \vdash \mathsf{Binary}(op,\$n,\$k,\mathit{inplace}) \Downarrow r,H' }
 
 \inferrule*[right=Subscript]
   {
-    C=\mathsf{resolve\_getitem}(\rho(v_1),\,\rho(v_2),\,H) \\
-    (r,H')=\mathsf{invoke}(C,\,\langle \rho(v_1),\rho(v_2)\rangle,\,H)
+    C=\mathsf{resolve\_getitem}(\rho(\$n),\,\rho(\$f),\,H) \\
+    (r,H')=\mathsf{invoke}(C,\,\langle \rho(\$n),\rho(\$f)\rangle,\,H)
   }
-  { \rho,H \vdash \mathsf{Subscript}(v_1,v_2) \Downarrow r,H' }
+  { \rho,H \vdash \mathsf{Subscript}(\$n,\$f) \Downarrow r,H' }
 
 \inferrule*[right=Attr-Instance]
   {
-    \mathsf{inst\_has\_attr}(\rho(v),f,H) \\
-    r=\mathsf{inst\_get}(\rho(v),f,H)
+    \mathsf{inst\_has\_attr}(\rho(\$n),f,H) \\
+    r=\mathsf{inst\_get}(\rho(\$n),f,H)
   }
-  { \rho,H \vdash \mathsf{Attribute}(v,f) \Downarrow r,H }
+  { \rho,H \vdash \mathsf{Attribute}(\$n,f) \Downarrow r,H }
 
 \inferrule*[right=Attr-Class-Bind]
   {
-    r_0=\mathsf{class\_lookup}(\mathsf{type}(\rho(v)),f) \\
-    r=\mathsf{bind\_if\_method}(\mathsf{type}(\rho(v)),\,f,\,r_0,\,\rho(v))
+    r_0=\mathsf{class\_lookup}(\mathsf{type}(\rho(\$n)),\,f) \\
+    r=\mathsf{bind\_if\_method}(\mathsf{type}(\rho(\$n)),\,f,\,r_0,\,\rho(\$n))
   }
-  { \rho,H \vdash \mathsf{Attribute}(v,f) \Downarrow r,H }
+  { \rho,H \vdash \mathsf{Attribute}(\$n,\$f) \Downarrow r,H }
 \end{mathpar}
 
 \vspace{1ex}
@@ -177,89 +171,77 @@ The operational semantics define how TAC programs execute, providing the foundat
   { \langle\rho,H\rangle \xrightarrow{\mathsf{Assign}(\sigma,e)}
     \mathsf{write}(\sigma,v,\rho,H') }
 
+% We can simply make FOR nondeterministic without any sentinel or assumption
+
 \inferrule*[right=For-More]
   {
-    \rho,H \vdash \mathsf{Unary}(\mathsf{next},v_{\mathit{iter}}) \Downarrow v,H' \\
-    v \neq \mathsf{EndIter}
+    \rho,H \vdash \mathsf{Unary}(\mathsf{next},\$n_{\mathit{iter}}) \Downarrow v,H'
   }
   { \langle\rho,H\rangle
-    \xrightarrow{\mathsf{For}(\sigma,v_{\mathit{iter}},\ell_{\mathit{exit}})}
-    \mathsf{write}(\sigma,v,\rho,H');\;\kappa=\mathsf{more} }
+    \xrightarrow{\mathsf{For}(\$n,\$n_{\mathit{iter}},\ell_{\mathit{exit}})}
+    \mathsf{write}(\$n,v,\rho,H') }
 
-\inferrule*[right=For-Done]
-  {
-    \rho,H \vdash \mathsf{Unary}(\mathsf{next},v_{\mathit{iter}}) \Downarrow \mathsf{EndIter},H'
-  }
-  { \langle\rho,H\rangle
-    \xrightarrow{\mathsf{For}(\sigma,v_{\mathit{iter}},\ell_{\mathit{exit}})}
-    \langle\rho,H'\rangle;\;\kappa=\mathsf{done} }
 \end{mathpar}
 
 \vspace{1ex}
 \textbf{Control Flow (Program Counter Only)}
 
-\begin{mathpar}
-\inferrule*[right=Jump-True]
-  {
-    \rho(v)=\mathsf{True}
-  }
-  { \langle pc\rangle \xrightarrow{\mathsf{Jump}(\ell,v)} \langle\ell,0\rangle }
+% We don't need it. Just say CFG and Assume.
 
-\inferrule*[right=Jump-False]
-  {
-    \rho(v)=\mathsf{False}
-  }
-  { \langle pc\rangle \xrightarrow{\mathsf{Jump}(\ell,v)} \langle\mathsf{next}(pc)\rangle }
+% \begin{mathpar}
+% \inferrule*[right=Jump-True]
+%   {
+%     \rho(\$b)=\mathsf{True}
+%   }
+%   { \langle pc\rangle \xrightarrow{\mathsf{Jump}(\ell,\$b)} \langle\ell,0\rangle }
 
-\inferrule*[right=For-Done-PC]
-  {
-    \kappa=\mathsf{done}
-  }
-  { \langle pc\rangle
-    \xrightarrow{\mathsf{For}(\sigma,v_{\mathit{iter}},\ell_{\mathit{exit}})}
-    \langle\ell_{\mathit{exit}},0\rangle }
+% \inferrule*[right=Jump-False]
+%   {
+%     \rho(\$b)=\mathsf{False}
+%   }
+%   { \langle pc\rangle \xrightarrow{\mathsf{Jump}(\ell,\$b)} \langle\mathsf{next}(pc)\rangle }
 
-\inferrule*[right=For-More-PC]
-  {
-    \kappa=\mathsf{more}
-  }
-  { \langle pc\rangle
-    \xrightarrow{\mathsf{For}(\sigma,v_{\mathit{iter}},\ell_{\mathit{exit}})}
-    \langle\mathsf{next}(pc)\rangle }
+% \inferrule*[right=For-Done-PC]
+%   { }
+%   { \langle pc\rangle
+%     \xrightarrow{\mathsf{For}(...,\ell_{\mathit{exit}})}
+%     \langle\ell_{\mathit{exit}},0\rangle }
 
-\inferrule*[right=Exit]
-  { }
-  { \langle pc\rangle \xrightarrow{\mathsf{Exit}} \mathsf{Terminated} }
+% \inferrule*[right=For-More-PC]
+%   { }
+%   { \langle pc\rangle
+%     \xrightarrow{\mathsf{For}(...,\ell_{\mathit{exit}})}
+%     \langle\mathsf{next}(pc)\rangle }
 
-\inferrule*[right=Continue]
-  { }
-  { \langle pc\rangle \xrightarrow{\mathsf{Assign}(\_,\_)} \langle\mathsf{next}(pc)\rangle }
-\end{mathpar}
+% \inferrule*[right=Exit]
+%   { }
+%   { \langle pc\rangle \xrightarrow{\mathsf{Exit}} \mathsf{Terminated} }
+
+% \inferrule*[right=Continue]
+%   { }
+%   { \langle pc\rangle \xrightarrow{\mathsf{Assign}(\_,\_)} \langle\mathsf{next}(pc)\rangle }
+% \end{mathpar}
 
 \vspace{1ex}
 \textbf{Helper Functions}
 
 \[
 \begin{aligned}
-\mathsf{write}(x,v,\rho,H) &= (\rho[x \mapsto v],H) \\
+\mathsf{write}(\$n,v,\rho,H) &= (\rho[\$n \mapsto v],H) \\
+\mathsf{write}(x,v,\rho,H) &= (H[LOCALS][\$n \mapsto v],H) \\
 \mathsf{write}(\mathsf{None},v,\rho,H) &= (\rho,H) \\
-\mathsf{write}(\langle\overline{\sigma}_{i=1}^n\rangle,v,\rho,H)
-    &= \mathsf{unpack}(v,\langle\overline{\sigma}_{i=1}^n\rangle,\rho,H) \\
-\mathsf{write}(\mathsf{Attribute}(x,f),v,\rho,H)
-    &= (\rho,\mathsf{setattr}(\rho(x),f,v,H)) \\
-\mathsf{write}(\mathsf{Subscript}(x,k),v,\rho,H)
-    &= (\rho,\mathsf{setitem}(\rho(x),\rho(k),v,H)) \\[1ex]
-\mathsf{unpack}(v,\langle\overline{\sigma}_{i=1}^n\rangle,\rho,H) &=
+\mathsf{write}(\langle\overline{\$n}_{i=1}^n\rangle,v,\rho,H)
+    &= \mathsf{unpack}(v,\langle\overline{\$n}_{i=1}^n\rangle,\rho,H) \\
+\mathsf{write}(\mathsf{Attribute}(\$n,f),v,\rho,H)
+    &= (\rho,\mathsf{setattr}(\rho(\$n),f,v,H)) \\
+\mathsf{write}(\mathsf{Subscript}(\$n,\$k),v,\rho,H)
+    &= (\rho,\mathsf{setitem}(\rho(\$n),\rho(\$k),v,H)) \\[1ex]
+\mathsf{unpack}(v,\langle\overline{\$n}_{i=1}^n\rangle,\rho,H) &=
 \begin{cases}
 (\rho,H) & n=0 \\
-\text{let } (\rho',H')=\mathsf{write}(\sigma_1,v_0,\rho,H) \\
-\qquad \text{in } \mathsf{unpack}(v,\langle\overline{\sigma}_{i=2}^n\rangle,\rho',H') & n>0
+\text{let } (\rho',H')=\mathsf{write}(\$n_1,v_0,\rho,H) \\
+\qquad \text{in } \mathsf{unpack}(v,\langle\overline{\$n}_{i=2}^n\rangle,\rho',H') & n>0
 \end{cases} \\[2ex]
-\mathsf{next}(\langle\ell,i\rangle) &=
-\begin{cases}
-\langle\ell,i+1\rangle & i+1<|B(\ell)| \\
-\langle\ell',0\rangle & i+1=|B(\ell)| \land (\ell,\ell')\in E
-\end{cases}
 \end{aligned}
 \]
 
@@ -274,7 +256,6 @@ Program execution operates over a machine state that cleanly separates program c
 \]
 The components are:
 \begin{itemize}
-\item $pc = (\ell,i)$ is the program counter, tracking the current basic block label $\ell \in L$ and instruction index $i$ within that block,
 \item $\rho : \mathcal{V} \rightharpoonup Val$ maps variables to their current values (partial function, with undefined variables absent from the domain),
 \item $H : Loc \rightharpoonup Obj$ represents the heap as a mapping from locations to objects,
 \item $Val ::= Loc \mid c$ are values: either heap locations or constants,
@@ -289,8 +270,7 @@ TAC models only static, intraprocedural control flow to keep analysis tractable.
 
 \paragraph{Expression Evaluation.}
 Expressions follow a small–step, state–passing semantics: each judgment
-\(\rho,H \vdash e \Downarrow r,H'\) yields a value \(r\) and a (possibly) updated heap \(H'\).
-Operands in TAC are atoms (\(v ::= x \mid c\)), and we lift \(\rho\) pointwise to lists and
+\(\rho,H \vdash e \Downarrow r,H'\) yields a value \(r\) and a (possibly) updated heap \(H'\). We lift \(\rho\) pointwise to lists and
 optionals. Heap effects arise only from calls: a call is evaluated to a pair
 \((r,\epsilon)\) with \(\epsilon: H \to H\), and we return \((r,\epsilon(H))\).
 Attribute reads are descriptor–free: lookup order is instance and then class. Class hits are passed through a pure
@@ -303,8 +283,7 @@ reflected variants) and then call it. The semantics is partial: if no rule appli
 Instructions transform the machine state by separating state effects from control flow.
 \textsf{Assign} evaluates an expression and uses \(\mathsf{write}\) to update variables
 and/or the heap. \textsf{For} evaluates \(\mathsf{next}\) exactly once, writes the
-iteration variable on \(\mathsf{more}\), and otherwise branches to the loop exit on
-\(\mathsf{done}\). \textsf{Jump} evaluates its guard once, threads any guard effects,
+iteration variable on \(\mathsf{more}\), and otherwise branches to the loop exit on. \textsf{Assume} allows execution only if the object denoted by the guard is exactly Python's True (or False for \textsf{Assume}(\$b, false)).
 and updates the program counter accordingly. \textsf{Exit} terminates. All other
 instructions fall through to \(\mathsf{next}(pc)\).
 \paragraph{Helper Functions.}
@@ -410,7 +389,7 @@ This property is useful for the liveness analyses and can be verified directly f
 \paragraph{Design Choices.}
 \begin{itemize}
 \item \textbf{Abstract evaluation:} Complex Python operations (descriptors, MRO, overloading) are encapsulated in helper functions rather than fully expanded.
-\item \textbf{Iterator protocol} uses $\mathsf{EndIter}$ instead of modeling \texttt{StopIteration} exceptions.
+\item \textbf{Iterator protocol} uses nondeterminism instead of modeling \texttt{StopIteration} exceptions.
 \item \textbf{Effect preparation:} Call evaluation produces heap transformers, preparing for effect annotation in analysis.
 \item \textbf{Stack variables:} Explicit representation of temporaries facilitates later static analyses that can determine when these values are no longer needed.
 \end{itemize}

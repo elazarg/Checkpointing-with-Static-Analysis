@@ -4,9 +4,11 @@
 import numpy as np
 
 def kmeans(X:np.ndarray, k:int, iters:int)->np.ndarray:
+    # initilization
     centroids = X[np.random.choice(X.shape[0], k)]
     clusters = list[list[int]]()
     for i in range(iters):  # type: int
+        # loop body
         clusters = [list[int]() for _ in range(k)]
         for sample_i in range(len(X)):
             v = X[sample_i] - centroids
@@ -17,6 +19,7 @@ def kmeans(X:np.ndarray, k:int, iters:int)->np.ndarray:
         if np.allclose(centroids, new_centroids):
             break
         centroids = new_centroids
+    # finalization
     return compute_labels(clusters, X.shape[0])
 \end{lstlisting}
 \caption{\label{lst:code-kmeans}
@@ -47,12 +50,14 @@ Applied to K-Means, the analysis concludes that only the centroid array is both 
 
 We automatically inject a checkpoint at the loop header using a lightweight transactional API:
 \begin{lstlisting}[language=python]
+# initilization unchanged
 with Loader(__file__, locals()) as transaction:
     if transaction:
         [centroids] = transaction.move()
     for i in transaction.iterate(range(iters)):
-        ...
+        # Loop body unchanged
         transaction.commit(centroids)
+# finalization unchanged
 \end{lstlisting}
 This enables recovery after a crash by restoring execution to the loop head with the correct value of \texttt{i} and \texttt{centroids}, without persisting irrelevant data. It is technically possible to make the instrumentation less syntactically intrusive, but the intention is to make it clear to the developer what the instrumentation does.
 
