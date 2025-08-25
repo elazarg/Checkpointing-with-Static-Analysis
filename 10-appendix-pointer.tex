@@ -1,3 +1,5 @@
+\newcommand{\defeq}{\overset{\text{\tiny def}}{=}}
+
 \begin{figure*}[t]
 \centering
 
@@ -45,202 +47,247 @@ D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 \end{figure*}
 
 \newpage
-
 \section{Pointer Analysis}
 \label{sec:appendix-pointer}
 
-\subsection{Overview and Motivation}
+\subsection{Scope and Goal}
 
-The pointer analysis is a cornerstone of our static analysis framework, designed to support checkpointing optimization in Python programs by modeling the heap and tracking object mutations. Operating on the Three-Address Code (TAC) intermediate representation (\autoref{sec:appendix-tac-ir}) and integrated with the type system (\autoref{sec:appendix-typesystem}), it constructs a precise model of heap shape, object references, and field updates. This enables the identification of minimal live variables and objects requiring checkpointing, critical for efficient state preservation in numerical workloads.
+The pointer analysis abstracts heap shape, aliasing, and mutations over the TAC IR
+(\autoref{sec:appendix-tac-ir}) to support checkpointing. It is
+flow-sensitive and intraprocedural along exception-free paths.
+Instruction–level effects (allocation at \textsf{Bind}, \textsf{ConstructTuple},
+\textsf{ConstructDict}, \textsf{Call}, and iteration in \textsf{Unpack}) are interpreted here.
+Callable \emph{invocation} effects come from the type system
+(\autoref{sec:appendix-typesystem}) as an effect triple
+\(\epsilon^\#=(\mathsf{new},\mathsf{update},\mathsf{points\_to\_args})\) and are translated to
+heap updates by the transfer functions below.
 
-Python’s dynamic features such as dynamic typing, reflection, and runtime object modification pose significant challenges for static heap analysis. The pointer analysis addresses these by combining pointer, type, and dirty domains into a reduced product. This synergy enhances precision by leveraging type information for attribute resolution and liveness for pruning unreachable objects. The analysis is flow-sensitive and intraprocedural, focusing on synchronous, exception-free paths to ensure tractability while maintaining soundness within defined assumptions.
+\subsection{Notation and State}
 
-\subsection{Notation}
+We write basic blocks \(l\in L\) and instruction positions \(i\) within block \(l\), giving a
+program point \(l\).
+Variables are split into named locals \(\mathcal{V}_{\mathrm{named}}\) and stack temporaries
+\(\mathcal{V}_{\mathrm{stack}}=\{\$0,\$1,\ldots\}\).
+Let \(\mathsf{Live}_{l,i}\subseteq \mathcal{V}_{\mathrm{named}}\) be liveness at \(l\).
 
-Consistent with \autoref{sec:appendix-tac-ir} and \autoref{sec:appendix-typesystem}, we use:
-\begin{itemize}
-    \item $\mathcal{V}$: Variables, split into named locals $\mathcal{V}_{\mathit{named}}$ (e.g., $x$) and stack temporaries $\mathcal{V}_{\mathit{stack}}$ (e.g., $\$0$).
-    \item $\mathcal{O}$: Abstract objects.
-    \item $\mathcal{F}$: Fields, including instance attribute names, dictionary keys, and wildcard $\star$ for collections.
-    \item $(l, i)$: Instruction location, where $l \in L$ and $i$ indexes into $B(l)$.
-    \item $\mathsf{Live}_{l,i} \subseteq \mathcal{V}$: Live variables at $(l,i)$.
-\end{itemize}
-
-\subsection{Abstract Domains}
-
-The pointer analysis models heap behavior through a reduced product $\Sigma = (P, T, D)$, combining pointer, type, and dirty domains to support checkpointing.
-
-\paragraph{Abstract Objects ($\mathcal{O}$).}
-Abstract objects represent equivalence classes of concrete heap locations:
-\begin{itemize}
-    \item $\mathsf{Loc}(\ell,i)$: Objects allocated at instruction $(\ell,i)$, merging all mutable runtime instances allocated there.
-    \item $\mathsf{Param}(p)$: Placeholders for function parameters, modeling unknown external inputs.
-    \item $\mathsf{Imm}(\tau)$: Immutable objects of type $\tau$ (e.g., any \texttt{int}, $\mathtt{True}$).
-    \item $\mathsf{Scope} = \{\mathtt{LOCALS}, \mathtt{GLOBALS}\}$: Distinguished root objects for variable namespaces, whose fields correspond to variables.
-\end{itemize}
-
-The domains are described in \autoref{fig:abstract-domains}. $P$ and $D$ are are map-of-sets domains. The pointer domain $P$ models heap shape, where $P[o][f]$ is the set of possible targets of field $f$ of object $o$. The wildcard field $\star$ summarizes collection elements. The type domain $T$ assigns types to objects, with ordering and join operations defined over the type lattice (see \autoref{sec:appendix-typesystem}). The dirty domain $D$ tracks which fields may have been dirty. Bottom elements: $\bot_\mathcal{P}$ maps every $(o,f)$ to $\emptyset$, $\bot_{\mathcal{T}}$ maps each object to $\bot_{\mathit{Type}}$, and $\bot_\mathcal{D}$ maps each object to $\emptyset$. The reduced product $\Sigma$ combines all three domains with component-wise lattice operations. Information flow between the domain occurs only in the abstract transformer.
-
-\subsection{Abstract Semantics}
-
-\paragraph{Expression Evaluation} $\mathsf{Expr}^\#(\Sigma, e, \ell)$ produces a triple:
+\paragraph{Abstract objects and fields.}
+Abstract objects \(\mathcal{O}\) include
 \[
-\mathsf{Expr}^\#(\Sigma, e, \ell) = \big(O_e,\ \tau_e,\ \Delta_e\big)
+\mathsf{Loc}(l)\quad\text{(allocation site)},\qquad
+\mathsf{Param}(p)\quad\text{(external input)},\qquad
+\mathsf{Imm}(\tau)\quad\text{(immutable of type \(\tau\))},\qquad
+\mathtt{LOCALS},\mathtt{GLOBALS},\mathtt{TEMP}\ .
 \]
-where:
-\begin{itemize}
-    \item $O_e \subseteq \mathcal{O}$: objects reachable via $e$,
-    \item $\tau_e \in \mathit{TypeExpr}$: inferred static type,
-    \item $\Delta_e \in \mathcal{D}$: fields potentially dirtied.
-\end{itemize}
+Fields \(\mathcal{F}\) are keys from the IR:
+\(\mathsf{name}(s)\), \(\mathsf{index}(n)\), \(\mathsf{both}(n,s)\), and \(\star\) (wildcard).
 
-Key evaluation rules are shown in \autoref{fig:expr-semantics}. Note that the choice of immutable objects $\mathsf{Imm}$ is guided by the type system; \textsc{Const} is just a special case where it is syntactically forced. 
+\paragraph{Abstract domains (cf.\ Fig.~\ref{fig:abstract-domains}).}
+The analysis state is \(\Sigma=(P,T,D)\) where
+\[
+P:\mathcal{O}\to\mathcal{F}\to 2^{\mathcal{O}},\qquad
+T:\mathcal{O}\to \mathit{TypeExpr},\qquad
+D:\mathcal{O}\to 2^{\mathcal{F}}.
+\]
+We use componentwise orders and joins; \(\bot_{\mathcal{P}}[o][f]=\emptyset\),
+\(\bot_{\mathcal{T}}[o]=\bot_{\mathrm{Type}}\), \(\bot_{\mathcal{D}}[o]=\emptyset\).
 
-\begin{figure}[t]
-\centering
-\begin{mathpar}
-\inferrule*[right=Var]
-  { o = P[\mathtt{LOCALS}][v] }
-  { \mathsf{Expr}^\#((P, D, T), v, \ell) = (\{o\}, T[o], \bot_\mathcal{D}) }
+\paragraph{Conventions.}
+We store named locals and temporaries as fields of roots:
+\(P[\mathtt{LOCALS}][\mathsf{name}(x)]\) for \(x\in\mathcal{V}_{\mathrm{named}}\),
+and \(P[\mathtt{TEMP}][\mathsf{index}(\$k)]\) for \(\$k\in\mathcal{V}_{\mathrm{stack}}\).
+We write \(O_x\) for a set of objects and \(\biguplus\) for union over a family.
 
-\inferrule*[right=Const]
-  { \tau_c = \mathsf{type}(c) }
-  { \mathsf{Expr}^\#((P, D, T), c, \ell) = (\{\mathsf{Imm}(\tau_c)\}, \tau_c, \bot_\mathcal{D}) }
+\subsection{Auxiliary Updates}
 
-\inferrule*[right=Attr]
-  { O = P[\mathtt{LOCALS}][v] \\
-    O' = \bigcup_{o\in O} P[o][f] \\
-    \tau' = \mathsf{Access}(\tau,f) }
-  { \mathsf{Expr}^\#(\Sigma, \mathsf{Attribute}(v,f), \ell) = (O',\tau',\Delta) }
+Weak/strong update on points-to:
+\[
+\mathsf{Upd}(P,O_{\mathrm{tgt}},f,O_{\mathrm{new}})=
+\begin{cases}
+\text{for the unique }o\in O_{\mathrm{tgt}}:~P[o][f]\leftarrow O_{\mathrm{new}} & \text{if }|O_{\mathrm{tgt}}|=1\\
+\text{for all }o\in O_{\mathrm{tgt}}:~P[o][f]\leftarrow P[o][f]\cup O_{\mathrm{new}} & \text{otherwise}
+\end{cases}
+\]
+Dirty update: \(\mathsf{UpdD}(D,O_{\mathrm{tgt}},f)\) adds \(f\) to \(D[o]\) for each \(o\in O_{\mathrm{tgt}}\).
 
-\inferrule*[right=Call]
-  { O_f = P[\mathtt{LOCALS}][v_f] \\
-    O_i = P[\mathtt{LOCALS}][v_i] \quad \forall i=1,\dots,n \\
-    (\tau',\epsilon^\#) = \mathsf{Apply}(\tau_f,\langle\overline{\tau_i}\rangle) \\
-    O' = \mathsf{resolve}(O_f,\langle\overline{O_i}\rangle,\epsilon^\#) \\
-    \Delta = \mathsf{update}(\epsilon^\#) }
-  { \mathsf{Expr}^\#(\Sigma,\mathsf{Call}(v_f,\overline{v_i},\mathsf{None}),\ell) = (O',\tau',\Delta) }
-\end{mathpar}
-\caption{Expression evaluation rules for pointer analysis.}
-\label{fig:expr-semantics}
-\end{figure}
+\smallskip
+We use two auxiliary resolvers:
+\[
+\mathsf{RetObjects}(l,i,\epsilon^\#,\overline{O_a}) =
+\begin{cases}
+\{\mathsf{Loc}(l)\} & \text{if }\epsilon^\#.\mathsf{new}=\mathsf{true}\\
+\Big(\biguplus_k O_{a_k}\Big)\ \cup\ \{\mathsf{Ret}^\uparrow\} & \text{otherwise}
+\end{cases}
+\]
+(where \(\mathsf{Ret}^\uparrow\) is a distinguished summary return object),
+and a target resolver for effect updates that follows argument/receiver links on bound callables:
+\[
+\mathsf{Targets}(P, O_f, \text{slot}) \subseteq \mathcal{O}
+\quad\text{(slot is receiver or an argument index; see \S\ref{subsec:call})}.
+\]
 
-\paragraph{Instruction Semantics.}
-Instruction transfer functions $\mathsf{Trans}^\#(\Sigma,i,\ell) \to \Sigma'$ update the abstract state, as shown in \autoref{fig:trans-semantics}.
+\subsection{Transfer Functions for TAC}
+\label{subsec:transfers}
+
+The abstract state is a four-tuple \(\Sigma = (P,T,D,S)\) where \(P\) is the heap
+points-to map, \(T\) the object-type map, \(D\) the dirty-field map, and \(S\) the
+stack map for temporaries \(\$k\).
+We write \(S[d \mapsto O]\) for functional update, and
+\(\biguplus\mathcal{X}\) for set union over a family \(\mathcal{X}\).
+Heap updates use
+\(\mathsf{Upd}(P,\ O_{\mathrm{tgt}},\ f,\ O_{\mathrm{new}})\)
+(weak/strong update depending on \(|O_{\mathrm{tgt}}|\)),
+and dirty marks use
+\(\mathsf{UpdD}(D,\ O_{\mathrm{tgt}},\ f)\).
+Let \(\mathsf{Loc}(l)\) denote the allocation site at instruction index \(l\).
+Pure operations never mutate \(P\); the stack map \(S\) changes only for
+instructions that assign to a destination temporary.
+\subsection{Transfer Functions for TAC}
+\label{subsec:transfers}
+
+The abstract state is a four-tuple \(\Sigma=(P,T,D,S)\) where \(P\) is the heap
+points-to map, \(T\) the object-type map, \(D\) the dirty-field map, and \(S\)
+the stack map for temporaries.  Pure operations never mutate \(P\).  Only
+instructions that assign to a destination temporary mutate \(S\).
 
 \begin{figure*}[t]
 \centering
-\textbf{Update Definitions:}
-\begin{align}
-\mathsf{Update}(P, O_{\text{targets}}, \text{field}, O_{\text{new}}) &= P' \text{ where } P'[t][\text{field}] = \begin{cases}
-  O_{\text{new}} & \text{if } |O_{\text{targets}}| = 1 \\
-  P[t][\text{field}] \cup O_{\text{new}} & \text{otherwise}
-\end{cases} \text{ for all } t \in O_{\text{targets}} \\
-\mathsf{UpdateSubscr}(P, O_1, O_2, O_{\text{new}}) &= P' \text{ where } P'[t][k] = \begin{cases}
-  O_{\text{new}} & \text{if } |O_1| = 1 \\
-  P[t][k] \cup O_{\text{new}} & \text{otherwise}
-\end{cases} \text{ for all } t \in O_1, k \in O_2
-\end{align}
-\begin{mathpar}
-\inferrule*[right=Assign-Var]
-  { \mathsf{Expr}^\#((P, D, T),e,\ell) = (O,\tau,\Delta)}
-  { \mathsf{Trans}^\#((P, D, T),\mathsf{Assign}(x,e,\mathsf{false}),\ell) = (P[\mathtt{LOCALS}][x \mapsto O],T[O \mapsto \tau],D \sqcup \Delta) } \\
-\inferrule*[right=Assign-Subscr]
-  { O_1 = P[\mathtt{LOCALS}][v_1] \quad O_2 = P[\mathtt{LOCALS}][v_2]  \\
-    P' = \mathsf{UpdateSubscr}(P, O_1, O_2, P[\mathtt{LOCALS}][v]) \\
-    D' = \mathsf{Update}(D, O_1, \text{deps}, O_2) }
-  { \mathsf{Trans}^\#((P, D, T), \mathsf{Assign}(\mathsf{Subscript}(v_1, v_2), v, \mathsf{false}), \ell)
-    = (P', T, D') } \\
-\inferrule*[right=Assign-Attr]
-  { O_1 = P[\mathtt{LOCALS}][v_1] \\
-    P' = \mathsf{Update}(P, O_1, f, P[\mathtt{LOCALS}][v]) \\
-    D' = \mathsf{Update}(D, O_1, \text{deps}, \{f\}) }
-  { \mathsf{Trans}^\#((P, D, T),\mathsf{Assign}(\mathsf{Attribute}(v_1,f),v,\mathsf{false}),\ell)
-    = (P',T,D') }
-\end{mathpar}
-\caption{Selected instruction transfer rules for pointer analysis using weak updates.}
-\label{fig:trans-semantics}
+\begin{align*}
+% ===================== A. DATA MOVEMENT / NAME ACCESS =====================
+&\textbf{(A) Data movement and name access}\\
+&Trans^\#\big((P,T,D,S),\ Mov(\$d,\$s)\big)
+  = (P,\ T,\ D,\ S\llbracket d \mapsto S[s]\rrbracket)
+\\
+&Trans^\#\big((P,T,D,S),\ LoadConst(\$d,c)\big)
+  = (P,\ T,\ D,\ S\llbracket d \mapsto \{Imm(type(c))\}\rrbracket)
+\\
+&Trans^\#\big((P,T,D,S),\ LoadLocal(\$d,x)\big)
+  = (P,\ T,\ D,\ S\llbracket d \mapsto P[LOCALS][name(x)]\rrbracket)
+\\
+&Trans^\#\big((P,T,D,S),\ LoadGlobal(\$d,x)\big)
+  = (P,\ T,\ D,\ S\llbracket d \mapsto P[GLOBALS][name(x)]\rrbracket)
+\\
+&Trans^\#\big((P,T,D,S),\ SetLocal(x,\$s)\big)
+  = \big(Upd(P,\{LOCALS\},name(x),S[s]),\ T,\ D,\ S\big)
+\\[0.6em]
+% ===================== B. PURE RESOLUTION =====================
+&\textbf{(B) Pure resolution (no heap mutation)}\\
+&Trans^\#\big((P,T,D,S),\ LookupDunderUnary(\$d,m,\$o)\big)=(P,T,D,S)
+\\
+&Trans^\#\big((P,T,D,S),\ LookupDunderBinary(\$d,m,\$l,\$r)\big)=(P,T,D,S)
+\\
+&Trans^\#\big((P,T,D,S),\ ResolveOverload(\$d,\$f,\$a,\$k)\big)=(P,T,D,S)
+\\[-0.2em]
+&\hspace{2.4cm}\text{\emph{(Static outcomes are tracked by the type component; nothing is materialized in \(S\).)}}
+\\[0.6em]
+% ===================== C. ATTRIBUTES / SUBSTRUCTURE (PURE W.R.T. HEAP) =====================
+&\textbf{(C) Attribute read and unpack (pure w.r.t.\ heap)}\\
+&Trans^\#\big((P,T,D,S),\ GetAttr(\$d,\$o,f)\big)
+  = \big(P,\ T,\ D,\ S\llbracket d \mapsto Attr(P,S[o],f)\rrbracket\big)
+\\
+&Trans^\#\big((P,T,D,S),\ Unpack([\$d_0,\ldots,\$d_{n-1}],\$s)\big)
+  = \big(P,\ T,\ D,\ S'\big)
+\qquad\text{where}\quad
+S'[d_j] \;\defeq\; Ind(P,S[s],j)
+\\[0.6em]
+% ===================== D. ALLOCATION SCHEMATA =====================
+&\textbf{(D) Allocation schemata (allocate \& wire, then write stack)}\\
+&Trans^\#\big((P,T,D,S),\ ConstructTuple(\$d,[\$e_0,\ldots,\$e_{n-1}]),\ q\big)
+  = \big(P',\ T',\ D,\ S\llbracket d \mapsto \{\,Loc(q)\,\}\rrbracket\big)
+\\[-0.1em]
+&\hspace{4.45cm}\text{where}\quad (P',T') \;\defeq\; AllocTuple(P,T,Loc(q),\ \langle S[e_0],\ldots,S[e_{n-1}]\rangle)
+\\[0.25em]
+&Trans^\#\big((P,T,D,S),\ ConstructDict(\$d,[(\$k_1,\$v_1),\ldots,(\$k_M,\$v_M)]),\ q\big)
+  = \big(P'',\ T'',\ D,\ S\llbracket d \mapsto \{\,Loc(q)\,\}\rrbracket\big)
+\\[-0.1em]
+&\hspace{4.45cm}\text{where}\quad (P'',T'') \;\defeq\; AllocDict(P,T,Loc(q),\ \langle (S[k_m],S[v_m])\rangle_{m=1}^M)
+\\[0.25em]
+&Trans^\#\big((P,T,D,S),\ Bind(\$d,\$f,\$a,\$k),\ q\big)
+  = \big(P''',\ T''',\ D,\ S\llbracket d \mapsto \{\,Loc(q)\,\}\rrbracket\big)
+\\[-0.1em]
+&\hspace{4.45cm}\text{where}\quad (P''',T''') \;\defeq\; AllocBind(P,T,Loc(q),\ S[a],\ S[k])
+\\[0.6em]
+% ===================== E. SIDE-EFFECTING OPERATIONS =====================
+&\textbf{(E) Heap updates via fields and calls}\\
+&Trans^\#\big((P,T,D,S),\ SetAttr(\$o,f,\$v)\big)
+  = \big(Upd(P,S[o],name(f),S[v]),\ T,\ UpdD(D,S[o],name(f)),\ S\big)
+\\
+&Trans^\#\big((P,T,D,S),\ Call(\$d,\$f),\ q\big)
+  = \big(P^\ast,\ T^\ast,\ D^\ast,\ S\llbracket d \mapsto O_{\mathrm{res}}\rrbracket\big)
+\\[-0.3em]
+&\hspace{4.45cm}\text{where}\quad (P^\ast,T^\ast,D^\ast,O_{\mathrm{res}})\ \defeq\ Invoke(P,T,D;\ Effect(\$f),\ S[f],\ Args(P,S[f],S),\ q)
+\\[0.6em]
+% ===================== F. CONTROL =====================
+&\textbf{(F) Control (no state change)}\\
+&Trans^\#\big((P,T,D,S),\ AssumeValue(\$b,c)\big)=(P,T,D,S),
+\\
+&Trans^\#\big((P,T,D,S),\ Exit\big)=(P,T,D,S)
+\end{align*}
+
+\vspace{0.3em}
+\textbf{Helpers definitions.}
+\[
+\begin{array}{ll}
+Attr(P,O,f) &\defeq\ \displaystyle\biguplus_{o\in O} P[o][name(f)]
+\\[0.2em]
+Ind(P,O,j) &\defeq\ \displaystyle\Big(\biguplus_{o\in O} P[o][index(j)]\Big)\ \cup\ \Big(\biguplus_{o\in O} P[o][\star]\Big)
+\\[0.2em]
+AllocTuple(P,T,t,\langle O_0,\ldots,O_{n-1}\rangle)
+  &\defeq\ \Big(P[t][index(j)] \supseteq O_j,\ P[t][\star]\supseteq O_j\ \forall j;\ \ T[t]\ \sqcup=\ TupleType(\langle O_j\rangle)\Big)
+\\[0.2em]
+AllocDict(P,T,d,\langle (K_m,V_m)\rangle_{m=1}^M)
+  &\defeq\ \Big(P[d][name(s)] \supseteq V_m\ \text{if } K_m=\{\,Imm(\texttt{str}(s))\,\};\ \ P[d][\star]\supseteq V_m\ \text{otherwise};\ \ T[d]\ \sqcup=\ DictType(\langle K_m,V_m\rangle)\Big)
+\\[0.2em]
+AllocBind(P,T,b,O_a,O_k)
+  &\defeq\ \Big(P[b][\texttt{"args"}]\supseteq O_a,\ P[b][\texttt{"kwargs"}]\supseteq O_k;\ \ T[b]\ \sqcup=\ ResidualCallableType(b)\Big)
+\\[0.2em]
+Args(P,O_f,S)
+  &\defeq\ \text{actual argument objects resolved from }S\text{ and binding edges hanging off }O_f
+\\[0.2em]
+Effect(\$f)
+  &\defeq\ \text{the effect summary }\epsilon^\#\text{ retrieved from the type component at }\$f
+\\[0.2em]
+Invoke(P,T,D;\ \epsilon^\#,O_f,\overline{O_a},q)
+  &\defeq\ \text{apply }\epsilon^\#\text{: allocate results (fresh site } Loc(q)\text{ if needed),}\\
+  &\qquad\text{propagate aliasing (}\star\text{ edges) when }\epsilon^\#.\textsf{points\_to\_args},\ \text{and perform field updates}\\
+  &\qquad\text{on targets discovered by }Targets(P,O_f,\cdot)\text{ using } Upd \text{ and } UpdD; \text{ also update }T.
+\end{array}
+\]
+\caption{Abstract transformer \(Trans^\#\).
+Only destination-producing instructions write to the stack map \(S\).
+Heap \(P\) is mutated at allocation sites (\textsc{ConstructTuple}, \textsc{ConstructDict}, \textsc{Bind}), explicit writes (\textsc{SetLocal}, \textsc{SetAttr}), and via \textsc{Call} according to the effect summary \(\epsilon^\#\).
+Lookup/overload resolution is pure.}
+\label{fig:tac-transfers-oneliner}
 \end{figure*}
 
+\paragraph{Notes.}
+(i) \emph{Lookup purity.} Results of \(LookupDunder*\)/\(ResolveOverload\) are static; we leave \(S\) unchanged and rely on the type component to constrain subsequent \(Bind/Call\).
+(ii) \emph{Binding vs.\ calling.} \(Bind\) allocates a bound-callable object \(b\) with explicit \texttt{args}/\texttt{kwargs} edges; \(Call\) interprets \(\epsilon^\#\) to allocate results, propagate aliasing, and perform effect-guided updates on receivers/arguments discovered via \(Targets\).
+(iii) \emph{Subscriptions.} Indexing sugar lowers to \(\_\_getitem\_\_\)/\(\_\_setitem\_\_\) and thus uses the same \(Bind/Call\) machinery.
 
-\subsection{Reachability and Garbage Collection}
+\subsection{Reachability, Pruning, and Dirty Roots}
 
-\begin{itemize}
-    \item $\mathsf{Reach}(R, P)$: Reachable objects from roots $R \subseteq \mathcal{O}$ under pointer map $P$.
-    \item $\mathsf{DirtyRoots}(\Sigma, R)$: Live roots reaching dirty objects in state $\Sigma$.
-\end{itemize}
-
-Reachable objects are computed as the least fixed point:
+Roots at \(l\) are
+\(R_{l,i}=\{\,P[\mathtt{LOCALS}][\mathsf{name}(x)] \mid x\in \mathsf{Live}_{l,i}\,\}\).
+Reachability is the least fixed point
 \[
-\mathsf{Reach}(R,P) = \mu X.\; R \cup \{ o' \mid o \in X,\ f \in \mathcal{F},\ o' \in P[o][f] \}
+\mathsf{Reach}(R,P)=\mu X.\ R\ \cup\ \{\,o' \mid \exists\,o\in X,\, f\in\mathcal{F}.\ o'\in P[o][f] \,\}.
 \]
-Abstract garbage collection prunes unreachable objects:
+Abstract GC restricts to \(S=\mathsf{Reach}(R_{l,i},P)\):
 \[
-\mathsf{GC}(\Sigma,R) = \big( P|_S,\ T|_S,\ D|_S \big),
-\quad
-S = \mathsf{Reach}(R,P)
+\mathsf{GC}(\Sigma,R_{l,i})=(P|_S,\ T|_S,\ D|_S).
 \]
-where roots $R$ are derived from liveness:
+Dirty roots:
 \[
-R = \big\{ P[\mathtt{LOCALS}][v] \mid v \in \mathsf{Live}_{l,i} \big\}
+\mathsf{DirtyRoots}(\Sigma,R_{l,i})=\big\{\, x\in \mathsf{Live}_{l,i}\ \big|\ \exists o\in \mathsf{Reach}(\{P[\mathtt{LOCALS}][\mathsf{name}(x)]\},P).\ D[o]\neq \emptyset \,\big\}.
 \]
-
-\paragraph{Dirty Roots.}
-The function $\mathsf{DirtyRoots}(\Sigma,R)$ identifies variables whose reachable sub-heaps have pending mutations:
-\begin{align*}
-\mathsf{DirtyRoots}(\Sigma,R) = \{ v \in R \mid & \exists o \in \mathsf{Reach}(\{P[\mathtt{LOCALS}][v]\},P) \\
-                                                & D[o] \neq \emptyset \}
-\end{align*}
-This supports efficient checkpointing by focusing only on modified reachable objects.
-
-\subsection{Operational Helpers and Effects}
-
-Pointer analysis integrates tightly with the type system via effectful operations:
-\begin{itemize}
-    \item $\mathsf{Access}(\tau,f)$: Resolves type of attribute $f$ of type $\tau$.
-    \item $\mathsf{Apply}(\tau_f,\langle\overline{\tau_i}\rangle)$: Returns function result type and effect.
-    \item $\mathsf{resolve}(O_f,\langle\overline{O_i}\rangle,\epsilon^\#)$: Determines target objects based on effect $\epsilon^\#$.
-    \item $\mathsf{update}(\epsilon^\#)$: Extracts dirty fields from $\epsilon^\#$.
-\end{itemize}
-Effects $\epsilon^\# = (\mathsf{new},\mathsf{update},\mathsf{points\_to\_args},\mathsf{bound\_method})$ guide heap updates and ensure that mutations are precisely tracked.
 
 \subsection{Soundness}
 
-We define a concretization function $\gamma: \Sigma \mapsto 2^{Obj}$ mapping abstract states to sets of possible concrete heaps.  
-Soundness requires:
+Let \(\gamma\) map abstract states to sets of concrete heaps. Soundness requires:
 \[
-\forall \Sigma^\#,\ \forall H \in \gamma(\Sigma^\#):
-    \quad \Sigma^\# \models P[o][f] \supseteq \{ H(o).f \}
+\forall \Sigma^\#=(P,T,D),\ \forall H\in \gamma(\Sigma^\#),\ \forall o,f.\quad H(o).f \in P[o][f].
 \]
-That is, the abstract state over-approximates all reachable concrete objects and all field writes:
-\begin{itemize}
-    \item If a concrete field write occurs, it is reflected in $D[o]$.
-    \item $P$ represents all concrete pointer relations.
-\end{itemize}
-Soundness follows from the monotonicity of $\mathsf{Expr}^\#$ and $\mathsf{Trans}^\#$, and the compatibility of TAC with the reduced product lattice.
-
-\subsection{Example}
-
-Consider:
-\begin{lstlisting}[language=python]
-x = [1, 2]      # Allocate list at l1
-x.append(3)     # Update list
-y = x           # Alias
-\end{lstlisting}
-
-TAC translation:
-\begin{itemize}
-    \item $\mathsf{Assign}(x,\mathsf{Call}(\mathtt{list},\langle1,2\rangle,\mathsf{None}),\mathsf{false})$ at $(l_1,0)$.
-    \item $\mathsf{Assign}(\mathsf{None},\mathsf{Call}(\mathsf{Attribute}(x,\mathtt{append}),\langle3\rangle,\mathsf{None}),\mathsf{false})$.
-    \item $\mathsf{Assign}(y,x,\mathsf{false})$.
-\end{itemize}
-
-Pointer analysis yields:
-\begin{itemize}
-    \item $P[\mathtt{LOCALS}][x] = \{\mathsf{Loc}(l_1)\}$.
-    \item $P[\mathsf{Loc}(l_1)][\star] = \{\mathsf{Imm}(\mathtt{int})\}$.
-    \item After \texttt{append}, $D[\mathsf{Loc}(l_1)] = \{\star\}$.
-    \item After $y = x$, $P[\mathtt{LOCALS}][y] = \{\mathsf{Loc}(l_1)\}$.
-    \item $\mathsf{DirtyRoots}(\Sigma,\mathsf{Live}_{l,i}) = \{x,y\}$.
-\end{itemize}
-Thus, both \texttt{x} and \texttt{y} are marked as roots for checkpointing.
+Whenever the concrete semantics performs a write \(o.f\leftarrow v\), the abstract transformer must
+mark \(f\in D[o]\). Monotonicity of transformers and the product lattice yields a standard
+worklist fixpoint and a post-fixpoint invariant. Local simulation lemmas follow the TAC
+operational semantics (lookups are pure; \(\mathsf{Bind}/\mathsf{Construct*}/\mathsf{Call}/\mathsf{Unpack}\) introduce only the abstract updates shown above).
