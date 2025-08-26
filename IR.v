@@ -52,7 +52,26 @@ Module TAC.
 
   Definition EffWrite := (EffLoc * FieldKey * ObjRef)%type.
   Definition Effect   := list EffWrite.
-
+  
+    (* ===== Opaque operator tags (no Python names in IR) ===== *)
+    Inductive UnOpTag  := UNeg | UPos | UInvert | UNot.
+    Inductive BinOpTag := BAdd | BSub | BMul | BTrueDiv | BFloorDiv | BMod
+                        | BMatMul | BAnd | BOr | BXor | BLShift | BRShift.
+    Inductive CmpOpTag := CEq | CNe | CLt | CLe | CGt | CGe | CIs | CIsNot | CIn | CNotIn.
+    Inductive Inplace  := Plain | Inplace.
+    
+    (* Expression-like dunder node (untyped; uses stack vars) *)
+    Inductive Dunder :=
+    | DUnOp  (op:UnOpTag)  (arg:StackVar)
+    | DBinOp (op:BinOpTag) (lhs rhs:StackVar) (mode:Inplace)
+    | DCmpOp (op:CmpOpTag) (lhs rhs:StackVar).
+    
+    (* Optional: a tag-only view for the oracle *)
+    Inductive DunderTag :=
+    | DTagUnOp  (op:UnOpTag)
+    | DTagBinOp (op:BinOpTag) (mode:Inplace)
+    | DTagCmpOp (op:CmpOpTag).
+    
   (* ===== Instructions ===== *)
 
   Inductive Instruction : Type :=
@@ -64,8 +83,7 @@ Module TAC.
   | ISetLocal     : string -> StackVar -> Instruction
 
   (* Method Resolution and Complex Operations *)
-  | ILookupDunderUnary  : StackVar -> string -> StackVar -> Instruction
-  | ILookupDunderBinary : StackVar -> string -> StackVar -> StackVar -> Instruction
+  | ILookupDunder       : StackVar -> Dunder -> Instruction
   | IResolveOverload    : StackVar -> StackVar -> StackVar -> StackVar -> Instruction
   | IResolveTupleCtor   : StackVar -> list StackVar -> Instruction
   | IResolveDictCtor    : StackVar -> list (StackVar * StackVar) -> Instruction
@@ -87,7 +105,7 @@ Module TAC.
 
     (* Pure operations returning a static object *)
     Axiom get_object_class : forall (obj: ObjRef), StaticID.
-    Axiom dunder_lookup : forall (name: string) (classes: list StaticID), option StaticID.
+    Axiom dunder_lookup_tag : forall (tag: DunderTag) (classes: list StaticID), option StaticID.
     Axiom resolve_overload : forall (h: Heap) (func:ObjRef) (args:ObjRef) (kwargs:ObjRef), option StaticID.
     Axiom resolve_tuple_constructor : forall (h: Heap) (elems: list ObjRef), option StaticID.
     Axiom resolve_dict_constructor  : forall (h: Heap) (pairs: list (ObjRef * ObjRef)), option StaticID.
@@ -224,21 +242,32 @@ Module TAC.
         exec s (ISetLocal varname src)
              {| stack := s.(stack); heap := h' |}
 
-    | ExecLookupDunderUnary : forall s dst dunder_name obj_sv obj obj_class method,
-        s.(stack) obj_sv = Some obj ->
-        get_object_class obj = obj_class ->
-        dunder_lookup dunder_name [obj_class] = Some method ->
-        exec s (ILookupDunderUnary dst dunder_name obj_sv)
-             {| stack := update_stack s.(stack) dst (StaticPtr method); heap := s.(heap) |}
-
-    | ExecLookupDunderBinary : forall s dst dunder_name sv1 sv2 obj1 obj2 cls1 cls2 method,
-        s.(stack) sv1 = Some obj1 ->
-        s.(stack) sv2 = Some obj2 ->
-        get_object_class obj1 = cls1 ->
-        get_object_class obj2 = cls2 ->
-        dunder_lookup dunder_name [cls1; cls2] = Some method ->
-        exec s (ILookupDunderBinary dst dunder_name sv1 sv2)
-             {| stack := update_stack s.(stack) dst (StaticPtr method); heap := s.(heap) |}
+    | ExecLookup : forall s dst e method,
+        (match e with
+         | DUnOp op a =>
+             exists obj cls,
+               s.(stack) a = Some obj /\
+               get_object_class obj = cls /\
+               dunder_lookup_tag (DTagUnOp op) [cls] = Some method
+         | DBinOp op l r mode =>
+             exists o1 o2 c1 c2,
+               s.(stack) l = Some o1 /\
+               s.(stack) r = Some o2 /\
+               get_object_class o1 = c1 /\
+               get_object_class o2 = c2 /\
+               dunder_lookup_tag (DTagBinOp op mode) [c1; c2] = Some method
+         | DCmpOp op l r =>
+             exists o1 o2 c1 c2,
+               s.(stack) l = Some o1 /\
+               s.(stack) r = Some o2 /\
+               get_object_class o1 = c1 /\
+               get_object_class o2 = c2 /\
+               dunder_lookup_tag (DTagCmpOp op) [c1; c2] = Some method
+         end) ->
+        exec s (ILookup dst e)
+             {| stack := update_stack s.(stack) dst (StaticPtr method);
+                heap  := s.(heap) |}
+    
 
     | ExecResolveOverload : forall s dst func_sv args_sv kwargs_sv func_obj args_obj kwargs_obj bound_func,
         s.(stack) func_sv = Some func_obj ->
