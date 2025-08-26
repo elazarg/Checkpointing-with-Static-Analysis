@@ -8,7 +8,7 @@ To ensure a sound and tractable static analysis of a highly dynamic language, ou
 \paragraph{Target Program Scope}
 Our analysis requires that programs adhere to the following properties, which enable a sound interpretation of control and data flow:
 \begin{itemize}
-    \item \textbf{No Dynamic Code Evaluation:} Constructs such as \texttt{eval}, \texttt{exec}, and \texttt{getattr} with dynamically computed string arguments are disallowed. These features prevent the static resolution of the program's control-flow graph.
+    \item \textbf{No Dynamic Code Evaluation:} Constructs such as \texttt{eval}, \texttt{exec}, and \texttt{getattr} with dynamically computed string arguments are disallowed. \texttt{getattr} with literal strings (e.g., \texttt{getattr(x, "mean")}) is supported, as it's semantically equivalent to a standard attribute access (\texttt{x.mean}). These features prevent the static resolution of the program's control-flow graph.
     \item \textbf{Statically-Resolvable Calls:} Function calls must be resolvable at analysis time using the provided type signatures. The framework does not model complex higher-order control flow where functions are passed as first-class values to unknown call sites.
     \item \textbf{Explicit Generic Instantiations:} To avoid relying on runtime type propagation, generic collections must be explicitly instantiated with their type parameters (e.g., \texttt{list[int]()}), especially when empty.
     \item \textbf{Simplified NumPy Aliasing:} The analysis assumes that NumPy array variables refer to distinct memory objects unless explicitly constructed via view-creating operations. It does not model view-based aliasing where multiple arrays may share the same underlying data buffer.
