@@ -82,16 +82,23 @@ Module TAC.
   | ILoadGlobal   : StackVar -> string -> Instruction
   | ISetLocal     : string -> StackVar -> Instruction
 
-  (* Method Resolution and Complex Operations *)
+  (* Phase 1: Pure Resolution/Lookup (for named functions) *)
   | ILookupDunder       : StackVar -> Dunder -> Instruction
-  | IResolveOverload    : StackVar -> StackVar -> StackVar -> StackVar -> Instruction
-  | IResolveTupleCtor   : StackVar -> list StackVar -> Instruction
-  | IResolveDictCtor    : StackVar -> list (StackVar * StackVar) -> Instruction
-  | IGetAttr            : StackVar -> StackVar -> string -> Instruction
-  | ISetAttr            : StackVar -> string -> StackVar -> Instruction
-  | IUnpack             : list StackVar -> StackVar -> Instruction
+  | ILookupOverload     : StackVar -> StackVar -> StackVar -> StackVar -> Instruction
 
-  (* Function Calls *)
+  (* Phase 2: Effectful Argument Binding *)
+  | IBind               : StackVar -> StackVar -> StackVar -> StackVar -> Instruction
+
+  (* Literal Constructors (effectful, produce values directly) *)
+  | IConstructTuple     : StackVar -> list StackVar -> Instruction
+  | IConstructDict      : StackVar -> list (StackVar * StackVar) -> Instruction
+
+  (* Other Complex Operations *)
+  | IGetAttr      : StackVar -> StackVar -> string -> Instruction
+  | ISetAttr      : StackVar -> string -> StackVar -> Instruction
+  | IUnpack       : list StackVar -> StackVar -> Instruction
+
+  (* Phase 3: Effectful Invocation *)
   | ICall         : StackVar -> StackVar -> Instruction
 
   (* Control Flow *)
@@ -103,20 +110,30 @@ Module TAC.
   Section PythonSemantics.
     Variable σ : StaticStore.
 
-    (* Pure operations returning a static object *)
+    (* Pure operations for the Lookup phase *)
     Axiom get_object_class : forall (obj: ObjRef), StaticID.
-    Axiom dunder_lookup_tag : forall (tag: DunderTag) (classes: list StaticID), option StaticID.
+    Axiom dunder_lookup : forall (tag: DunderTag) (classes: list StaticID), option StaticID.
     Axiom resolve_overload : forall (h: Heap) (func:ObjRef) (args:ObjRef) (kwargs:ObjRef), option StaticID.
-    Axiom resolve_tuple_constructor : forall (h: Heap) (elems: list ObjRef), option StaticID.
-    Axiom resolve_dict_constructor  : forall (h: Heap) (pairs: list (ObjRef * ObjRef)), option StaticID.
 
     (* Heap-reading/writing operations *)
     Axiom attribute_lookup : forall (h: Heap) (obj: ObjRef) (name: string), option ObjRef.
     Axiom attribute_assign : forall (h: Heap) (obj: ObjRef) (name: string) (val: ObjRef), option Heap.
 
-    (* Effectful operations that may allocate memory *)
-    Axiom apply_function : forall (h: Heap) (func: StaticID), option (ObjRef * Effect).
-    Axiom unpack_iterable : forall (h: Heap) (obj: ObjRef) (n: nat), option (list ObjRef * Effect).
+    (* Effectful operations for Binding, Constructors, and Invocation *)
+    Axiom bind_function : forall (h: Heap) (func: StaticID) (args: ObjRef) (kwargs: ObjRef),
+        option (ObjRef * Effect).
+
+    Axiom construct_tuple : forall (h: Heap) (elems: list ObjRef),
+        option (ObjRef (*result*) * Effect).
+
+    Axiom construct_dict  : forall (h: Heap) (pairs: list (ObjRef * ObjRef)),
+        option (ObjRef (*result*) * Effect).
+
+    Axiom apply_function : forall (h: Heap) (bound_func: ObjRef),
+        option (ObjRef * Effect).
+
+    Axiom unpack_iterable : forall (h: Heap) (obj: ObjRef) (n: nat),
+        option (list ObjRef * Effect).
 
   End PythonSemantics.
 
@@ -132,7 +149,7 @@ Module TAC.
 
     Definition StackEnv := StackVar -> option ObjRef.
 
-    (* Helper for comparing field keys, needed by update_heap *)
+    (* Helpers *)
     Definition field_key_eqb (k1 k2 : FieldKey) : bool :=
       match k1, k2 with
       | FKPos n1,        FKPos n2        => Nat.eqb n1 n2
@@ -141,9 +158,7 @@ Module TAC.
       | _, _ => false
       end.
 
-    (* Helper for performing a functional update on the heap *)
-    Definition update_heap (h : Heap) (obj : HeapLoc) (k : FieldKey)
-                           (val : ObjRef) : Heap :=
+    Definition update_heap (h : Heap) (obj : HeapLoc) (k : FieldKey) (val : ObjRef) : Heap :=
       fun o k' =>
         if match o, obj with
            | Loc n1, Loc n2 => Nat.eqb n1 n2
@@ -154,19 +169,17 @@ Module TAC.
         then if field_key_eqb k k' then Some val else h o k'
         else h o k'.
 
-    (* Helper for looking up values from either store *)
     Definition memory_get (h : Heap) (obj : ObjRef) (k : FieldKey) : option ObjRef :=
       match obj with
-      | StaticPtr sid =>
-          match σ sid k with
-          | Some sid' => Some (StaticPtr sid')
-          | None => None
-          end
+      | StaticPtr sid => match σ sid k with
+                         | Some sid' => Some (StaticPtr sid')
+                         | None => None
+                         end
       | HeapPtr hid => h hid k
       end.
 
     Definition update_stack (stk : StackEnv) (n : StackVar) (obj : ObjRef) : StackEnv :=
-      fun m => if Nat.eq_dec n m then Some obj else stk m.
+      fun m => if Nat.eqb n m then Some obj else stk m.
 
     Fixpoint update_stack_multi (stk: StackEnv) (vars: list StackVar) (objs: list ObjRef) : StackEnv :=
       match vars, objs with
@@ -175,7 +188,6 @@ Module TAC.
       end.
 
     (* --- Effect Realization Logic --- *)
-
     Definition dom (h : Heap) : Ensemble nat :=
       fun n => exists k v, h (Loc n) k = Some v.
 
@@ -194,8 +206,7 @@ Module TAC.
       | Fresh i => Loc (ι i)
       end.
 
-    Definition apply_effect_write (h : Heap) (ι : nat -> nat)
-                                  (w : EffWrite) : Heap :=
+    Definition apply_effect_write (h : Heap) (ι : nat -> nat) (w : EffWrite) : Heap :=
       match w with
       | (loc, k, val) => update_heap h (realize_loc ι loc) k val
       end.
@@ -224,7 +235,8 @@ Module TAC.
 
     | ExecLoadConst : forall s dst k,
         exec s (ILoadConst dst k)
-             {| stack := update_stack s.(stack) dst (StaticPtr (ObjConst k)); heap := s.(heap) |}
+             {| stack := update_stack s.(stack) dst (StaticPtr (ObjConst k));
+                heap := s.(heap) |}
 
     | ExecLoadLocal : forall s dst varname obj,
         memory_get s.(heap) (HeapPtr Locals) (key_named varname) = Some obj ->
@@ -242,54 +254,68 @@ Module TAC.
         exec s (ISetLocal varname src)
              {| stack := s.(stack); heap := h' |}
 
-    | ExecLookup : forall s dst e method,
+    | ExecLookupDunder : forall s dst e method,
         (match e with
          | DUnOp op a =>
              exists obj cls,
                s.(stack) a = Some obj /\
                get_object_class obj = cls /\
-               dunder_lookup_tag (DTagUnOp op) [cls] = Some method
+               dunder_lookup (DTagUnOp op) [cls] = Some method
          | DBinOp op l r mode =>
              exists o1 o2 c1 c2,
                s.(stack) l = Some o1 /\
                s.(stack) r = Some o2 /\
                get_object_class o1 = c1 /\
                get_object_class o2 = c2 /\
-               dunder_lookup_tag (DTagBinOp op mode) [c1; c2] = Some method
+               dunder_lookup (DTagBinOp op mode) [c1; c2] = Some method
          | DCmpOp op l r =>
              exists o1 o2 c1 c2,
                s.(stack) l = Some o1 /\
                s.(stack) r = Some o2 /\
                get_object_class o1 = c1 /\
                get_object_class o2 = c2 /\
-               dunder_lookup_tag (DTagCmpOp op) [c1; c2] = Some method
+               dunder_lookup (DTagCmpOp op) [c1; c2] = Some method
          end) ->
-        exec s (ILookup dst e)
+        exec s (ILookupDunder dst e)
              {| stack := update_stack s.(stack) dst (StaticPtr method);
                 heap  := s.(heap) |}
-    
 
-    | ExecResolveOverload : forall s dst func_sv args_sv kwargs_sv func_obj args_obj kwargs_obj bound_func,
+    | ExecLookupOverload : forall s dst func_sv args_sv kwargs_sv func_obj args_obj kwargs_obj static_func,
         s.(stack) func_sv = Some func_obj ->
         s.(stack) args_sv = Some args_obj ->
         s.(stack) kwargs_sv = Some kwargs_obj ->
-        resolve_overload s.(heap) func_obj args_obj kwargs_obj = Some bound_func ->
-        exec s (IResolveOverload dst func_sv args_sv kwargs_sv)
-             {| stack := update_stack s.(stack) dst (StaticPtr bound_func); heap := s.(heap) |}
+        resolve_overload s.(heap) func_obj args_obj kwargs_obj = Some static_func ->
+        exec s (ILookupOverload dst func_sv args_sv kwargs_sv)
+             {| stack := update_stack s.(stack) dst (StaticPtr static_func);
+                heap := s.(heap) |}
 
-    | ExecResolveTupleCtor : forall s dst items item_objs bound_func,
+    | ExecBind : forall s dst func_sv args_sv kwargs_sv func_sid args_obj kwargs_obj bound_obj eff ι h',
+        s.(stack) func_sv = Some (StaticPtr func_sid) ->
+        s.(stack) args_sv = Some args_obj ->
+        s.(stack) kwargs_sv = Some kwargs_obj ->
+        bind_function s.(heap) func_sid args_obj kwargs_obj = Some (bound_obj, eff) ->
+        FreshInjection s.(heap) (fresh_indices eff) ι ->
+        h' = apply_effects s.(heap) ι eff ->
+        exec s (IBind dst func_sv args_sv kwargs_sv)
+             {| stack := update_stack s.(stack) dst bound_obj; heap := h' |}
+
+    | ExecConstructTuple : forall s dst items item_objs res eff ι h',
         map (fun n => s.(stack) n) items = map (@Some ObjRef) item_objs ->
-        resolve_tuple_constructor s.(heap) item_objs = Some bound_func ->
-        exec s (IResolveTupleCtor dst items)
-             {| stack := update_stack s.(stack) dst (StaticPtr bound_func); heap := s.(heap) |}
+        construct_tuple s.(heap) item_objs = Some (res, eff) ->
+        FreshInjection s.(heap) (fresh_indices eff) ι ->
+        h' = apply_effects s.(heap) ι eff ->
+        exec s (IConstructTuple dst items)
+             {| stack := update_stack s.(stack) dst res; heap := h' |}
 
-    | ExecResolveDictCtor : forall s dst items key_objs val_objs kv_pairs bound_func,
+    | ExecConstructDict : forall s dst items key_objs val_objs kv_pairs res eff ι h',
         map (fun '(k,_) => s.(stack) k) items = map (@Some ObjRef) key_objs ->
         map (fun '(_,v) => s.(stack) v) items = map (@Some ObjRef) val_objs ->
         List.combine key_objs val_objs = kv_pairs ->
-        resolve_dict_constructor s.(heap) kv_pairs = Some bound_func ->
-        exec s (IResolveDictCtor dst items)
-             {| stack := update_stack s.(stack) dst (StaticPtr bound_func); heap := s.(heap) |}
+        construct_dict s.(heap) kv_pairs = Some (res, eff) ->
+        FreshInjection s.(heap) (fresh_indices eff) ι ->
+        h' = apply_effects s.(heap) ι eff ->
+        exec s (IConstructDict dst items)
+             {| stack := update_stack s.(stack) dst res; heap := h' |}
 
     | ExecGetAttr : forall s dst obj_sv attr obj result,
         s.(stack) obj_sv = Some obj ->
@@ -314,9 +340,9 @@ Module TAC.
         exec s (IUnpack vars src_sv)
              {| stack := stk'; heap := h' |}
 
-    | ExecCall : forall s dst func_sv func_sid res eff ι h',
-        s.(stack) func_sv = Some (StaticPtr func_sid) ->
-        apply_function s.(heap) func_sid = Some (res, eff) ->
+    | ExecCall : forall s dst func_sv bound_obj res eff ι h',
+        s.(stack) func_sv = Some bound_obj ->
+        apply_function s.(heap) bound_obj = Some (res, eff) ->
         FreshInjection s.(heap) (fresh_indices eff) ι ->
         h' = apply_effects s.(heap) ι eff ->
         exec s (ICall dst func_sv)
