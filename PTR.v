@@ -257,7 +257,7 @@ Module PointerAnalysis.
     Definition get_global (P : PointsTo) (name : string) : ObjectSet.t :=
       points_to_lookup P Globals (FKName name).
 
-    (* ===== Attribute evaluation (unchanged) ===== *)
+    (* ===== Attribute evaluation ===== *)
     Definition eval_const (c : ConstV) : (ObjectSet.t * TypeExpr) :=
       let ty := literal_type c in (immutable_const c, ty).
 
@@ -302,7 +302,7 @@ Module PointerAnalysis.
         else base_objs in
       (st', result_objs, result_type).
 
-    (* ===== Dunder evaluation (NEW) ===== *)
+    (* ===== Dunder evaluation ===== *)
     Definition eval_dunder (st : State) (e : Dunder) (pp : ProgramPoint)
       : (State * ObjectSet.t * TypeExpr) :=
       let T := st_types st in
@@ -342,7 +342,7 @@ Module PointerAnalysis.
                (st', ObjectSet.singleton loc, f_ty)
       end.
 
-    (* ===== Bound-call helpers & joins (unchanged) ===== *)
+    (* ===== Bound-call helpers & joins ===== *)
     Definition collect_wild_values (P:PointsTo) (containers:ObjectSet.t) : ObjectSet.t :=
       ObjectSet.fold (fun o acc => ObjectSet.union acc (points_to_lookup P o wildcard))
                      containers ObjectSet.empty.
@@ -389,8 +389,43 @@ Module PointerAnalysis.
          st_types     := join_type_maps (st_types s1)     (st_types s2);
          st_dirty     := join_dirty_maps (st_dirty s1)    (st_dirty s2);
          st_stack     := join_stack     (st_stack s1)     (st_stack s2) |}.
-
-    (* ===== Calls & transfers (unchanged except ILookup) ===== *)
+         
+    (* Evaluate ILookupOverload: resolve a static callable from func + (args, kwargs). *)
+    Definition eval_lookup_overload
+      (st : State) (func_sv args_sv kwargs_sv : StackVar) (pp : ProgramPoint)
+      : (State * ObjectSet.t * TypeExpr) :=
+      let P := st_points_to st in
+      let T := st_types     st in
+    
+      (* Fetch objects *)
+      let func_objs   := stack_lookup (st_stack st) func_sv in
+      let args_objs   := stack_lookup (st_stack st) args_sv in
+      let kwargs_objs := stack_lookup (st_stack st) kwargs_sv in
+    
+      (* Build coarse argument-type summary from tuple/dict wildcards *)
+      let pos_vals := collect_wild_values P args_objs in
+      let kw_vals  := collect_wild_values P kwargs_objs in
+      let arg_types := [ type_join (get_types T pos_vals) (get_types T kw_vals) ] in
+    
+      (* Resolve overload/type via TS.partial *)
+      let func_ty   := get_types T func_objs in
+      let resolved  := partial func_ty arg_types in
+    
+      (* Materialize the function value *)
+      let res_objs :=
+        if type_is_immutable resolved
+        then immutable_type resolved
+        else ObjectSet.singleton (alloc_site pp) in
+    
+      (* If we allocated, attach the type to that alloc site *)
+      let st' :=
+        if type_is_immutable resolved
+        then st
+        else with_types st (type_update T (alloc_site pp) resolved) in
+    
+      (st', res_objs, resolved).
+    
+    (* ===== Calls & transfers ===== *)
     Definition eval_call_single (st : State) (callee : AbstractObject.t) (pp : ProgramPoint)
       : (State * ObjectSet.t * TypeExpr) :=
       let P := st_points_to st in
@@ -546,7 +581,21 @@ Module PointerAnalysis.
         stack_update acc dst objs
       ) indexed_dsts (st_stack st) in
       with_stack st S'.
-
+      
+    Definition transfer_lookup_dunder
+      (st : State) (dst : StackVar) (expr : Dunder) (pp : ProgramPoint) : State :=
+      let (st', objs, ty) := eval_dunder st expr pp in
+      let T' := type_update_set (st_types st') objs ty in
+      let st'' := with_types st' T' in
+      with_stack st'' (stack_update (st_stack st'') dst objs). 
+      
+    Definition transfer_lookup_overload
+      (st : State) (dst func_sv args_sv kwargs_sv : StackVar) (pp : ProgramPoint) : State :=
+      let (st', objs, ty) := eval_lookup_overload st func_sv args_sv kwargs_sv pp in
+      let T' := type_update_set (st_types st') objs ty in
+      let st'' := with_types st' T' in
+      with_stack st'' (stack_update (st_stack st'') dst objs).
+      
     Definition transfer_call (st : State) (dst : StackVar) (func : StackVar) (pp : ProgramPoint) : State :=
       let func_objs := stack_lookup (st_stack st) func in
       let (st', result_objs, result_type) := eval_call st func_objs pp in
@@ -554,7 +603,7 @@ Module PointerAnalysis.
       let st'' := with_types st' T' in
       with_stack st'' (stack_update (st_stack st'') dst result_objs).
 
-    (* Main transfer dispatcher: note the NEW ILookup case and no old dunder cases *)
+    (* Main transfer dispatcher *)
     Definition transfer (st : State) (instr : Instruction) (pp : ProgramPoint) : State :=
       match instr with
       | IMov d s => with_stack st (stack_update (st_stack st) d (stack_lookup (st_stack st) s))
@@ -569,11 +618,8 @@ Module PointerAnalysis.
       | IBind d f a k => transfer_bind st d f a k pp
       | IUnpack ds s => transfer_unpack st ds s
       | ICall d f => transfer_call st d f pp
-      | ILookup d expr =>
-          let (st', objs, ty) := eval_dunder st expr pp in
-          let T' := type_update_set (st_types st') objs ty in
-          let st'' := with_types st' T' in
-          with_stack st'' (stack_update (st_stack st'') d objs)
+      | ILookupDunder d expr => transfer_lookup_dunder st d expr pp
+      | ILookupOverload d f a k => transfer_lookup_overload st d f a k pp
       | IAssumeValue _ _ => st
       | IExit => st
       end.
