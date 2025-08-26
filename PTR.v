@@ -1,5 +1,5 @@
 (*
-  Pointer Analysis for TAC IR (with unified ILookup over tag-based Dunder)
+  Pointer Analysis for TAC IR
 *)
 
 From Coq Require Import String List Bool Arith ZArith PeanoNat.
@@ -16,13 +16,12 @@ Module PointerAnalysis.
   (* ===== Abstract Objects ===== *)
   Module AbstractObject.
     Inductive t :=
-    | Location : nat -> nat -> t
-    | Param    : option string -> t
-    | ImmType  : nat -> t
-    | ImmConst : ConstV -> t
-    | Locals   : t
-    | Globals  : t.
-
+    | Location : nat -> nat -> t           (* allocation site: (block, instr) *)
+    | Param    : option string -> t        (* parameter with optional name *)
+    | ImmType  : nat -> t                  (* immutable by type hash *)
+    | ImmConst : ConstV -> t               (* immutable constant value *)
+    | Locals   : t                         (* locals scope *)
+    | Globals  : t.                        (* globals scope *)
     Definition eq_dec : forall x y : t, {x = y} + {x <> y}.
     Proof.
       decide equality; try apply Nat.eq_dec; try apply String.string_dec.
@@ -32,7 +31,6 @@ Module PointerAnalysis.
     Defined.
   End AbstractObject.
 
-  (* ===== Type System Interface ===== *)
   Module Type TypeSystemSig.
     Import AbstractObject.
 
@@ -50,7 +48,6 @@ Module PointerAnalysis.
       se_update_indices : list nat;
       se_points_to_args : bool
     }.
-
     Parameter empty_effect : SideEffect.
 
     Parameter literal_type : ConstV -> TypeExpr.
@@ -69,6 +66,8 @@ Module PointerAnalysis.
     Parameter subscr_index : TypeExpr -> nat -> TypeExpr.
 
     Parameter partial : TypeExpr -> list TypeExpr -> TypeExpr.
+    Parameter get_unop : TypeExpr -> string -> TypeExpr.
+    Parameter partial_binop : TypeExpr -> TypeExpr -> string -> TypeExpr.
 
     Parameter make_list_constructor : TypeExpr.
     Parameter make_tuple_constructor : TypeExpr.
@@ -78,7 +77,7 @@ Module PointerAnalysis.
 
     Parameter type_is_callable : TypeExpr -> bool.
 
-    (* === Dunder: typed descriptor + oracle === *)
+    (* === New: operator resolution with typed operands === *)
     Inductive DunderInfo :=
     | TDUnOp  (op:UnOpTag)  (arg:TypeExpr)
     | TDBinOp (op:BinOpTag) (lhs rhs:TypeExpr) (mode:Inplace)
@@ -258,7 +257,7 @@ Module PointerAnalysis.
     Definition get_global (P : PointsTo) (name : string) : ObjectSet.t :=
       points_to_lookup P Globals (FKName name).
 
-    (* ===== Constants & attributes ===== *)
+    (* ===== Attribute evaluation (unchanged) ===== *)
     Definition eval_const (c : ConstV) : (ObjectSet.t * TypeExpr) :=
       let ty := literal_type c in (immutable_const c, ty).
 
@@ -303,7 +302,7 @@ Module PointerAnalysis.
         else base_objs in
       (st', result_objs, result_type).
 
-    (* ===== Dunder evaluation ===== *)
+    (* ===== Dunder evaluation (NEW) ===== *)
     Definition eval_dunder (st : State) (e : Dunder) (pp : ProgramPoint)
       : (State * ObjectSet.t * TypeExpr) :=
       let T := st_types st in
@@ -343,7 +342,7 @@ Module PointerAnalysis.
                (st', ObjectSet.singleton loc, f_ty)
       end.
 
-    (* ===== Bound-call helpers & joins ===== *)
+    (* ===== Bound-call helpers & joins (unchanged) ===== *)
     Definition collect_wild_values (P:PointsTo) (containers:ObjectSet.t) : ObjectSet.t :=
       ObjectSet.fold (fun o acc => ObjectSet.union acc (points_to_lookup P o wildcard))
                      containers ObjectSet.empty.
@@ -391,7 +390,7 @@ Module PointerAnalysis.
          st_dirty     := join_dirty_maps (st_dirty s1)    (st_dirty s2);
          st_stack     := join_stack     (st_stack s1)     (st_stack s2) |}.
 
-    (* ===== Calls & transfers ===== *)
+    (* ===== Calls & transfers (unchanged except ILookup) ===== *)
     Definition eval_call_single (st : State) (callee : AbstractObject.t) (pp : ProgramPoint)
       : (State * ObjectSet.t * TypeExpr) :=
       let P := st_points_to st in
@@ -555,7 +554,7 @@ Module PointerAnalysis.
       let st'' := with_types st' T' in
       with_stack st'' (stack_update (st_stack st'') dst result_objs).
 
-    (* Main transfer dispatcher (with new ILookup case) *)
+    (* Main transfer dispatcher: note the NEW ILookup case and no old dunder cases *)
     Definition transfer (st : State) (instr : Instruction) (pp : ProgramPoint) : State :=
       match instr with
       | IMov d s => with_stack st (stack_update (st_stack st) d (stack_lookup (st_stack st) s))
@@ -565,8 +564,8 @@ Module PointerAnalysis.
       | ISetLocal x s => transfer_set_local st x s
       | IGetAttr d o a => transfer_get_attr st d o a pp
       | ISetAttr o a v => transfer_set_attr st o a v
-      | IResolveTupleCtor d xs => transfer_construct_tuple st d xs pp
-      | IResolveDictCtor d kvs => transfer_construct_dict st d kvs pp
+      | IConstructTuple d xs => transfer_construct_tuple st d xs pp
+      | IConstructDict d kvs => transfer_construct_dict st d kvs pp
       | IBind d f a k => transfer_bind st d f a k pp
       | IUnpack ds s => transfer_unpack st ds s
       | ICall d f => transfer_call st d f pp
@@ -575,8 +574,7 @@ Module PointerAnalysis.
           let T' := type_update_set (st_types st') objs ty in
           let st'' := with_types st' T' in
           with_stack st'' (stack_update (st_stack st'') d objs)
-      | IResolveOverload _ _ _ _ (* no-op in points/type domain; callable chosen statically *)
-      | IAssumeValue _ _
+      | IAssumeValue _ _ => st
       | IExit => st
       end.
 
