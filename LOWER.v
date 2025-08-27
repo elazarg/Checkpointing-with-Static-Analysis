@@ -21,10 +21,9 @@ Require Import IR.
 Require Import cpython_bytecode_coq.
 
 Module Lowering.
-
   Module B := CPythonBytecode.
   Module T := TAC.
-
+  
   (**************************************************************************)
   (** Scope and axiomatized front-end facts                                 *)
   (**************************************************************************)

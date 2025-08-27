@@ -1,12 +1,15 @@
+
+(*
+  SIGS.v
+  Module signatures for the pointer analysis
+*)
+
 From Coq Require Import String List Bool Arith ZArith PeanoNat.
 Import ListNotations.
-
-Require Import IR.
 
 Module Type TypeSystemSig.
   Import TAC.
 
-  (* Type expressions - abstract to the signature *)
   Parameter TypeExpr : Type.
   Parameter type_bot : TypeExpr.
   Parameter type_top : TypeExpr.
@@ -50,10 +53,9 @@ Module Type TypeSystemSig.
 
   Parameter type_is_callable : TypeExpr -> bool.
 
-  (* Operator resolution with typed operands *)
   Inductive DunderInfo :=
   | TDUnOp  (op:UnOpTag)  (arg:TypeExpr)
-  | TDBinOp (op:BinOpTag) (lhs rhs:TypeExpr) (mode:Inplace)
+  | TDBinOp (op:BinOpTag) (lhs rhs:TypeExpr) (inplace:bool)
   | TDCmpOp (op:CmpOpTag) (lhs rhs:TypeExpr).
 
   Parameter dunder_lookup : DunderInfo -> TypeExpr.

@@ -58,18 +58,17 @@ Module TAC.
     Inductive BinOpTag := BAdd | BSub | BMul | BTrueDiv | BFloorDiv | BMod
                         | BMatMul | BAnd | BOr | BXor | BLShift | BRShift.
     Inductive CmpOpTag := CEq | CNe | CLt | CLe | CGt | CGe | CIs | CIsNot | CIn | CNotIn.
-    Inductive Inplace  := Plain | Inplace.
     
     (* Expression-like dunder node (untyped; uses stack vars) *)
     Inductive Dunder :=
     | DUnOp  (op:UnOpTag)  (arg:StackVar)
-    | DBinOp (op:BinOpTag) (lhs rhs:StackVar) (mode:Inplace)
+    | DBinOp (op:BinOpTag) (lhs rhs:StackVar) (inplace:bool)
     | DCmpOp (op:CmpOpTag) (lhs rhs:StackVar).
     
     (* Optional: a tag-only view for the oracle *)
     Inductive DunderTag :=
     | DTagUnOp  (op:UnOpTag)
-    | DTagBinOp (op:BinOpTag) (mode:Inplace)
+    | DTagBinOp (op:BinOpTag) (inplace:bool)
     | DTagCmpOp (op:CmpOpTag).
     
   (* ===== Instructions ===== *)
