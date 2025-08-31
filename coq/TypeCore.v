@@ -705,9 +705,3 @@ Definition empty_effect : SideEffect := {|
 |}.
 
 End TypeCore.
-
-Module TypeLattice.
-Axiom Program Fixpoint subtype (a b : TypeExpr) : bool.
-Axiom Program Fixpoint join (a b : TypeExpr) : TypeExpr.
-Axiom Program Fixpoint unify (a b : TypeExpr) : TypeExpr.
-End TypeLattice.

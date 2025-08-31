@@ -104,6 +104,31 @@ Module TAC.
   | IAssumeValue  : StackVar -> ConstV -> Instruction
   | IExit         : Instruction.
 
+  
+  (* IR-level policy: tag -> attribute name *)
+  Definition unop_to_attr (op : UnOpTag) : string :=
+    match op with
+    | UNeg    => "neg"
+    | UPos    => "pos"
+    | UInvert => "invert"
+    | UNot    => "bool"
+    end.
+
+  Definition binop_to_attr (op : BinOpTag) : string :=
+    match op with
+    | BAdd => "add" | BSub => "sub" | BMul => "mul"
+    | BTrueDiv => "truediv" | BFloorDiv => "floordiv" | BMod => "mod"
+    | BMatMul => "matmul" | BAnd => "and" | BOr => "or" | BXor => "xor"
+    | BLShift => "lshift" | BRShift => "rshift"
+    end.
+
+  Definition cmpop_to_attr (op : CmpOpTag) : string :=
+    match op with
+    | CEq => "eq" | CNe => "ne" | CLt => "lt" | CLe => "le"
+    | CGt => "gt" | CGe => "ge" | CIs | CIsNot => "is"
+    | CIn | CNotIn => "contains"
+    end.
+    
   (* ===== Axiomatized Python Semantics ===== *)
 
   Section PythonSemantics.
@@ -356,30 +381,5 @@ Module TAC.
 
   End Semantics.
 
-  (* IR-level policy: tag -> attribute name *)
-  Definition unop_to_attr (op : T.UnOpTag) : string :=
-    match op with
-    | UNeg    => "neg"
-    | UPos    => "pos"
-    | UInvert => "invert"
-    | UNot    => "bool"
-    end.
-
-  Definition binop_to_attr (op : T.BinOpTag) : string * bool :=
-    let base :=
-      match op with
-      | BAdd => "add" | TBSub => "sub" | BMul => "mul"
-      | BTrueDiv => "truediv" | T.BFloorDiv => "floordiv" | BMod => "mod"
-      | BMatMul => "matmul" | BAnd => "and" | BOr => "or" | BXor => "xor"
-      | BLShift => "lshift" | BRShift => "rshift"
-      end
-    in (base, false).  (* set [true] for in-place variants if you model them *)
-
-  Definition cmpop_to_attr (op : T.CmpOpTag) : string :=
-    match op with
-    | CEq => "eq" | CNe => "ne" | CLt => "lt" | CLe => "le"
-    | CGt => "gt" | CGe => "ge" | CIs | CIsNot => "is"
-    | CIn | T.CNotIn => "contains"
-    end.
-    
 End TAC.
+

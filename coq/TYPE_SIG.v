@@ -7,9 +7,9 @@
 From Coq Require Import String List Bool Arith ZArith PeanoNat.
 Import ListNotations.
 
-Module Type TypeSystemSig.
-  Import TAC.
+From TYPE Require Import TypeCore.
 
+Module Type TypeSystemSig.
   Parameter TypeExpr : Type.
   Parameter type_bot : TypeExpr.
   Parameter type_top : TypeExpr.
@@ -26,6 +26,8 @@ Module Type TypeSystemSig.
   }.
   
   Parameter empty_effect : SideEffect.
+  Import TypeCore.
+
   Parameter literal_type : ConstV -> TypeExpr.
   Parameter get_type_hash : TypeExpr -> nat.
 
