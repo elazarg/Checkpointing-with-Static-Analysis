@@ -7,7 +7,7 @@ Import ListNotations.
 
 Set Implicit Arguments.
 
-Module CompleteTypeSystem <: TypeSystemSig.
+Module CompleteOldTypeSystem <: TypeSystemSig.
   Import TAC.
 
   (* Use the parameterized approach for SideEffect to avoid mutual induction issues *)
@@ -512,4 +512,4 @@ Module CompleteTypeSystem <: TypeSystemSig.
         partial_binop lhs rhs (cmpop_to_method op)
     end.
 
-End CompleteTypeSystem.
+End CompleteOldTypeSystem.
