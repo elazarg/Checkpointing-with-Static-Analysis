@@ -1,6 +1,6 @@
 
 (*
-  SIGS.v
+  TYPE_SIG.v
   Module signatures for the pointer analysis
 *)
 

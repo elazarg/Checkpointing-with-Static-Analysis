@@ -854,3 +854,19 @@ Next Obligation.
   unfold not.
   split; intros; destruct H; congruence.
 Qed.
+
+
+Definition satisfies_protocol (t proto:TypeExpr) : bool :=
+    match proto with
+    | TE_Class _ proto_members _ true _ =>
+        let t_members := match t with
+                         | TE_Class _ ms _ _ _ => ms
+                         | TE_Module _ ms => ms
+                         | _ => [] end in
+        forallb (fun pr => let '(pk,pt) := pr in
+                 match row_first_match t_members pk with
+                 | Some tt => TypeLattice.subtype tt pt
+                 | None => false
+                 end) proto_members
+    | _ => false
+    end.
