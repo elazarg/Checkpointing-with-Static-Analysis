@@ -3,18 +3,17 @@
   Pointer Analysis for TAC IR
 *)
 
-From Coq Require Import String List Bool Arith ZArith PeanoNat.
-From Coq Require Import FSets FSetWeakList FMaps FMapWeakList.
-From Coq Require Import Relations DecidableType.
+From Stdlib Require Import String List Bool Arith ZArith PeanoNat.
+From Stdlib Require Import FSets FSetWeakList FMaps FMapWeakList.
+From Stdlib Require Import Relations DecidableType.
 Import ListNotations.
 
 Set Implicit Arguments.
 
-Require Import IR.
-Require Import SIGS.
+From Spyte Require Import Python Tac TypeSig.
 
 Module PointerAnalysis (TS : TypeSystemSig).
-  Import TAC TS.
+  Import TS.
 
   (* Abstract Objects *)
   Module AbstractObject.
@@ -22,7 +21,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
     | Location : nat -> nat -> t
     | Param    : option string -> t
     | ImmType  : nat -> t
-    | ImmConst : ConstV -> t
+    | ImmConst : Tac.ConstV -> t
     | Locals   : t
     | Globals  : t.
     
@@ -49,7 +48,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
   Module AOMap := FMapWeakList.Make(AODec).
 
   Module FKDec <: DecidableType.
-    Definition t := FieldKey.
+    Definition t := Tac.FieldKey.
     Definition eq := @eq t.
     Definition eq_refl := @eq_refl t.
     Definition eq_sym := @eq_sym t.
@@ -63,27 +62,27 @@ Module PointerAnalysis (TS : TypeSystemSig).
   Definition PointsTo := AOMap.t (FieldMap.t ObjectSet.t).
   Definition TypeMap  := AOMap.t TypeExpr.
   Definition DirtyMap := AOMap.t (FieldMap.t bool).
-  Definition StackEnv := StackVar -> ObjectSet.t.
+  Definition StackEnv := Tac.StackVar -> ObjectSet.t.
   Definition ProgramPoint := (nat * nat)%type.
 
   (* Field Key Helpers *)
-  Definition wildcard    : FieldKey := FKName "*".
-  Definition self_field  : FieldKey := FKName "self".
-  Definition func_field  : FieldKey := FKName "__func__".
-  Definition args_field  : FieldKey := FKName "args".
-  Definition kwargs_field: FieldKey := FKName "kwargs".
+  Definition wildcard    : Tac.FieldKey := Tac.FKName "*".
+  Definition self_field  : Tac.FieldKey := Tac.FKName "self".
+  Definition func_field  : Tac.FieldKey := Tac.FKName "__func__".
+  Definition args_field  : Tac.FieldKey := Tac.FKName "args".
+  Definition kwargs_field: Tac.FieldKey := Tac.FKName "kwargs".
 
-  Definition is_star (k:FieldKey) : bool :=
-    match k with | FKName s => String.eqb s "*" | _ => false end.
+  Definition is_star (k:Tac.FieldKey) : bool :=
+    match k with | Tac.FKName s => String.eqb s "*" | _ => false end.
 
-  Definition field_matches (k1 k2 : FieldKey) : bool :=
+  Definition field_matches (k1 k2 : Tac.FieldKey) : bool :=
     if orb (is_star k1) (is_star k2) then true else
     match k1, k2 with
-    | FKPos n1,  FKPos n2  => Nat.eqb n1 n2
-    | FKName s1, FKName s2 => String.eqb s1 s2
-    | FKBoth n1 s1, FKBoth n2 s2 => Nat.eqb n1 n2 && String.eqb s1 s2
-    | FKPos n,   FKBoth n' _ | FKBoth n' _, FKPos n   => Nat.eqb n n'
-    | FKName s,  FKBoth _ s' | FKBoth _ s', FKName s  => String.eqb s s'
+    | Tac.FKPos n1,  Tac.FKPos n2  => Nat.eqb n1 n2
+    | Tac.FKName s1, Tac.FKName s2 => String.eqb s1 s2
+    | Tac.FKBoth n1 s1, Tac.FKBoth n2 s2 => Nat.eqb n1 n2 && String.eqb s1 s2
+    | Tac.FKPos n,   Tac.FKBoth n' _ | Tac.FKBoth n' _, Tac.FKPos n   => Nat.eqb n n'
+    | Tac.FKName s,  Tac.FKBoth _ s' | Tac.FKBoth _ s', Tac.FKName s  => String.eqb s s'
     | _, _ => false
     end.
 
@@ -94,20 +93,20 @@ Module PointerAnalysis (TS : TypeSystemSig).
   Definition empty_stack     : StackEnv := fun _ => ObjectSet.empty.
 
   (* Helpers for immutables *)
-  Definition immutable_const (c : ConstV) : ObjectSet.t :=
+  Definition immutable_const (c : Tac.ConstV) : ObjectSet.t :=
     ObjectSet.singleton (AbstractObject.ImmConst c).
   Definition immutable_type (ty : TypeExpr) : ObjectSet.t :=
     ObjectSet.singleton (AbstractObject.ImmType (get_type_hash ty)).
 
   (* Keep FieldMap sparse *)
   Definition fm_add_nonempty (fm : FieldMap.t ObjectSet.t)
-                             (k : FieldKey) (objs : ObjectSet.t)
+                             (k : Tac.FieldKey) (objs : ObjectSet.t)
     : FieldMap.t ObjectSet.t :=
     if ObjectSet.is_empty objs then FieldMap.remove k fm
     else FieldMap.add k objs fm.
 
   (* Points-to ops *)
-  Definition points_to_lookup (P : PointsTo) (o : AbstractObject.t) (f : FieldKey) : ObjectSet.t :=
+  Definition points_to_lookup (P : PointsTo) (o : AbstractObject.t) (f : Tac.FieldKey) : ObjectSet.t :=
     match AOMap.find o P with
     | Some fm =>
         FieldMap.fold (fun k objs acc =>
@@ -117,14 +116,14 @@ Module PointerAnalysis (TS : TypeSystemSig).
     | None => ObjectSet.empty
     end.
 
-  Definition points_to_update (P : PointsTo) (o : AbstractObject.t) (f : FieldKey)
+  Definition points_to_update (P : PointsTo) (o : AbstractObject.t) (f : Tac.FieldKey)
                               (objs : ObjectSet.t) : PointsTo :=
     let fm := match AOMap.find o P with
               | Some fm => fm | None => FieldMap.empty _
               end in
     AOMap.add o (fm_add_nonempty fm f objs) P.
 
-  Definition upd_points_to (P : PointsTo) (targets : ObjectSet.t) (f : FieldKey)
+  Definition upd_points_to (P : PointsTo) (targets : ObjectSet.t) (f : Tac.FieldKey)
                            (new_objs : ObjectSet.t) : PointsTo :=
     if Nat.eqb (ObjectSet.cardinal targets) 1 then
       match ObjectSet.choose targets with
@@ -139,7 +138,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
 
   Definition index_lookup (P : PointsTo) (objs : ObjectSet.t) (idx : nat) : ObjectSet.t :=
     ObjectSet.fold (fun o acc =>
-      let from_pos  := points_to_lookup P o (FKPos idx) in
+      let from_pos  := points_to_lookup P o (Tac.FKPos idx) in
       let from_wild := points_to_lookup P o wildcard in
       ObjectSet.union acc (ObjectSet.union from_pos from_wild)
     ) objs ObjectSet.empty.
@@ -155,15 +154,15 @@ Module PointerAnalysis (TS : TypeSystemSig).
     ObjectSet.fold (fun o acc => type_join acc (type_lookup T o)) objs type_bot.
 
   (* Dirty *)
-  Definition mark_dirty (D : DirtyMap) (o : AbstractObject.t) (f : FieldKey) : DirtyMap :=
+  Definition mark_dirty (D : DirtyMap) (o : AbstractObject.t) (f : Tac.FieldKey) : DirtyMap :=
     let fm := match AOMap.find o D with | Some fm => fm | None => FieldMap.empty _ end in
     AOMap.add o (FieldMap.add f true fm) D.
-  Definition mark_dirty_set (D : DirtyMap) (objs : ObjectSet.t) (f : FieldKey) : DirtyMap :=
+  Definition mark_dirty_set (D : DirtyMap) (objs : ObjectSet.t) (f : Tac.FieldKey) : DirtyMap :=
     ObjectSet.fold (fun o acc => mark_dirty acc o f) objs D.
 
   (* Stack *)
-  Definition stack_lookup (S : StackEnv) (v : StackVar) : ObjectSet.t := S v.
-  Definition stack_update (S : StackEnv) (v : StackVar) (objs : ObjectSet.t) : StackEnv :=
+  Definition stack_lookup (S : StackEnv) (v : Tac.StackVar) : ObjectSet.t := S v.
+  Definition stack_update (S : StackEnv) (v : Tac.StackVar) (objs : ObjectSet.t) : StackEnv :=
     fun v' => if Nat.eqb v v' then objs else S v'.
 
   (* Unified State *)
@@ -197,14 +196,14 @@ Module PointerAnalysis (TS : TypeSystemSig).
     let '(b,i) := pp in AbstractObject.Location b i.
 
   Definition get_local  (P : PointsTo) (name : string) : ObjectSet.t :=
-    points_to_lookup P AbstractObject.Locals (FKName name).
+    points_to_lookup P AbstractObject.Locals (Tac.FKName name).
   Definition set_local  (P : PointsTo) (name : string) (objs : ObjectSet.t) : PointsTo :=
-    upd_points_to P (ObjectSet.singleton AbstractObject.Locals) (FKName name) objs.
+    upd_points_to P (ObjectSet.singleton AbstractObject.Locals) (Tac.FKName name) objs.
   Definition get_global (P : PointsTo) (name : string) : ObjectSet.t :=
-    points_to_lookup P AbstractObject.Globals (FKName name).
+    points_to_lookup P AbstractObject.Globals (Tac.FKName name).
 
   (* Attribute evaluation *)
-  Definition eval_const (c : ConstV) : (ObjectSet.t * TypeExpr) :=
+  Definition eval_const (c : Tac.ConstV) : (ObjectSet.t * TypeExpr) :=
     let ty := literal_type c in (immutable_const c, ty).
 
   Definition eval_attribute (st : State) (var_objs : ObjectSet.t)
@@ -220,7 +219,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
         let bm := alloc_site pp in
         let func_objs :=
           ObjectSet.fold (fun o acc =>
-            ObjectSet.union acc (points_to_lookup (st_points_to st) o (FKName attr)))
+            ObjectSet.union acc (points_to_lookup (st_points_to st) o (Tac.FKName attr)))
             var_objs ObjectSet.empty in
         let P0 := upd_points_to (st_points_to st) (ObjectSet.singleton bm) self_field var_objs in
         let P1 := upd_points_to P0 (ObjectSet.singleton bm) func_field func_objs in
@@ -233,7 +232,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
       else
         let field_objs :=
           ObjectSet.fold (fun o acc =>
-            ObjectSet.union acc (points_to_lookup (st_points_to st) o (FKName attr)))
+            ObjectSet.union acc (points_to_lookup (st_points_to st) o (Tac.FKName attr)))
             var_objs ObjectSet.empty in
         if any_new attr_type then
           let new_obj := alloc_site pp in
@@ -249,38 +248,38 @@ Module PointerAnalysis (TS : TypeSystemSig).
     (st', result_objs, result_type).
 
   (* Dunder evaluation *)
-  Definition eval_dunder (st : State) (e : Dunder) (pp : ProgramPoint)
+  Definition eval_dunder (st : State) (e : Tac.Dunder) (pp : ProgramPoint)
     : (State * ObjectSet.t * TypeExpr) :=
     let T := st_types st in
     match e with
-    | DUnOp op a =>
+    | Python.DUnOp _ op a =>
         let a_objs := st_stack st a in
         let a_ty   := get_types T a_objs in
-        let f_ty   := dunder_lookup (TDUnOp op a_ty) in
+        let f_ty   := dunder_lookup (Python.DUnOp _ op a_ty) in
         if type_is_immutable f_ty
         then (st, immutable_type f_ty, f_ty)
         else let loc := alloc_site pp in
              let st' := with_types st (type_update T loc f_ty) in
              (st', ObjectSet.singleton loc, f_ty)
 
-    | DBinOp op l r mode =>
+    | Python.DBinOp _ op l r mode =>
         let l_objs := st_stack st l in
         let r_objs := st_stack st r in
         let l_ty   := get_types T l_objs in
         let r_ty   := get_types T r_objs in
-        let f_ty   := dunder_lookup (TDBinOp op l_ty r_ty mode) in
+        let f_ty   := dunder_lookup (Python.DBinOp _ op l_ty r_ty mode) in
         if type_is_immutable f_ty
         then (st, immutable_type f_ty, f_ty)
         else let loc := alloc_site pp in
              let st' := with_types st (type_update T loc f_ty) in
              (st', ObjectSet.singleton loc, f_ty)
 
-    | DCmpOp op l r =>
+    | Python.DCmpOp _ op l r =>
         let l_objs := st_stack st l in
         let r_objs := st_stack st r in
         let l_ty   := get_types T l_objs in
         let r_ty   := get_types T r_objs in
-        let f_ty   := dunder_lookup (TDCmpOp op l_ty r_ty) in
+        let f_ty   := dunder_lookup (Python.DCmpOp _ op l_ty r_ty) in
         if type_is_immutable f_ty
         then (st, immutable_type f_ty, f_ty)
         else let loc := alloc_site pp in
@@ -338,7 +337,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
        
   (* Evaluate ILookupOverload *)
   Definition eval_lookup_overload
-    (st : State) (func_sv args_sv kwargs_sv : StackVar) (pp : ProgramPoint)
+    (st : State) (func_sv args_sv kwargs_sv : Tac.StackVar) (pp : ProgramPoint)
     : (State * ObjectSet.t * TypeExpr) :=
     let P := st_points_to st in
     let T := st_types     st in
@@ -428,68 +427,66 @@ Module PointerAnalysis (TS : TypeSystemSig).
       (st, ObjectSet.empty, type_bot).
 
   (* Transfer functions - all the rest remain the same *)
-  Definition transfer_load_const (st : State) (dst : StackVar) (c : ConstV) : State :=
+  Definition transfer_load_const (st : State) (dst : Tac.StackVar) (c : Tac.ConstV) : State :=
     let (objs, ty) := eval_const c in
     let T' := type_update_set (st_types st) objs ty in
     let st' := with_types st T' in
     with_stack st' (stack_update (st_stack st) dst objs).
 
-  Definition transfer_load_local (st : State) (dst : StackVar) (name : string) : State :=
+  Definition transfer_load_local (st : State) (dst : Tac.StackVar) (name : string) : State :=
     let objs := get_local (st_points_to st) name in
     with_stack st (stack_update (st_stack st) dst objs).
 
-  Definition transfer_load_global (st : State) (dst : StackVar) (name : string) : State :=
+  Definition transfer_load_global (st : State) (dst : Tac.StackVar) (name : string) : State :=
     let objs := get_global (st_points_to st) name in
     with_stack st (stack_update (st_stack st) dst objs).
 
-  Definition transfer_set_local (st : State) (name : string) (src : StackVar) : State :=
+  Definition transfer_set_local (st : State) (name : string) (src : Tac.StackVar) : State :=
     let objs := stack_lookup (st_stack st) src in
     let P' := set_local (st_points_to st) name objs in
     with_points st P'.
 
-  Definition transfer_get_attr (st : State) (dst : StackVar) (obj : StackVar)
+  Definition transfer_get_attr (st : State) (dst : Tac.StackVar) (obj : Tac.StackVar)
                                (attr : string) (pp : ProgramPoint) : State :=
     let obj_set := stack_lookup (st_stack st) obj in
-    let (st', result_objs, result_type) := eval_attribute st obj_set attr pp in
+    let '(st', result_objs, result_type) := eval_attribute st obj_set attr pp in
     let T' := type_update_set (st_types st') result_objs result_type in
     let st'' := with_types st' T' in
     with_stack st'' (stack_update (st_stack st'') dst result_objs).
 
-  Definition transfer_set_attr (st : State) (obj : StackVar) (attr : string)
-                               (val : StackVar) : State :=
+  Definition transfer_set_attr (st : State) (obj : Tac.StackVar) (attr : string)
+                               (val : Tac.StackVar) : State :=
     let targets := stack_lookup (st_stack st) obj in
     let values  := stack_lookup (st_stack st) val in
-    let P' := upd_points_to (st_points_to st) targets (FKName attr) values in
-    let D' := mark_dirty_set (st_dirty st) targets (FKName attr) in
+    let P' := upd_points_to (st_points_to st) targets (Tac.FKName attr) values in
+    let D' := mark_dirty_set (st_dirty st) targets (Tac.FKName attr) in
     with_pts_ty_dirty st P' (st_types st) D'.
 
-  Definition transfer_construct_tuple (st : State) (dst : StackVar) (elems : list StackVar)
+  Definition transfer_construct_tuple (st : State) (dst : Tac.StackVar) (elems : list Tac.StackVar)
                                      (pp : ProgramPoint) : State :=
     let tup := alloc_site pp in
     let indexed_elems := List.combine (List.seq 0 (List.length elems)) elems in
-    let P' := List.fold_left (fun acc pair =>
-      let (idx, elem) := pair in
+    let P' := List.fold_left (fun acc '(idx, elem) =>
       let elem_objs := stack_lookup (st_stack st) elem in
-      let P1 := upd_points_to acc (ObjectSet.singleton tup) (FKPos idx) elem_objs in
+      let P1 := upd_points_to acc (ObjectSet.singleton tup) (Tac.FKPos idx) elem_objs in
       upd_points_to P1 (ObjectSet.singleton tup) wildcard elem_objs
     ) indexed_elems (st_points_to st) in
     let T' := type_update (st_types st) tup (get_return make_tuple_constructor) in
     let st' := with_pts_ty_dirty st P' T' (st_dirty st) in
     with_stack st' (stack_update (st_stack st') dst (ObjectSet.singleton tup)).
 
-  Definition transfer_construct_dict (st : State) (dst : StackVar)
-                                     (pairs : list (StackVar * StackVar))
+  Definition transfer_construct_dict (st : State) (dst : Tac.StackVar)
+                                     (pairs : list (Tac.StackVar * Tac.StackVar))
                                      (pp : ProgramPoint) : State :=
     let dict := alloc_site pp in
-    let P' := List.fold_left (fun acc pair =>
-      let (key_var, val_var) := pair in
+    let P' := List.fold_left (fun acc '(key_var, val_var) =>
       let key_objs := stack_lookup (st_stack st) key_var in
       let val_objs := stack_lookup (st_stack st) val_var in
       let P0 := upd_points_to acc (ObjectSet.singleton dict) wildcard val_objs in
       match ObjectSet.choose key_objs with
-      | Some (AbstractObject.ImmConst (KString s)) =>
+      | Some (AbstractObject.ImmConst (Tac.KString s)) =>
           if Nat.eqb (ObjectSet.cardinal key_objs) 1
-          then upd_points_to P0 (ObjectSet.singleton dict) (FKName s) val_objs
+          then upd_points_to P0 (ObjectSet.singleton dict) (Tac.FKName s) val_objs
           else P0
       | _ => P0
       end
@@ -498,7 +495,7 @@ Module PointerAnalysis (TS : TypeSystemSig).
     let st' := with_pts_ty_dirty st P' T' (st_dirty st) in
     with_stack st' (stack_update (st_stack st') dst (ObjectSet.singleton dict)).
 
-  Definition transfer_bind (st : State) (dst func_var args_var kwargs_var : StackVar)
+  Definition transfer_bind (st : State) (dst func_var args_var kwargs_var : Tac.StackVar)
                            (pp : ProgramPoint) : State :=
     let bound      := alloc_site pp in
     let func_objs  := stack_lookup (st_stack st) func_var in
@@ -514,56 +511,55 @@ Module PointerAnalysis (TS : TypeSystemSig).
     let st' := with_pts_ty_dirty st P4 T' (st_dirty st) in
     with_stack st' (stack_update (st_stack st') dst (ObjectSet.singleton bound)).
 
-  Definition transfer_unpack (st : State) (dsts : list StackVar) (src : StackVar) : State :=
+  Definition transfer_unpack (st : State) (dsts : list Tac.StackVar) (src : Tac.StackVar) : State :=
     let src_objs := stack_lookup (st_stack st) src in
     let indexed_dsts := List.combine (List.seq 0 (List.length dsts)) dsts in
-    let S' := List.fold_left (fun acc pair =>
-      let (idx, dst) := pair in
+    let S' := List.fold_left (fun acc '(idx, dst) =>
       let objs := index_lookup (st_points_to st) src_objs idx in
       stack_update acc dst objs
     ) indexed_dsts (st_stack st) in
     with_stack st S'.
     
   Definition transfer_lookup_dunder
-    (st : State) (dst : StackVar) (expr : Dunder) (pp : ProgramPoint) : State :=
-    let (st', objs, ty) := eval_dunder st expr pp in
+    (st : State) (dst : Tac.StackVar) (dunder : Tac.Dunder) (pp : ProgramPoint) : State :=
+    let '(st', objs, ty) := eval_dunder st dunder pp in
     let T' := type_update_set (st_types st') objs ty in
     let st'' := with_types st' T' in
     with_stack st'' (stack_update (st_stack st'') dst objs). 
     
   Definition transfer_lookup_overload
-    (st : State) (dst func_sv args_sv kwargs_sv : StackVar) (pp : ProgramPoint) : State :=
-    let (st', objs, ty) := eval_lookup_overload st func_sv args_sv kwargs_sv pp in
+    (st : State) (dst func_sv args_sv kwargs_sv : Tac.StackVar) (pp : ProgramPoint) : State :=
+    let '(st', objs, ty) := eval_lookup_overload st func_sv args_sv kwargs_sv pp in
     let T' := type_update_set (st_types st') objs ty in
     let st'' := with_types st' T' in
     with_stack st'' (stack_update (st_stack st'') dst objs).
     
-  Definition transfer_call (st : State) (dst : StackVar) (func : StackVar) (pp : ProgramPoint) : State :=
+  Definition transfer_call (st : State) (dst : Tac.StackVar) (func : Tac.StackVar) (pp : ProgramPoint) : State :=
     let func_objs := stack_lookup (st_stack st) func in
-    let (st', result_objs, result_type) := eval_call st func_objs pp in
+    let '(st', result_objs, result_type) := eval_call st func_objs pp in
     let T' := type_update_set (st_types st') result_objs result_type in
     let st'' := with_types st' T' in
     with_stack st'' (stack_update (st_stack st'') dst result_objs).
 
   (* Main transfer dispatcher *)
-  Definition transfer (st : State) (instr : Instruction) (pp : ProgramPoint) : State :=
+  Definition transfer (st : State) (instr : Tac.Instruction) (pp : ProgramPoint) : State :=
     match instr with
-    | IMov d s => with_stack st (stack_update (st_stack st) d (stack_lookup (st_stack st) s))
-    | ILoadConst d c => transfer_load_const st d c
-    | ILoadLocal d x => transfer_load_local st d x
-    | ILoadGlobal d x => transfer_load_global st d x
-    | ISetLocal x s => transfer_set_local st x s
-    | IGetAttr d o a => transfer_get_attr st d o a pp
-    | ISetAttr o a v => transfer_set_attr st o a v
-    | IConstructTuple d xs => transfer_construct_tuple st d xs pp
-    | IConstructDict d kvs => transfer_construct_dict st d kvs pp
-    | IBind d f a k => transfer_bind st d f a k pp
-    | IUnpack ds s => transfer_unpack st ds s
-    | ICall d f => transfer_call st d f pp
-    | ILookupDunder d expr => transfer_lookup_dunder st d expr pp
-    | ILookupOverload d f a k => transfer_lookup_overload st d f a k pp
-    | IAssumeValue _ _ => st
-    | IExit => st
+    | Tac.IMov d s => with_stack st (stack_update (st_stack st) d (stack_lookup (st_stack st) s))
+    | Tac.ILoadConst d c => transfer_load_const st d c
+    | Tac.ILoadLocal d x => transfer_load_local st d x
+    | Tac.ILoadGlobal d x => transfer_load_global st d x
+    | Tac.ISetLocal x s => transfer_set_local st x s
+    | Tac.IGetAttr d o a => transfer_get_attr st d o a pp
+    | Tac.ISetAttr o a v => transfer_set_attr st o a v
+    | Tac.IConstructTuple d xs => transfer_construct_tuple st d xs pp
+    | Tac.IConstructDict d kvs => transfer_construct_dict st d kvs pp
+    | Tac.IBind d f a k => transfer_bind st d f a k pp
+    | Tac.IUnpack ds s => transfer_unpack st ds s
+    | Tac.ICall d f => transfer_call st d f pp
+    | Tac.ILookupDunder d expr => transfer_lookup_dunder st d expr pp
+    | Tac.ILookupOverload d f a k => transfer_lookup_overload st d f a k pp
+    | Tac.IAssumeValue _ _ => st
+    | Tac.IExit => st
     end.
 
 End PointerAnalysis.

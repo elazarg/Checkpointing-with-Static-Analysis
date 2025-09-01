@@ -5,8 +5,8 @@
   well-formedness; and row operations.
 *)
 
-From Coq Require Import String List Bool Arith PeanoNat ZArith Lia.
-From Coq Require Import Permutation.
+From Stdlib Require Import String List Bool Arith PeanoNat ZArith Lia.
+From Stdlib Require Import Permutation.
 Import ListNotations.
 
 Set Implicit Arguments.
@@ -128,7 +128,7 @@ Fixpoint literal_size (l:LiteralValue) : nat :=
 
 (** * Effects (parametric in the contained type) *)
 
-Record Effect (T : Type) := {
+Record Effect (T : Set) := {
   se_new             : bool;
   se_bound_method    : bool;
   se_update          : option T;
@@ -138,10 +138,10 @@ Record Effect (T : Type) := {
 
 (** * Rows and function parameter rows (parametric) *)
 
-Definition ClosedRow_  (Ty:Type) := (KeyTy * Ty)%type.
-Definition ClosedRows_ (Ty:Type) := list (ClosedRow_ Ty).
+Definition ClosedRow_  (Ty:Set) := (KeyTy * Ty)%type.
+Definition ClosedRows_ (Ty:Set) := list (ClosedRow_ Ty).
 
-Record ParamRows_ (Ty:Type) := {
+Record ParamRows_ (Ty:Set) := {
   pr_star   : option Ty;            (* *args: element type *)
   pr_kwstar : option Ty;            (* **kwargs: value type *)
   pr_fixed  : ClosedRows_ Ty        (* fixed concrete keys *)
@@ -152,7 +152,7 @@ Record ParamRows_ (Ty:Type) := {
 (* We’ll specialize these after TypeExpr is introduced. *)
 (* The Effect is already parametric. *)
 
-Inductive TypeExpr : Type :=
+Inductive TypeExpr : Set :=
 | TE_Bot
 | TE_Top
 | TE_Any

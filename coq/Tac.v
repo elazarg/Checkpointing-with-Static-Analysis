@@ -1,10 +1,12 @@
-From Coq Require Import String List Bool Arith ZArith PeanoNat.
-From Coq Require Import Sets.Ensembles.
+From Stdlib Require Import String List Bool Arith ZArith PeanoNat.
+From Stdlib Require Import Sets.Ensembles.
 
 Set Implicit Arguments.
 Import ListNotations.
 
-Module TAC.
+From Spyte Require Import Python.
+
+Module Tac.
 
   (* ===== Basic Types ===== *)
 
@@ -52,25 +54,13 @@ Module TAC.
 
   Definition EffWrite := (EffLoc * FieldKey * ObjRef)%type.
   Definition Effect   := list EffWrite.
-  
-    (* ===== Opaque operator tags (no Python names in IR) ===== *)
-    Inductive UnOpTag  := UNeg | UPos | UInvert | UNot.
-    Inductive BinOpTag := BAdd | BSub | BMul | BTrueDiv | BFloorDiv | BMod
-                        | BMatMul | BAnd | BOr | BXor | BLShift | BRShift.
-    Inductive CmpOpTag := CEq | CNe | CLt | CLe | CGt | CGe | CIs | CIsNot | CIn | CNotIn.
-    
+
     (* Expression-like dunder node (untyped; uses stack vars) *)
-    Inductive Dunder :=
-    | DUnOp  (op:UnOpTag)  (arg:StackVar)
-    | DBinOp (op:BinOpTag) (lhs rhs:StackVar) (inplace:bool)
-    | DCmpOp (op:CmpOpTag) (lhs rhs:StackVar).
-    
-    (* Optional: a tag-only view for the oracle *)
-    Inductive DunderTag :=
-    | DTagUnOp  (op:UnOpTag)
-    | DTagBinOp (op:BinOpTag) (inplace:bool)
-    | DTagCmpOp (op:CmpOpTag).
-    
+  Definition Dunder := Python.Dunder StackVar.
+  Definition UnOpTag  := Python.UnOpTag.
+  Definition BinOpTag := Python.BinOpTag.
+  Definition CmpOpTag := Python.CmpOpTag.
+
   (* ===== Instructions ===== *)
 
   Inductive Instruction : Type :=
@@ -106,27 +96,27 @@ Module TAC.
 
   
   (* IR-level policy: tag -> attribute name *)
-  Definition unop_to_attr (op : UnOpTag) : string :=
+  Definition unop_to_attr (op : Python.UnOpTag) : string :=
     match op with
-    | UNeg    => "neg"
-    | UPos    => "pos"
-    | UInvert => "invert"
-    | UNot    => "bool"
+    | Python.UNeg    => "neg"
+    | Python.UPos    => "pos"
+    | Python.UInvert => "invert"
+    | Python.UNot    => "bool"
     end.
 
-  Definition binop_to_attr (op : BinOpTag) : string :=
+  Definition binop_to_attr (op : Python.BinOpTag) : string :=
     match op with
-    | BAdd => "add" | BSub => "sub" | BMul => "mul"
-    | BTrueDiv => "truediv" | BFloorDiv => "floordiv" | BMod => "mod"
-    | BMatMul => "matmul" | BAnd => "and" | BOr => "or" | BXor => "xor"
-    | BLShift => "lshift" | BRShift => "rshift"
+    | Python.BAdd => "add" | Python.BSub => "sub" | Python.BMul => "mul"
+    | Python.BTrueDiv => "truediv" | Python.BFloorDiv => "floordiv" | Python.BMod => "mod"
+    | Python.BMatMul => "matmul" | Python.BAnd => "and" | Python.BOr => "or" | Python.BXor => "xor"
+    | Python.BLShift => "lshift" | Python.BRShift => "rshift"
     end.
 
-  Definition cmpop_to_attr (op : CmpOpTag) : string :=
+  Definition cmpop_to_attr (op : Python.CmpOpTag) : string :=
     match op with
-    | CEq => "eq" | CNe => "ne" | CLt => "lt" | CLe => "le"
-    | CGt => "gt" | CGe => "ge" | CIs | CIsNot => "is"
-    | CIn | CNotIn => "contains"
+    | Python.CEq => "eq" | Python.CNe => "ne" | Python.CLt => "lt" | Python.CLe => "le"
+    | Python.CGt => "gt" | Python.CGe => "ge" | Python.CIs | Python.CIsNot => "is"
+    | Python.CIn | Python.CNotIn => "contains"
     end.
     
   (* ===== Axiomatized Python Semantics ===== *)
@@ -136,7 +126,7 @@ Module TAC.
 
     (* Pure operations for the Lookup phase *)
     Axiom get_object_class : forall (obj: ObjRef), StaticID.
-    Axiom dunder_lookup : forall (tag: DunderTag) (classes: list StaticID), option StaticID.
+    Axiom dunder_lookup : forall (tag: Python.DunderTag) (classes: list StaticID), option StaticID.
     Axiom resolve_overload : forall (h: Heap) (func:ObjRef) (args:ObjRef) (kwargs:ObjRef), option StaticID.
 
     (* Heap-reading/writing operations *)
@@ -280,25 +270,25 @@ Module TAC.
 
     | ExecLookupDunder : forall s dst e method,
         (match e with
-         | DUnOp op a =>
+         | Python.DUnOp _ op a =>
              exists obj cls,
                s.(stack) a = Some obj /\
                get_object_class obj = cls /\
-               dunder_lookup (DTagUnOp op) [cls] = Some method
-         | DBinOp op l r mode =>
+               dunder_lookup (Python.DTagUnOp op) [cls] = Some method
+         | Python.DBinOp _ op l r mode =>
              exists o1 o2 c1 c2,
                s.(stack) l = Some o1 /\
                s.(stack) r = Some o2 /\
                get_object_class o1 = c1 /\
                get_object_class o2 = c2 /\
-               dunder_lookup (DTagBinOp op mode) [c1; c2] = Some method
-         | DCmpOp op l r =>
+               dunder_lookup (Python.DTagBinOp op mode) [c1; c2] = Some method
+         | Python.DCmpOp _ op l r =>
              exists o1 o2 c1 c2,
                s.(stack) l = Some o1 /\
                s.(stack) r = Some o2 /\
                get_object_class o1 = c1 /\
                get_object_class o2 = c2 /\
-               dunder_lookup (DTagCmpOp op) [c1; c2] = Some method
+               dunder_lookup (Python.DTagCmpOp op) [c1; c2] = Some method
          end) ->
         exec s (ILookupDunder dst e)
              {| stack := update_stack s.(stack) dst (StaticPtr method);
@@ -381,5 +371,5 @@ Module TAC.
 
   End Semantics.
 
-End TAC.
+End Tac.
 

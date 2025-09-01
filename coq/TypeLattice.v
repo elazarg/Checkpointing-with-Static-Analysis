@@ -5,12 +5,12 @@
   - No forward references (row merges are parameterized)
 *)
 
-From Coq Require Import String List Bool Arith PeanoNat Lia Program.Wf.
-From Coq Require Import Permutation.
+From Stdlib Require Import String List Bool Arith PeanoNat Lia Program.Wf.
+From Stdlib Require Import Permutation.
 Require Import Program.Tactics.
 Import ListNotations.
 
-Import TypeCore.
+From Spyte Require Import TypeCore.
 
 Set Implicit Arguments.
 

@@ -17,7 +17,7 @@
     with a clear contract.
 *)
 
-From Coq Require Import String List Bool Arith PeanoNat ZArith Lia.
+From Stdlib Require Import String List Bool Arith PeanoNat ZArith Lia.
 Import ListNotations.
 
 Module TypeSystem.
@@ -34,11 +34,12 @@ Module TypeSystem.
   Definition empty_effect : SideEffect := TypeCore.empty_effect.
 
   (* ===== Parametric hooks (environment / policy) ===== *)
-  (* Map TAC constants to literal values. *)
-  Parameter ConstV : Type.
-  Parameter UnOpTag : Type.
-  Parameter BinOpTag : Type.
-  Parameter CmpOpTag : Type.
+  (* Map Tac constants to literal values. *)
+  Definition ConstV := TS.ConstV.
+  Definition UnOpTag : TS.UnOpTag.
+  Definition BinOpTag : TS.BinOpTag.
+  Definition CmpOpTag : TS.CmpOpTag.
+  
   Parameter const_to_literal : ConstV -> LiteralValue.
   (* Resolve string references (e.g., "builtins.list") to concrete types. *)
   Parameter resolve_ref : string -> TypeExpr.
@@ -269,16 +270,12 @@ Module TypeSystem.
   Definition partial_binop (lhs rhs:TypeExpr) (op:string) : TypeExpr :=
     get_return (partial (subscr lhs op) [rhs]).
 
-  Inductive DunderInfo :=
-  | TDUnOp  (op:UnOpTag)  (arg:TypeExpr)
-  | TDBinOp (op:BinOpTag) (lhs rhs:TypeExpr) (inplace:bool)
-  | TDCmpOp (op:CmpOpTag) (lhs rhs:TypeExpr).
-
-  Definition dunder_lookup (info:DunderInfo) : TypeExpr :=
+  
+  Definition dunder_lookup (info: TS.Dunder) : TypeExpr :=
     match info with
-    | TDUnOp  u a         => get_unop a (unop_to_dunder u)
-    | TDBinOp b l r _inpl => partial_binop l r (fst (binop_to_dunder b))
-    | TDCmpOp c l r       => partial_binop l r (cmpop_to_dunder c)
+    | TS.TDUnOp  u a         => get_unop a (unop_to_dunder u)
+    | TS.TDBinOp b l r _inpl => partial_binop l r (fst (binop_to_dunder b))
+    | TS.DCmpOp c l r       => partial_binop l r (cmpop_to_dunder c)
     end.
 
   (* ===== Literals and builtin constructors ===== *)

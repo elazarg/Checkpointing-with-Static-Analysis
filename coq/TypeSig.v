@@ -4,13 +4,12 @@
   Module signatures for the pointer analysis
 *)
 
-From Coq Require Import String List Bool Arith ZArith PeanoNat.
-Import ListNotations.
+From Stdlib Require Import String List Bool Arith ZArith PeanoNat.
 
-From TYPE Require Import TypeCore.
+From Spyte Require Import Python TypeCore Tac.
 
 Module Type TypeSystemSig.
-  Parameter TypeExpr : Type.
+  Parameter TypeExpr : Set.
   Parameter type_bot : TypeExpr.
   Parameter type_top : TypeExpr.
   Parameter type_join : TypeExpr -> TypeExpr -> TypeExpr.
@@ -26,9 +25,7 @@ Module Type TypeSystemSig.
   }.
   
   Parameter empty_effect : SideEffect.
-  Import TypeCore.
-
-  Parameter literal_type : ConstV -> TypeExpr.
+  Parameter literal_type : Tac.ConstV -> TypeExpr.
   Parameter get_type_hash : TypeExpr -> nat.
 
   Parameter is_overloaded : TypeExpr -> bool.
@@ -40,7 +37,7 @@ Module Type TypeSystemSig.
   Parameter get_side_effect : TypeExpr -> SideEffect.
 
   Parameter subscr : TypeExpr -> string -> TypeExpr.
-  Parameter subscr_literal : TypeExpr -> ConstV -> TypeExpr.
+  Parameter subscr_literal : TypeExpr -> Tac.ConstV -> TypeExpr.
   Parameter subscr_index : TypeExpr -> nat -> TypeExpr.
 
   Parameter partial : TypeExpr -> list TypeExpr -> TypeExpr.
@@ -55,10 +52,10 @@ Module Type TypeSystemSig.
 
   Parameter type_is_callable : TypeExpr -> bool.
 
-  Inductive DunderInfo :=
-  | TDUnOp  (op:UnOpTag)  (arg:TypeExpr)
-  | TDBinOp (op:BinOpTag) (lhs rhs:TypeExpr) (inplace:bool)
-  | TDCmpOp (op:CmpOpTag) (lhs rhs:TypeExpr).
+  Definition Dunder := Python.Dunder TypeExpr.
+  Definition UnOpTag := Python.UnOpTag.
+  Definition BinOpTag := Python.BinOpTag.
+  Definition CmpOpTag := Python.CmpOpTag.
 
-  Parameter dunder_lookup : DunderInfo -> TypeExpr.
+  Parameter dunder_lookup : Dunder -> TypeExpr.
 End TypeSystemSig.

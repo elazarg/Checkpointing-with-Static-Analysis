@@ -13,16 +13,18 @@
 (*                                                                            *)
 (******************************************************************************)
 
-From Coq Require Import String List.
+From Stdlib Require Import String List.
 Import ListNotations.
 Local Open Scope string_scope.
 
-Require Import IR.
-Require Import cpython_bytecode_coq.
+Set Implicit Arguments.
+
+From Spyte Require Import Bytecode Python Tac.
 
 Module Lowering.
-  Module B := CPythonBytecode.
-  Module T := TAC.
+  Module B := Bytecode.
+  Module T := Tac.
+  Module P := Python.
   
   (**************************************************************************)
   (** Scope and axiomatized front-end facts                                 *)
@@ -40,7 +42,7 @@ Module Lowering.
   Axiom fresh_tmp    : B.Instruction -> StackVar.
   Axiom kw_pairs_of  : B.Instruction -> list (StackVar * StackVar).
   Axiom unpack_dests_of : B.Instruction -> list StackVar.
-  Axiom const_key_map_args : B.Instruction -> (list StackVar (*keys*), list StackVar (*vals*)).
+  Axiom const_key_map_args : B.Instruction -> list StackVar (*keys*)* list StackVar (*vals*).
 
   (**************************************************************************)
   (** Mapping CPython opcode enums to opaque IR tags                         *)
@@ -49,54 +51,54 @@ Module Lowering.
   (* Unaries *)
   Definition lower_unop (u : B.UnOpType) : T.UnOpTag :=
     match u with
-    | B.UNegative => T.UNeg
-    | B.UPositive => T.UPos
-    | B.UInvert   => T.UInvert
-    | B.UNot      => T.UNot
+    | B.UNegative => P.UNeg
+    | B.UPositive => P.UPos
+    | B.UInvert   => P.UInvert
+    | B.UNot      => P.UNot
     end.
 
   (* Binary core op tag (ignores inplace bit) *)
   Definition lower_binop_tag (b : B.BinOpType) : T.BinOpTag :=
     match b with
-    | B.BAdd | B.BInplaceAdd => T.BAdd
-    | B.BSub | B.BInplaceSub => T.BSub
-    | B.BMul | B.BInplaceMul => T.BMul
-    | B.BTrueDiv | B.BInplaceTrueDiv => T.BTrueDiv
-    | B.BFloorDiv | B.BInplaceFloorDiv => T.BFloorDiv
-    | B.BMod | B.BInplaceMod => T.BMod
-    | B.BMatMul | B.BInplaceMatMul => T.BMatMul
-    | B.BAnd | B.BInplaceAnd => T.BAnd
-    | B.BOr | B.BInplaceOr => T.BOr
-    | B.BXor | B.BInplaceXor => T.BXor
-    | B.BLShift | B.BInplaceLShift => T.BLShift
-    | B.BRShift | B.BInplaceRShift => T.BRShift
+    | B.BAdd | B.BInplaceAdd => P.BAdd
+    | B.BSub | B.BInplaceSub => P.BSub
+    | B.BMul | B.BInplaceMul => P.BMul
+    | B.BTrueDiv | B.BInplaceTrueDiv => P.BTrueDiv
+    | B.BFloorDiv | B.BInplaceFloorDiv => P.BFloorDiv
+    | B.BMod | B.BInplaceMod => P.BMod
+    | B.BMatMul | B.BInplaceMatMul => P.BMatMul
+    | B.BAnd | B.BInplaceAnd => P.BAnd
+    | B.BOr | B.BInplaceOr => P.BOr
+    | B.BXor | B.BInplaceXor => P.BXor
+    | B.BLShift | B.BInplaceLShift => P.BLShift
+    | B.BRShift | B.BInplaceRShift => P.BRShift
     end.
 
   (* Inplace flag *)
-  Definition lower_inplace (b : B.BinOpType) : T.Inplace :=
+  Definition lower_inplace (b : B.BinOpType) : bool :=
     match b with
     | B.BInplaceAdd | B.BInplaceSub | B.BInplaceMul
     | B.BInplaceTrueDiv | B.BInplaceFloorDiv | B.BInplaceMod
     | B.BInplaceMatMul | B.BInplaceAnd | B.BInplaceOr
-    | B.BInplaceXor | B.BInplaceLShift | B.BInplaceRShift => T.Inplace
-    | _ => T.Plain
+    | B.BInplaceXor | B.BInplaceLShift | B.BInplaceRShift => true
+    | _ => false
     end.
 
   (* Rich comparisons *)
   Definition lower_cmp (c : B.CmpOpType) : T.CmpOpTag :=
     match c with
-    | B.CEq => T.CEq | B.CNe => T.CNe
-    | B.CLt => T.CLt | B.CLe => T.CLe
-    | B.CGt => T.CGt | B.CGe => T.CGe
+    | B.CEq => P.CEq | B.CNe => P.CNe
+    | B.CLt => P.CLt | B.CLe => P.CLe
+    | B.CGt => P.CGt | B.CGe => P.CGe
     end.
 
   (* Identity *)
   Definition lower_is (invert: bool) : T.CmpOpTag :=
-    if invert then T.CIsNot else T.CIs.
+    if invert then P.CIsNot else P.CIs.
 
   (* Containment *)
   Definition lower_contains (invert: bool) : T.CmpOpTag :=
-    if invert then T.CNotIn else T.CIn.
+    if invert then P.CNotIn else P.CIn.
 
   (**************************************************************************)
   (** Small TAC idiom helpers                                                *)
@@ -141,9 +143,9 @@ Module Lowering.
     let b  := fresh_tmp i in
     let pos :=
       match d with
-      | T.DUnOp _ a         => [a]
-      | T.DBinOp _ l r _    => [l; r]
-      | T.DCmpOp _ l r      => [l; r]
+      | P.DUnOp _ _ a         => [a]
+      | P.DBinOp _ _ l r _    => [l; r]
+      | P.DCmpOp _ _ l r      => [l; r]
       end in
     [ T.ILookupDunder m d
     ; Args ta pos
@@ -184,7 +186,7 @@ Module Lowering.
         | _ => []
         end
     | B.NOP | B.CACHE | B.END_FOR | B.END_SEND => []
-    | B.LOAD_CONST c => [ T.ILoadConst (dest_of i) c ]
+    | B.LOAD_CONST c => [ T.ILoadConst (dest_of i) (T.KInt c) ]
     | B.LOAD_FAST _ | B.LOAD_FAST_CHECK _ => [ T.ILoadLocal (dest_of i) (name_of i) ]
     | B.STORE_FAST _ =>
         match args_of i with a :: _ => [ T.ISetLocal (name_of i) a ] | _ => [] end
@@ -202,22 +204,22 @@ Module Lowering.
     (* ========================== C. Unary operations ======================= *)
     | B.UNARY_NEGATIVE =>
         match args_of i with
-        | x :: _ => DunderCall (dest_of i) (T.DUnOp (lower_unop B.UNegative) x) i
+        | x :: _ => DunderCall (dest_of i) (P.DUnOp _ (lower_unop B.UNegative) x) i
         | _ => []
         end
     | B.UNARY_POSITIVE =>
         match args_of i with
-        | x :: _ => DunderCall (dest_of i) (T.DUnOp (lower_unop B.UPositive) x) i
+        | x :: _ => DunderCall (dest_of i) (P.DUnOp _ (lower_unop B.UPositive) x) i
         | _ => []
         end
     | B.UNARY_NOT =>
         match args_of i with
-        | x :: _ => DunderCall (dest_of i) (T.DUnOp (lower_unop B.UNot) x) i
+        | x :: _ => DunderCall (dest_of i) (P.DUnOp _ (lower_unop B.UNot) x) i
         | _ => []
         end
     | B.UNARY_INVERT =>
         match args_of i with
-        | x :: _ => DunderCall (dest_of i) (T.DUnOp (lower_unop B.UInvert) x) i
+        | x :: _ => DunderCall (dest_of i) (P.DUnOp _ (lower_unop B.UInvert) x) i
         | _ => []
         end
 
@@ -225,25 +227,25 @@ Module Lowering.
     | B.BINARY_OP bop =>
         match args_of i with
         | l :: r :: _ =>
-            DunderCall (dest_of i) (T.DBinOp (lower_binop_tag bop) l r (lower_inplace bop)) i
+            DunderCall (dest_of i) (P.DBinOp _ (lower_binop_tag bop) l r (lower_inplace bop)) i
         | _ => []
         end
 
     (* ====== E. Comparisons / identity / containment via DCmpOp tags ====== *)
     | B.COMPARE_OP cop =>
         match args_of i with
-        | l :: r :: _ => DunderCall (dest_of i) (T.DCmpOp (lower_cmp cop) l r) i
+        | l :: r :: _ => DunderCall (dest_of i) (P.DCmpOp _ (lower_cmp cop) l r) i
         | _ => []
         end
     | B.IS_OP invert =>
         match args_of i with
-        | l :: r :: _ => DunderCall (dest_of i) (T.DCmpOp (lower_is invert) l r) i
+        | l :: r :: _ => DunderCall (dest_of i) (P.DCmpOp _ (lower_is invert) l r) i
         | _ => []
         end
     | B.CONTAINS_OP invert =>
         (* x in y => DCmpOp CIn x y (no manual swapping; oracle decides). *)
         match args_of i with
-        | x :: y :: _ => DunderCall (dest_of i) (T.DCmpOp (lower_contains invert) x y) i
+        | x :: y :: _ => DunderCall (dest_of i) (P.DCmpOp _ (lower_contains invert) x y) i
         | _ => []
         end
 

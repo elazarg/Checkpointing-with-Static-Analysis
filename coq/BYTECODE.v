@@ -3,7 +3,7 @@
   Stub for CPython bytecode definitions
 *)
 
-From Coq Require Import String List ZArith.
+From Stdlib Require Import String List ZArith.
 Import ListNotations.
 
 Module Bytecode.
