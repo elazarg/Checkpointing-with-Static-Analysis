@@ -2,29 +2,48 @@
 
 
 
-\begin{table*}
+% \begin{table*}
+% \centering
+% \begin{tabular}{lrrrr|rrr}
+% \toprule
+% \textbf{Benchmark} & \textbf{Spyte} & \textbf{Locals} & \textbf{\PROCDIFF} & \textbf{\VMDIFF}
+% & %\textbf{Locals/Spyte}
+% & %\textbf{\PROCDIFF/Spyte} 
+% & %\textbf{\VMDIFF/Spyte}
+% \\
+% \midrule
+% \texttt{noploop} & 72 & 75         & \textbf{14} & 17966
+%                          & 1.04$\times$  & 0.19$\times$   & 249.52$\times$ \\
+% \texttt{pivoter} &\textbf{226} & 261       & 516        & 23400
+%                                   & 1.15$\times$ & 2.28$\times$  & 103.48$\times$ \\
+% \texttt{kmeans} & \textbf{270} & 9136       & 51418      & 254554
+%                                   & 33.84$\times$ & 190.44$\times$ & 942.79$\times$  \\
+% \texttt{omp} & \textbf{3593} & 457358      & 832266     & 130034290 
+%                                 & 127.20$\times$ & 231.64$\times$ &	36191.01$\times$  \\
+% \bottomrule
+% \end{tabular}
+% \caption{Average checkpoint sizes (in bytes) across filtered iterations.}
+% \label{tab:checkpoint-sizes}
+% \end{table*}
+
+\begin{table}
 \centering
-\begin{tabular}{lrrrr|rrr}
+\begin{tabular}{l|r|c|c|c}
 \toprule
-\textbf{Benchmark} & \textbf{Spyte} & \textbf{Locals} & \textbf{\PROCDIFF} & \textbf{\VMDIFF}
-& %\textbf{Locals/Spyte}
-& %\textbf{\PROCDIFF/Spyte} 
-& %\textbf{\VMDIFF/Spyte}
-\\
+\textbf{Benchmark} & \textbf{Spyte} & \textbf{Locals} & \textbf{\PROCDIFF} & \textbf{\VMDIFF} \\
 \midrule
-\texttt{noploop} & 72 & 75         & \textbf{14} & 17966
-                         & 1.04$\times$  & 0.19$\times$   & 249.52$\times$ \\
-\texttt{pivoter} &\textbf{226} & 261       & 516        & 23400
-                                  & 1.15$\times$ & 2.28$\times$  & 103.48$\times$ \\
-\texttt{kmeans} & \textbf{270} & 9136       & 51418      & 254554
-                                  & 33.84$\times$ & 190.44$\times$ & 942.79$\times$  \\
-\texttt{omp} & \textbf{3593} & 457358      & 832266     & 130034290 
-                                & 127.20$\times$ & 231.64$\times$ &	36191.01$\times$  \\
+\texttt{noploop} & 72 & \begin{tabular}{@{}r@{}}75\\{\footnotesize 1.04$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}\textbf{14}\\{\footnotesize 0.19$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}17966\\{\footnotesize 249.52$\times$}\end{tabular} \\
+\midrule
+\texttt{pivoter} & \textbf{226} & \begin{tabular}{@{}r@{}}261\\{\footnotesize 1.15$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}516\\{\footnotesize 2.28$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}23400\\{\footnotesize 103.48$\times$}\end{tabular} \\
+\midrule
+\texttt{kmeans} & \textbf{270} & \begin{tabular}{@{}r@{}}9136\\{\footnotesize 33.84$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}51418\\{\footnotesize 190.44$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}254554\\{\footnotesize 942.79$\times$}\end{tabular} \\
+\midrule
+\texttt{omp} & \textbf{3593} & \begin{tabular}{@{}r@{}}457358\\{\footnotesize 127.29$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}832266\\{\footnotesize 231.64$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}130034290\\{\footnotesize 36191.01$\times$}\end{tabular} \\
 \bottomrule
 \end{tabular}
 \caption{Average checkpoint sizes (in bytes) across filtered iterations.}
 \label{tab:checkpoint-sizes}
-\end{table*}
+\end{table}
 
 \begin{figure*}
     \centering
