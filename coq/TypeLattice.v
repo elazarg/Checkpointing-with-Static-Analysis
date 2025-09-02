@@ -11,6 +11,7 @@ Require Import Program.Tactics.
 Import ListNotations.
 
 From Spyte Require Import TypeCore.
+Import TypeCore.
 
 Set Implicit Arguments.
 
@@ -854,7 +855,7 @@ Next Obligation.
   unfold not.
   split; intros; destruct H; congruence.
 Qed.
-
+(* 
 
 Definition satisfies_protocol (t proto:TypeExpr) : bool :=
     match proto with
@@ -869,4 +870,4 @@ Definition satisfies_protocol (t proto:TypeExpr) : bool :=
                  | None => false
                  end) proto_members
     | _ => false
-    end.
+    end. *)
