@@ -440,7 +440,7 @@ within the targeted subset.
 \end{array}
 \end{array}
 \]
-\caption{Expression typing rules and row-level application. Constructor calls follow the same scheme after resolving the constructor protocol (e.g., \(\mathtt{\_\_init\_\_}\)). Effects are forwarded to the reduced product domain; the relation here returns only types.}
+\caption{Expression typing rules and row-level application. Constructor calls follow the same scheme after resolving the constructor protocol (e.g., \(\mathtt{\_\_init\_\_}\)). Effects are forwarded to the combined domain; the relation here returns only types.}
 \label{fig:typing-rules}
 \end{figure*}
 
@@ -561,7 +561,7 @@ Indexing $\tau[i]$ is modeled as:
 \[
 \tau[i] \;=\;
 \begin{cases}
-(\tau \cdot \langle i\rangle) & \text{if $\langle i\rangle \in \mathrm{dom}(\rho_\tau)$} \\[0.3em]
+\tau \cdot \langle i\rangle & \text{if $\langle i\rangle \in \mathrm{dom}(\rho_\tau)$} \\[0.3em]
 \mathsf{apply}(\tau \cdot \langle \mathrm{"\_\_getitem\_\_"}\rangle,\ \mathsf{type}(i)) & \text{otherwise}
 \end{cases}
 \]

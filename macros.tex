@@ -1,4 +1,22 @@
 
+\newif\ifdraft
+\drafttrue
+
+\newcommand\si[1]{{\color{purple}[SI: #1]}}
+
+\newcommand\spyte{\textsc{Spyte}\xspace}
+\newcommand\spytecode{\textsf{Spytecode}\xspace}
+
+\newcommand\tLOCALS{\texttt{LOCALS}\xspace}
+\newcommand\tGLOBALS{\texttt{GLOBALS}\xspace}
+
+\newcommand\tinstr[1]{\textsf{#1}\xspace}
+\newcommand\tGetAttr{\tinstr{GetAttr}}
+\newcommand\tSetAttr{\tinstr{SetAttr}}
+
+
+\newcommand\eg{\textit{e.g.}\xspace}
+
 \newcommand{\DependOnCSV}[1]{\tikzexternaldependsonfile{#1}}
 \newcommand{\VMDIFF}[0]{{\textDelta VM}}
 \newcommand{\PROCDIFF}[0]{{\textDelta Proc}}
@@ -8,3 +26,5 @@
 \newcommand{\rneg}{\mathord{\rho^{-}}}   % parameters
 \newcommand{\rdef}{\mathord{\rho^{=}}}   % defaults
 \newcommand{\rowany}{\mathord{\rho}}     % generic row metavariable
+
+

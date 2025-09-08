@@ -6,6 +6,15 @@
   year={2019}
 }
 
+@inproceedings{macqueen1967multivariate,
+  title={Multivariate observations},
+  author={MacQueen, J},
+  booktitle={Proceedings of the 5th Berkeley Symposium on Mathematical Statistics and Probability},
+  volume={1},
+  pages={281--297},
+  year={1967}
+}
+
 @article{tropp2007signal,
   title={Signal recovery from random measurements via orthogonal matching pursuit},
   author={Tropp, Joel A and Gilbert, Anna C},
@@ -34,60 +43,19 @@ numpages = {14}
 @inproceedings{apache2020firecracker,
   title={Firecracker: Lightweight virtualization for serverless applications},
   author={Agache, Alexandru and Brooker, Marc and Iordache, Alexandra and Liguori, Anthony and Neugebauer, Rolf and Piwonka, Phil and Popa, Diana-Maria},
-  booktitle={17th $\{$usenix$\}$ symposium on networked systems design and implementation ($\{$nsdi$\}$ 20)},
+  booktitle={17th {{USENIX}} Symposium on Networked Systems Design and Implementation ({{NSDI}} '20)},
   pages={419--434},
   year={2020}
 }
 
 @book{TanenbaumSteen07,
-  abstract = {Very few textbooks today explore distributed systems in a manner appropriate for university students. In this unique text, esteemed authors Tanenbaum and van Steen provide full coverage of the field in a systematic way that can be readily used for teaching. No other text examines the underlying principles - and their applications to a wide variety of practical distributed systems - with this level of depth and clarity.},
-  added-at = {2016-12-26T21:10:28.000+0100},
   address = {Upper Saddle River, NJ},
   author = {Tanenbaum, Andrew S. and van Steen, Maarten},
-  biburl = {https://www.bibsonomy.org/bibtex/2aeb78dfa5b91b66dce027f86ecdeeb81/flint63},
-  description = {Edition 2 deutsch 2008 978-3-8273-7293-2},
   edition = 2,
-  file = {Pearson Product page:http\://www.pearsoned.co.uk/bookshop/detail.asp?item=100000000280068:URL;Amazon Search inside:http\://www.amazon.de/gp/reader/0132392275/:URL},
-  groups = {public},
-  interhash = {7dc82e09cac538d5eb7781e41a050aa7},
-  intrahash = {aeb78dfa5b91b66dce027f86ecdeeb81},
   isbn = {978-0-13-239227-3},
-  keywords = {01841 104 book shelf computer middleware network application},
   publisher = {Pearson Prentice Hall},
-  timestamp = {2018-04-16T11:54:15.000+0200},
   title = {Distributed Systems: Principles and Paradigms},
-  username = {flint63},
   year = 2007
-}
-
-@article{schoetterl2016intel,
-  title={Intel page modification logging for lightweight continuous checkpointing},
-  author={Schoetterl-Glausch, Janis},
-  journal={Bachelor thesis, Operating Systems Group, Karlsruhe Institute of Technology (KIT), Germany, October31},
-  year={2016}
-}
-
-@inproceedings{10.5555/1387589.1387601,
-author = {Cully, Brendan and Lefebvre, Geoffrey and Meyer, Dutch and Feeley, Mike and Hutchinson, Norm and Warfield, Andrew},
-title = {Remus: High Availability via Asynchronous Virtual Machine Replication},
-year = {2008},
-isbn = {1119995555221},
-publisher = {USENIX Association},
-address = {USA},
-abstract = {Allowing applications to survive hardware failure is an expensive undertaking, which generally involves reengineering software to include complicated recovery logic as well as deploying special-purpose hardware; this represents a severe barrier to improving the dependability of large or legacy applications. We describe the construction of a general and transparent high availability service that allows existing, unmodified software to be protected from the failure of the physical machine on which it runs. Remus provides an extremely high degree of fault tolerance, to the point that a running system can transparently continue execution on an alternate physical host in the face of failure with only seconds of downtime, while completely preserving host state such as active network connections. Our approach encapsulates protected software in a virtual machine, asynchronously propagates changed state to a backup host at frequencies as high as forty times a second, and uses speculative execution to concurrently run the active VM slightly ahead of the replicated system state.},
-booktitle = {Proceedings of the 5th USENIX Symposium on Networked Systems Design and Implementation},
-pages = {161–174},
-numpages = {14},
-location = {San Francisco, California},
-series = {NSDI'08}
-}
-
-@article{kemari2008,
-author = {Tamura, Yoshiaki and Sato, Koji and Kihara, Seiji and Moriai, Satoshi},
-year = {2008},
-month = {01},
-pages = {},
-title = {Kemari: virtual machine synchronization for fault tolerance}
 }
 
 @misc{waddington2021architecture,
@@ -109,9 +77,7 @@ title = {Kemari: virtual machine synchronization for fault tolerance}
   pages     = {350--364},
   year      = {2008},
   url       = {https://doi.org/10.1007/978-3-540-87779-0\_24},
-  doi       = {10.1007/978-3-540-87779-0\_24},
-  timestamp = {Tue, 13 Jun 2017 10:37:55 +0200},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+  doi       = {10.1007/978-3-540-87779-0\_24}
 }
 
 @article{Pheatt:2008:ITB:1352079.1352134,
@@ -137,8 +103,6 @@ title = {Kemari: virtual machine synchronization for fault tolerance}
   booktitle={2019 IEEE International Conference on Networking, Architecture and Storage (NAS)}, 
   title={DV-NVLLC: Efficiently guaranteeing crash consistency in persistent memory via dynamic versioning}, 
   year={2019},
-  volume={},
-  number={},
   pages={1-8},}
 
 @inproceedings{10.1145/2830772.2830802,
@@ -176,7 +140,7 @@ pages = {20–28},
 numpages = {9}
 }
 
-@onlione{pynvm,
+@online{pynvm,
   title = {{P}y{NVM}: {A} {P}ython {I}nterface to {PMDK}},
   howpublished = {\url{https://pynvm.readthedocs.io/en/v0.3.1/}},
   year = 2016,
@@ -232,21 +196,6 @@ numpages = {9}
   howpublished = {\url{http://bit.ly/2GRl1bW}}
 }
 
-@inproceedings{HerlihyST08,
-  author    = {Maurice Herlihy and
-               Nir Shavit and
-               Moran Tzafrir},
-  title     = {Hopscotch Hashing},
-  booktitle = {Distributed Computing, 22nd International Symposium, {DISC} 2008,
-               Arcachon, France, September 22-24, 2008. Proceedings},
-  pages     = {350--364},
-  year      = {2008},
-  url       = {https://doi.org/10.1007/978-3-540-87779-0\_24},
-  doi       = {10.1007/978-3-540-87779-0\_24},
-  timestamp = {Tue, 13 Jun 2017 10:37:55 +0200},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
-
 @misc{PMemKV,
 	title = {Intel Corporation - pmemkv},
 	howpublished = {\url{https://github.com/pmem/pmemkv}},
@@ -262,10 +211,7 @@ numpages = {9}
 	number    = {1},
 	pages     = {22--30},
 	year      = {2014},
-	url       = {http://sites.computer.org/debull/A14mar/p22.pdf},
-	timestamp = {Tue, 10 Mar 2020 16:23:50 +0100},
-	biburl    = {https://dblp.org/rec/journals/debu/FreedmanIL14.bib},
-	bibsource = {dblp computer science bibliography, https://dblp.org}
+	url       = {http://sites.computer.org/debull/A14mar/p22.pdf}
 }
 
 
@@ -274,8 +220,6 @@ numpages = {9}
   booktitle={2009 IEEE/IFIP International Conference on Dependable Systems and Networks}, 
   title={VNsnap: Taking snapshots of virtual networked environments with minimal downtime}, 
   year={2009},
-  volume={},
-  number={},
   pages={524-533},
   doi={10.1109/DSN.2009.5270298}
 }
@@ -301,7 +245,7 @@ series = {SoCC '22}
   title = {Intel Page Modification Logging for Lightweight Continuous Checkpointing},
   type = {Bachelor Thesis},
   year = 2016,
-  month = oct # "31",
+  month = oct,
   school = {Operating Systems Group, Karlsruhe Institute of Technology (KIT), Germany}
 }
 
@@ -361,7 +305,6 @@ publisher = {Association for Computing Machinery},
 address = {New York, NY, USA},
 url = {https://doi.org/10.1145/3623476.3623529},
 doi = {10.1145/3623476.3623529},
-abstract = {Python is a popular programming language whose performance is known to be uncompetitive in comparison to static languages such as C. Although significant efforts have already accelerated implementations of the language, more efficient ones are still required. The development of such optimized implementations is nevertheless hampered by its complex semantics and the lack of an official formal semantics. We address this issue by presenting an approach to define an executable semantics targeting the development of optimizing compilers. This executable semantics is written in a format that highlights type checks, primitive values boxing and unboxing, and function calls, which are all known sources of overhead. We also present semPy, a partial evaluator of our executable semantics that can be used to remove redundant operations when evaluating arithmetic operators. Finally, we present Zipi, a Python optimizing compiler prototype developed with the aid of semPy. On some tasks, Zipi displays performance competitive with that of state-of-the-art Python implementations.},
 booktitle = {Proceedings of the 16th ACM SIGPLAN International Conference on Software Language Engineering},
 pages = {15–28},
 numpages = {14},
@@ -447,12 +390,26 @@ series = {SLE 2023}
   year={2018},
   organization={Springer}
 }
-
 @phdthesis{monat2021static,
   title={Static type and value analysis by abstract interpretation of Python programs with native C libraries},
   author={Monat, Rapha{\"e}l},
   year={2021},
   school={Sorbonne Universit{\'e}}
+}
+
+@inproceedings{monat2021multilanguage,
+  title={A multilanguage static analysis of python programs with native C extensions},
+  author={Monat, Rapha{\"e}l and Ouadjaout, Abdelraouf and Min{\'e}, Antoine},
+  booktitle={International Static Analysis Symposium},
+  pages={323--345},
+  year={2021},
+  organization={Springer}
+}
+@article{li2022scalpel,
+title={Scalpel: The Python Static Analysis Framework},
+author={Li, Li and Wang, Jiawei and Quan, Haowei},
+journal={arXiv preprint arXiv:2202.11840},
+year={2022}
 }
 
 @inproceedings{gorbovitski2010alias,
@@ -484,13 +441,23 @@ series = {SLE 2023}
   howpublished = {\url{https://github.com/facebook/pyre-check}},
 }
 
+@phdthesis{liu2020type,
+  title={A Type System for Multidimensional Arrays},
+  author={Liu, Theodore},
+  year={2020},
+  school={Harvard University}
+}
+
 @inproceedings{jensen2009type,
-  title={Type analysis for JavaScript},
-  author={Jensen, Simon Holm and M{\o}ller, Anders and Thiemann, Peter},
-  booktitle={International Static Analysis Symposium},
-  pages={238--255},
-  year={2009},
-  organization={Springer}
+  author    = {Simon Holm Jensen and Anders M{\o}ller and Peter Thiemann},
+  title     = {Type Analysis for {JavaScript}},
+  booktitle = {Static Analysis Symposium (SAS)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {5673},
+  pages     = {238--255},
+  publisher = {Springer},
+  year      = {2009},
+  doi       = {10.1007/978-3-642-03237-0_17}
 }
 
 @inproceedings{kashyap2014jsai,
@@ -536,7 +503,13 @@ series = {SLE 2023}
   year={2014}
 }
 
-% --- proposed
+@inproceedings{cousot1977abstract,
+  title={Abstract interpretation: a unified lattice model for static analysis of programs by construction or approximation of fixpoints},
+  author={Cousot, Patrick and Cousot, Radhia},
+  booktitle={Proceedings of the 4th ACM SIGACT-SIGPLAN symposium on Principles of programming languages},
+  pages={238--252},
+  year={1977}
+}
 
 % Foundations: data-flow / abstract interpretation
 @inproceedings{Kildall1973, 
@@ -581,33 +554,15 @@ series = {SLE 2023}
   url       = {https://plg.uwaterloo.ca/~olhotak/pubs/popl11.pdf}
 }
 
-% Static analysis for dynamic languages (context/comparison)
-
-@inproceedings{JensenMoellerThiemann2009,
-  author    = {Simon Holm Jensen and Anders M{\o}ller and Peter Thiemann},
-  title     = {Type Analysis for {JavaScript}},
-  booktitle = {Static Analysis Symposium (SAS)},
-  series    = {Lecture Notes in Computer Science},
-  volume    = {5673},
-  pages     = {238--255},
-  publisher = {Springer},
-  year      = {2009},
-  doi       = {10.1007/978-3-642-03237-0_17}
-}
-
 % (The LIPIcs page is live with DOI; if the proceedings volume number is posted before camera-ready, swap this with the official LIPIcs BibTeX from that page.)
-@inproceedings{RakAmnouykit2025PoTo,
-  author    = {Isariya Rak-amnouykit and Elazar Gershuni and Edd Barrett and Pierre Ganty and Fabio Maldini and Omer Tripp},
-  title     = {PoTo: A Hybrid Andersen's Points-To Analysis for Python},
-  booktitle = {39th European Conference on Object-Oriented Programming (ECOOP 2025)},
-  series    = {Leibniz International Proceedings in Informatics (LIPIcs)},
-  volume    = {???},
-  pages     = {27:1--27:29},
-  publisher = {Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik},
-  year      = {2025},
-  doi       = {10.4230/LIPIcs.ECOOP.2025.27},
-  url       = {https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ECOOP.2025.27},
-  note      = {To appear; use LIPIcs BibTeX once final volume/issue metadata are fixed}
+@misc{rakamnouykit2024potohybridandersenspointsto,
+      title={PoTo: A Hybrid Andersen's Points-to Analysis for Python}, 
+      author={Ingkarat Rak-amnouykit and Ana Milanova and Guillaume Baudart and Martin Hirzel and Julian Dolby},
+      year={2024},
+      eprint={2409.03918},
+      archivePrefix={arXiv},
+      primaryClass={cs.PL},
+      url={https://arxiv.org/abs/2409.03918}, 
 }
 
 % Python/CPython references
@@ -684,7 +639,6 @@ publisher = {Springer-Verlag},
 address = {Berlin, Heidelberg},
 url = {https://doi.org/10.1007/978-3-540-30115-8_22},
 doi = {10.1007/978-3-540-30115-8_22},
-abstract = {Automated classification of email messages into user-specific folders and information extraction from chronologically ordered email streams have become interesting areas in text learning research. However, the lack of large benchmark collections has been an obstacle for studying the problems and evaluating the solutions. In this paper, we introduce the Enron corpus as a new test bed. We analyze its suitability with respect to email folder prediction, and provide the baseline results of a state-of-the-art classifier (Support Vector Machines) under various conditions, including the cases of using individual sections (From, To, Subject and body) alone as the input to the classifier, and using all the sections in combination with regression weights.},
 booktitle = {Proceedings of the 15th European Conference on Machine Learning},
 pages = {217–226},
 numpages = {10},
@@ -707,7 +661,7 @@ series = {ECML'04}
 
 @misc{CRIUProject,
   title        = {{CRIU} --- Checkpoint/Restore in Userspace},
-  howpublished = {\url{https://criu.org/Main_Page}},
+  howpublished = {\url{https://criu.org/}},
   note         = {Project documentation, accessed 2025-08-20},
   year         = {2025}
 }
@@ -735,4 +689,18 @@ series = {ECML'04}
   howpublished = {\url{https://numpy.org/doc/stable/user/basics.copies.html}},
   note         = {Accessed 2025-08-20},
   year         = {2025}
+}
+
+@misc{VMwareSnapshot,
+title = {VMware vSphere Snapshots: Performance and Best Practices - Performance Study},
+howpublished = {\url{https://www.vmware.com/docs/vsphere-vm-snapshots-perf}},
+note = {Accessed 2025-09-05},
+year = {2025}
+}
+
+@misc{RedHatVMSnapshot,
+title = {RedHat Virtualization - Virtual Machine Snapshots},
+howpublished = {\url{https://docs.redhat.com/en/documentation/red_hat_virtualization/4.3/html/technical_reference/chap-virtual_machine_snapshots}},
+note = {Accessed 2025-09-05},
+year = {2025}
 }

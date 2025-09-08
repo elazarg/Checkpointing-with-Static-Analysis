@@ -1,13 +1,12 @@
-
-\documentclass{iacrtrans}
+\documentclass[acmsmall,screen,review,anonymous]{acmart}
 % \usepackage{Fast/usenix-2020-09}
-
 
 \usepackage{amsmath}
 \usepackage{amsfonts}
-\usepackage{amssymb}
+% \usepackage{amssymb} % acmart already loads it
 \usepackage{booktabs}
 \usepackage{stmaryrd}
+\usepackage{xspace}
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{pgfplots}
@@ -18,7 +17,7 @@
 \usepackage{pgfplotstable}
 \usepgfplotslibrary{fillbetween}
 \usepackage{subcaption}
-\usetikzlibrary{positioning}
+\usetikzlibrary{arrows.meta,positioning,matrix,shapes,calc}
 \usepackage[scaled=.8]{beramono}
 \usepackage{svg}
 \usepackage{caption}
@@ -29,19 +28,23 @@
 \usepackage{comment}
 \usepackage{verbatim}
 \usepackage{url}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
 
-\lstset{basicstyle={\ttfamily\fontsize{9pt}{9pt}\selectfont},language=python}
+\lstset{basicstyle={\linespread{1.2}\ttfamily\fontsize{9pt}{9pt}\selectfont},language=python}
 
-\title{Selective Checkpointing for Numerical Python via Static Analysis}
+\title{Selective Checkpointing for Numerical Python via~Static~Analysis}
 \author{}
-\date{August 2025}
+\date{Sept 2025}
+
+\input{macros}
 
 \begin{document}
 
+\input{00-abstract}
+
 \maketitle
 
-\input{macros}
-\input{00-abstract}
 \input{01-introduction}
 \input{02-running-example}
 \input{03-analysis}
@@ -50,10 +53,10 @@
 \input{06-conclusion}
 \appendix
 \input{07-appendix-assumptions}
-% \input{08-appendix-ir}
-\input{08-new-appendix-ir}
+\input{08-appendix-ir}
 \input{09-appendix-types}
 \input{10-appendix-pointer}
+\input{other/macros-kmeans}
 
 %\newpage
 \bibliographystyle{plain}

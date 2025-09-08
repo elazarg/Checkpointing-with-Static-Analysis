@@ -1,31 +1,4 @@
 
-
-
-
-% \begin{table*}
-% \centering
-% \begin{tabular}{lrrrr|rrr}
-% \toprule
-% \textbf{Benchmark} & \textbf{Spyte} & \textbf{Locals} & \textbf{\PROCDIFF} & \textbf{\VMDIFF}
-% & %\textbf{Locals/Spyte}
-% & %\textbf{\PROCDIFF/Spyte} 
-% & %\textbf{\VMDIFF/Spyte}
-% \\
-% \midrule
-% \texttt{noploop} & 72 & 75         & \textbf{14} & 17966
-%                          & 1.04$\times$  & 0.19$\times$   & 249.52$\times$ \\
-% \texttt{pivoter} &\textbf{226} & 261       & 516        & 23400
-%                                   & 1.15$\times$ & 2.28$\times$  & 103.48$\times$ \\
-% \texttt{kmeans} & \textbf{270} & 9136       & 51418      & 254554
-%                                   & 33.84$\times$ & 190.44$\times$ & 942.79$\times$  \\
-% \texttt{omp} & \textbf{3593} & 457358      & 832266     & 130034290 
-%                                 & 127.20$\times$ & 231.64$\times$ &	36191.01$\times$  \\
-% \bottomrule
-% \end{tabular}
-% \caption{Average checkpoint sizes (in bytes) across filtered iterations.}
-% \label{tab:checkpoint-sizes}
-% \end{table*}
-
 \begin{table}
 \centering
 \begin{tabular}{l|r|c|c|c}
@@ -45,9 +18,12 @@
 \label{tab:checkpoint-sizes}
 \end{table}
 
-\begin{figure*}
+\begin{figure*}[t]
     \centering
+  \ifdraft[redacted by \texttt{ifdraft}]\else
     \input{experiments/unifiedplots}
+  \fi
+  \caption{Performance graphs.}
 \end{figure*}
 
 \section{Evaluation}
@@ -67,23 +43,22 @@ We evaluate our approach to program-guided checkpointing on four Python workload
 All benchmarks use fixed data and identical loop structure across checkpointing configurations. Dataset selection was finalized before implementing or evaluating instrumentation.
 
 \begin{itemize}
-  \item \textbf{Locals}: Pickling all local variables (excluding parameters), regardless of whether they were modified or needed again.
-  \item \textbf{\PROCDIFF}: We implemented process-level checkpointing using a custom tool that captures all writable memory regions by reading from \texttt{/proc/self/mem}. We initially attempted to use CRIU for process-level checkpointing, but found its memory overhead dominated the storage costs by orders of magnitude, making meaningful comparison impossible. 
+  \item \textbf{Locals}: Pickling (Python data serialization) all local variables (excluding parameters), regardless of whether they were modified or needed again.
+  \item \textbf{\PROCDIFF}: We implemented process-level checkpointing using a custom tool that captures all writable memory regions by reading from \texttt{/proc/self/mem}. We initially attempted to use CRIU for process-level checkpointing, but found its memory overhead dominated the storage costs by orders of magnitude, making meaningful comparison impractical. 
   \item \textbf{\VMDIFF}: VM-level checkpointing based on snapshots and 64-byte memory diffing between iterations. The checkpoints are taken by triggering QEMU memory dumps via QMP commands over TCP.
 \end{itemize}
 
 We omit the first iteration of each benchmark (since no diff can be computed). We also omit the final two iterations, which introduce irregularities in the {\PROCDIFF} and {\VMDIFF} baselines.
 
 \paragraph{Notes on Overhead Accounting}
-The use of TCP to trigger VM-level checkpoints may introduce a nontrivial fixed overhead per snapshot, including QEMU internals and I/O latency. While the precise size impact of this mechanism is difficult to isolate, we partially control for such effects by comparing deltas between consecutive snapshots rather than absolute snapshot sizes. In contrast, the analysis-based and Locals Python checkpoints use direct pickle serialization. Thus, while our VM-level measurements reflect realistic system-level behavior, they may slightly overestimate true memory diffs compared to language-level checkpointing.
+The use of TCP to trigger VM-level checkpoints may introduce a nontrivial fixed overhead per snapshot. While difficult to isolate, we partially control for such effects by comparing deltas between consecutive snapshots rather than absolute snapshot sizes. In contrast, the analysis-based and Locals Python checkpoints use direct pickle serialization. Thus, while our VM-level measurements reflect realistic system-level behavior, they may slightly overestimate true memory diffs compared to language-level checkpointing.
 
 \subsection{Checkpoint Size Comparison}
 
-\autoref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both Locals Python checkpointing and simulated Process- and VM-level methods. "Instr" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory diffs at the process and virtual machine levels respectively.
+\autoref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both Locals checkpointing and simulated Process- and VM-level methods. "Instr" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory differentials at the process and virtual machine levels respectively.
 
-For the noploop benchmark, our analysis incurs a fixed overhead (iterator) that exceeds 
-the minimal state changes, making process-level diffing more efficient. This 
-represents a limitation for programs with very small persistent state.
+For the \texttt{noploop} benchmark, our analysis incurs a fixed overhead (iterator) that exceeds 
+the minimal state changes, making process-level diffing more efficient. This represents a limitation for programs with very small persistent state.
 
 The \texttt{pivoter} benchmark---a recursive clique enumeration kernel --- maintains small internal state (e.g., recursion depth and adjacency buffers) that is genuinely required to resume computation. Our system’s performance is nearly identical to the process-level memory diff, suggesting that it is near-optimal in this case; in contrast, naively checkpointing all local variables leads to 10x memory overhead. The \texttt{noploop} benchmark confirms the lower bound: our instrumentation adds minor overhead (e.g., iterator state), while process-level diffing captures the true minimal footprint. Comparing \texttt{\PROCDIFF} results between \texttt{pivoter} and \texttt{noploop} reveals that process snapshots can be highly efficient in simple cases, adding as little as 23 bytes of overhead.
 

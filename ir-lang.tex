@@ -1,0 +1,35 @@
+\begin{figure}[t]
+\centering
+\[
+\begin{aligned}
+\textbf{Instructions:} && \\
+i ::= \;& \mathsf{Mov}(\$d, \$s) && \text{// } \$d := \$s \\
+      &\mid \mathsf{LoadConst}(\$d, c) && \text{// } \$d := c \\
+      &\mid \mathsf{LoadLocal}(\$d, x) && \text{// } \$d := \mathit{locals}[x] \\
+      &\mid \mathsf{LoadGlobal}(\$d, x) && \text{// } \$d := \mathit{globals}[x] \\
+      &\mid \mathsf{SetLocal}(x, \$s) && \text{// } \mathit{locals}[x] := \$s \\[0.5ex]
+      &\mid \mathsf{LookupDunder}(\$d, op, \overline{\$o})  && \text{// pure: find \_\_op\_\_}\\
+      &\mid \mathsf{ResolveOverload}(\$d, \$f, \$a, \$k) && \text{// pure: choose static target} \\
+      &\mid \mathsf{Bind}(\$d, \$f, \$a, \$k) && \text{// effect: make bound callable} \\
+      &\mid \mathsf{ConstructTuple}(\$d, \overline{\$e}) && \text{// effect: allocate/populate tuple} \\
+      &\mid \mathsf{ConstructDict}(\$d, \overline{(\$k, \$v)}) && \text{// effect: allocate/populate dict} \\[0.5ex]
+      &\mid \mathsf{GetAttr}(\$d, \$o, f) && \text{// } \$d := \$o.f \\
+      &\mid \mathsf{SetAttr}(\$o, f, \$v) && \text{// } \$o.f := \$v \\
+      &\mid \mathsf{Unpack}(\overline{\$d}, \$s) && \text{// unpack iterable} \\
+      &\mid \mathsf{Call}(\$d, \$f) && \text{// } \$d := \$f() \\[0.5ex]
+      &\mid \mathsf{AssumeEq}(\$b, \$) && \text{// continue iff } \$b = \$c \\
+      &\mid \mathsf{Exit} && \text{// terminate} \\[1ex]
+\textbf{Values:} && \\
+v ::= \;& \mathit{static}(sid) \mid \mathit{heap}(hid) \\[0.5ex]
+sid ::= \;& \mathit{func}(name) \mid \mathit{class}(name) \mid \mathit{const}(c) \\
+hid ::= \;& \mathit{loc}(n) \mid \mathit{locals} \mid \mathit{globals} \\[1ex]
+\textbf{Field Keys:} && \\
+k ::= \;& \mathit{name}(s) \mid \mathit{index}(n) \mid \mathit{both}(n, s) \\[1ex]
+\textbf{Stores:} && \\
+\sigma &: \mathit{StaticID} \to \mathit{FieldKey} \rightharpoonup \mathit{StaticID} && \text{// static store (closed)} \\
+H &: \mathit{HeapLoc} \to \mathit{FieldKey} \rightharpoonup \mathit{Value} && \text{// mutable heap}
+\end{aligned}
+\]
+\caption{\spytecode syntax.}
+\label{fig:tac-syntax}
+\end{figure}

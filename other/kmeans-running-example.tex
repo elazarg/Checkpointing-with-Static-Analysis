@@ -1,0 +1,89 @@
+
+% kmeans-running-example-standalone.tex
+\clearpage
+\section{Running Example (Trace-Guided): \textsc{K-Means}}
+
+\paragraph{Program sketch.}
+Each iteration rebuilds \texttt{clusters}, assigns points to the nearest centroid, computes \texttt{new\_centroids}, checks convergence, and (if not converged) overwrites \texttt{centroids}.
+Only \texttt{centroids} must persist across iterations; all other temporaries are recomputed.
+
+\paragraph{Notation.}
+We use a simplified snapshot notation at selected program points $(\ell)$:
+\begin{itemize}
+\item $\Live\_\ell$ --- live named locals.
+\item $\Points\_\ell[o]\name{f}$ --- pointer edges from abstract object $o$ via field $f$.
+\item $\Dirty\_\ell[o]$ --- dirty fields of object $o$ since the last checkpoint.
+\item Objects: $\Loc(n)$ is an allocation site; distinguished roots are \LOCALS{} and \GLOBALS{}.
+\end{itemize}
+Fields use one key space: $\name{s}$ (attributes), $\idx{i}$ (indices), and wildcard $\wild$ for container elements.
+We abbreviate common sites from the trace: $\centroidsobj \triangleq \Loc(10)$ (initial \texttt{centroids} array), $\clustersobj \triangleq \Loc(179)$ (outer list-of-lists), $\innerlist \triangleq \Loc(212)$ (inner list), $\deltaarr \triangleq \Loc(304)$ (per-sample difference), $\normarr \triangleq \Loc(307)$ (vector of distances), and $\ypredobj \triangleq \Loc(616)$ (final labels buffer).
+
+\section*{Waypoints in the Trace}
+We excerpt six points; identifiers refer to the original trace file.
+
+\begin{enumerate}
+\item \textbf{Init \& loop entry}. Chooses $k$ row indices, slices \texttt{X} to \texttt{centroids} ($\centroidsobj$), allocates empty outer list \texttt{clusters} ($\clustersobj$), builds \texttt{range(max\_iterations)}, and enters the loop.
+\item \textbf{Rebuild \texttt{clusters}}. Allocates $k$ inner lists and installs them under $\clustersobj[\wild]\mapsto \innerlist$.
+\item \textbf{Per-sample assignment}. Forms $v = X[\texttt{s\_i}] - \texttt{centroids}$ ($\deltaarr$), computes $\|v\|$ across axes ($\normarr$), takes $\argmin$ to get \texttt{r}, and appends \texttt{s\_i} into \texttt{clusters[r]}.
+\item \textbf{Centroid recompute}. Builds \texttt{new\_centroids} by mapping \texttt{cluster} $\mapsto$ \texttt{X[cluster].mean(0)} and \texttt{np.array} on the results; checks \texttt{np.allclose(centroids, new\_centroids)}.
+\item \textbf{Centroid update}. If not converged, executes \texttt{centroids = new\_centroids}.
+\item \textbf{Finalization}. Allocates \texttt{y\_pred} ($\ypredobj$), iterates clusters, fills labels, and returns.
+\end{enumerate}
+
+\section*{Analysis Snapshots}
+Below, we show $(\Live_\ell, \Points_\ell, \Dirty_\ell)$ at four points. Substitutions on stack temporaries are elided; only named locals appear in $\Live_\ell$. The pointer state is pruned by liveness before reachability.
+
+\paragraph{(S1) Loop head after iteration $i{-}1$.}
+\begin{align*}
+\Live &= \{\texttt{i},\ \texttt{centroids}\}\\
+\Points[\LOCALS]\name{centroids} &= \{\centroidsobj\}\\[-0.25em]
+\Points[\LOCALS]\name{i} &= \{\Imm{\texttt{int}}\}\\
+\Dirty[\centroidsobj] &\subseteq \{\wild\}\qquad\text{(carried from prior update if any)}\\
+\Dirty[\clustersobj] &= \emptyset\qquad\text{(rebuilt each iteration)}
+\end{align*}
+
+\paragraph{(S2) After rebuilding \texttt{clusters}.}
+\begin{align*}
+\Live &= \{\texttt{i},\ \texttt{centroids},\ \texttt{clusters}\}\\
+\Points[\LOCALS]\name{clusters} &= \{\clustersobj\}\\
+\Points[\clustersobj]\wild &\supseteq \{\innerlist\}\\
+\Dirty[\clustersobj] &\ni \wild\qquad\text{(placements of inner lists)}
+\end{align*}
+
+\paragraph{(S3) Inside inner loop, after \texttt{r = argmin(...)} and \texttt{clusters[r].append(s\_i)}.}
+\begin{align*}
+\Live &= \{\texttt{i},\ \texttt{centroids},\ \texttt{clusters},\ \texttt{s\_i}\}\\
+\Points[\LOCALS]\name{centroids} &= \{\centroidsobj\},\quad
+\Points[\LOCALS]\name{clusters} = \{\clustersobj\},\quad
+\Points[\clustersobj]\wild \supseteq \{\innerlist\}\\
+\Dirty[\clustersobj] &\ni \wild\qquad\text{(mutating inner lists via \texttt{append})}\\
+\Types(\centroidsobj) &\le : \texttt{numpy.ndarray},\quad \Types(\normarr)\le:\texttt{numpy.ndarray}
+\end{align*}
+
+\paragraph{(S4) After \texttt{new\_centroids} and \texttt{allclose} decision; then update.}
+\begin{align*}
+\Live &= \{\texttt{i},\ \texttt{centroids},\ \texttt{clusters},\ \texttt{new\_centroids}\}\\
+\Points[\LOCALS]\name{new\_centroids} &\ni \Loc(nc) \quad\text{(fresh array from \texttt{np.array})}\\
+\Dirty[\clustersobj] &\ni \wild\quad\text{(writes confined to rebuilt \texttt{clusters})}\\[0.25em]
+\text{If not converged: }&\ \ \Live=\{\texttt{i},\ \texttt{centroids}\}\ \text{and}\
+\Points[\LOCALS]\name{centroids} \leftarrow \Points[\LOCALS]\name{new\_centroids}.
+\end{align*}
+
+\section*{Checkpoint Decision}
+At the loop head, the minimal persistent root set is the live \emph{and} dirty state reachable from
+\{\LOCALS$.\name{centroids}$, \LOCALS$.\name{i}$\}.
+Because \texttt{clusters} is reconstructed each iteration and its mutations do not survive across iterations, it is excluded.
+Consequently, the checkpoint consists of the scalar loop index and the \texttt{centroids} array.
+Instrumentation places \verb|commit(centroids)| at the loop end and restores \verb|i| via the iteration driver.
+
+\section*{Type/Effect Highlights}
+We rely on a small effect library:
+\begin{itemize}
+\item \texttt{np.array}: $E.\mathsf{new}=\mathsf{true}$, result does not alias arguments.
+\item \texttt{list.append}: $E.\mathsf{update}=\{\wild\}$ marks the wildcard field of the receiver’s element row.
+\item \texttt{np.mean}: pure; \texttt{np.allclose}: pure.
+\end{itemize}
+These effects guide $\Points$ and $\Dirty$ updates and avoid conservative retention of temporary arrays.
+
+\section*{Outcome}
+At the loop head, the combined state $\Sigma=(\Points,\Types,\Dirty)$ yields a minimal persistent set: $\{\texttt{centroids}\}$ (plus loop index) with everything else dead or recomputable.

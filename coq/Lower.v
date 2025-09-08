@@ -337,7 +337,7 @@ Module Lowering.
             let f' := fresh_tmp i in
             [ Args ta pos
             ; Kw   tk (kw_pairs_of i)
-            ; T.ILookupOverload f' f ta tk  (* callee selection only *)
+            ; T.IResolveOverload f' f ta tk  (* callee selection only *)
             ; Bind b  f' ta tk
             ; Call (dest_of i) b
             ]
@@ -447,7 +447,7 @@ Module Lowering.
       because they are not covered by Dunder tags.
     - Tuple/dict literals are direct constructors (asymmetric handling).
       List/set go through builtin calls for uniformity with general calls.
-    - CALL lowers to LookupOverload→Bind→Call with a pre-decoded KW mapping.
+    - CALL lowers to ResolveOverload→Bind→Call with a pre-decoded KW mapping.
     - GET_ITER/FOR_ITER lower to __iter__/__next__; loop exits via CFG guards.
     - Unsupported groups are explicitly listed (exceptions, closures, star-calls,
       dynamic function/class creation, pattern matching, etc.).

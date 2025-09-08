@@ -1,0 +1,120 @@
+\clearpage
+\section{Independent Demonstrations on the \textsc{K-Means} Kernel}
+
+\noindent \textbf{Context.}
+We take a tiny, representative slice of the implementation:
+\begin{lstlisting}[language=Python]
+# Pre: centroids: ndarray[k, d], X: ndarray[n, d], k: Literal[K], i: int
+clusters = [[] for _ in range(k)]
+for i in range(max_iterations):
+    r = argmin(norm(X[s_i] - centroids, axis=1))
+    clusters[r].append(s_i)
+    new_centroids = np.array([X[c].mean(axis=0) for c in clusters])
+    if np.allclose(centroids, new_centroids): break
+    centroids = new_centroids
+# Post: centroids and labels (omitted here)
+\end{lstlisting}
+We show nine components independently: (a) lowering, (b) liveness, (c) generics,
+(d) rows, (e) literal types, (f) dirty analysis, (g) pointer analysis, (h) effects, (i) minimal persistent state.
+
+\paragraph{Notation.}
+We use abstract locations $\Loc(\cdot)$; fields $\name{attr}$ for attributes and $\idx{i}$ for indices,
+and $\wild$ as the container-element wildcard. Pointer graph $\Points$, type map $\Types$, and dirty map $\Dirty$ form the reduced product.
+
+\section*{(a) Lowering (Python $\to$ \Spytecode)}
+We lower via explicit dataflow and opaque operator tags for all Python operators.
+For the assignment line \texttt{r = argmin(norm(X[s\_i] - centroids, axis=1))} we produce:
+\begin{lstlisting}[language={}]
+# B0: materialize operands
+t1  := ILookupGlobal  X
+t2  := ILoadLocal     s_i
+t3  := IGetItem       t1, t2             # X[s_i]
+t4  := ILoadLocal     centroids
+# B1: vector subtraction and norm, via opaque dunders (no Python names)
+t5  := ILookupDunder  t3, __binary_sub, t4
+t6  := ILookupDunder  t5, __norm_axis1
+# B2: argmin and bind
+t7  := ILookupDunder  t6, __argmin
+StoreLocal r, t7
+\end{lstlisting}
+
+\section*{(b) Liveness (Gen/Kill over \Spytecode)}
+On the basic block containing the \texttt{append} and subsequent lines:
+\begin{align*}
+\Gen &= \{\texttt{clusters}, \texttt{r}, \texttt{s\_i}, \texttt{X}, \texttt{centroids}\}\\
+\Kill &= \{\}\\
+\Live_{\text{in}} &= \Gen \cup (\Live_{\text{out}} \setminus \Kill)
+\end{align*}
+At loop head (before recompute), the live named locals are:
+\(\Live = \{\texttt{i},\texttt{centroids},\texttt{clusters}\}\);
+\emph{after} the update \texttt{centroids = new\_centroids}, we have
+\(\Live = \{\texttt{i},\texttt{centroids}\}\).
+
+\section*{(c) Generics (Selected Signatures)}
+We write schematic, row-polymorphic, effect-annotated types.
+Let $\alpha,\beta$ be type variables; $E$ is the effect tuple.
+\begin{align*}
+\texttt{np.array} &: \forall \alpha.\ \textsf{Iterable}[\alpha] \to^{E_\mathrm{new}} \textsf{ndarray}[\alpha] \\
+\texttt{list.append} &: \forall \alpha.\ (\textsf{list}[\alpha],\, \alpha) \to^{E_\mathrm{upd}} \textsf{unit} \\
+\texttt{np.mean} &: \forall \alpha.\ (\textsf{ndarray}[\alpha],\, \textsf{axis}:\mathrm{Literal}[0 \lor 1]) \to^{E_\mathrm{pure}} \textsf{ndarray}[\alpha] \\
+\texttt{np.allclose} &: (\textsf{ndarray}[\alpha],\, \textsf{ndarray}[\alpha]) \to^{E_\mathrm{pure}} \textsf{bool}\\
+\texttt{argmin} &: (\textsf{ndarray}[\mathbb{R}]) \to^{E_\mathrm{pure}} \textsf{int}
+\end{align*}
+
+\section*{(d) Rows (Open Records for Objects)}
+Methods/attributes are modeled by rows. Example (schematic):
+\begin{align*}
+\Types(\textsf{ndarray}) &= \{\,\name{shape}:\textsf{tuple}[\textsf{int},\textsf{int}],
+\ \name{mean}:\forall\alpha.\ (\cdot)\to \textsf{ndarray}[\alpha],\ \ldots \mid \rho \,\}\\
+\Types(\textsf{list}[\alpha]) &= \{\,\name{append}:(\alpha)\to \textsf{unit},\ \name{__iter__}:(\cdot)\to \textsf{iterator}[\alpha]\mid \rho'\,\}
+\end{align*}
+Rows $\rho,\rho'$ are open and may be extended by library- or user-defined members without invalidating prior judgments.
+
+\section*{(e) Literal Types (Indexes and Axes)}
+We use literal types to refine numeric domains:
+\begin{align*}
+k : \mathrm{Literal}[K] \Rightarrow r \in \mathrm{Fin}(K)\,,\qquad
+\textsf{axis} : \mathrm{Literal}[0] \Rightarrow \texttt{mean} \text{ reduces the trailing dimension.}
+\end{align*}
+Thus $\Types(\texttt{clusters}) = \textsf{list}[\textsf{list}[\textsf{int}]]$ with a \emph{length refinement} from $k: \mathrm{Literal}[K]$.
+
+\section*{(f) Dirty Analysis (Selected Updates)}
+Dirty marks the fields that may have changed since the last checkpoint.
+For the statement \texttt{clusters[r].append(s\_i)} with receiver at $\Loc(\mathrm{cls})$ and inner list at $\Loc(\mathrm{in})$:
+\begin{align*}
+\Dirty(\Loc(\mathrm{cls})) &\ni \wild \quad\text{(element row updated)}\\
+\Dirty(\Loc(\mathrm{in})) &\ni \wild \quad\text{(append writes to inner list tail)}
+\end{align*}
+All mutations to \texttt{clusters} are confined to the per-iteration lists, which are freshly rebuilt each iteration (see (g),(i)).
+
+\section*{(g) Pointer Analysis (Heap Shape Sketch)}
+Selected points-to edges (after rebuild, before assignment):
+\begin{align*}
+\Points[\LOCALS][\name{centroids}] &= \{\Loc(c)\} \qquad &\Types(\Loc(c)) = \textsf{ndarray}[\mathbb{R}]\\
+\Points[\LOCALS][\name{clusters}] &= \{\Loc(\mathrm{cls})\} \qquad &\Types(\Loc(\mathrm{cls})) = \textsf{list}[\_]\\
+\Points[\Loc(\mathrm{cls})][\wild] &\supseteq \{\Loc(\mathrm{in})\} \qquad &\Types(\Loc(\mathrm{in})) = \textsf{list}[\textsf{int}]\\
+\Points[\LOCALS][\name{new\_centroids}] &\ni \Loc(nc) \qquad &\text{fresh, from }\texttt{np.array}
+\end{align*}
+After \texttt{centroids = new\_centroids}, we \emph{rebind} the local root:
+\(\Points'[\LOCALS][\name{centroids}] \leftarrow \Points[\LOCALS][\name{new\_centroids}]\).
+
+\section*{(h) Effects (Library Facts)}
+We use a compact effect tuple $E = \langle \mathsf{new},\,\mathsf{update},\,\mathsf{points\_to\_args},\,\mathsf{pure}\rangle$:
+\begin{align*}
+E(\texttt{np.array})      &= \langle \mathsf{true},\ \mathsf{None},\ \mathsf{false},\ \mathsf{false}\rangle\\
+E(\texttt{list.append})   &= \langle \mathsf{false},\ \{\wild\},\ \mathsf{false},\ \mathsf{false}\rangle\\
+E(\texttt{np.mean})       &= \langle \mathsf{false},\ \mathsf{None},\ \mathsf{false},\ \mathsf{true}\rangle\\
+E(\texttt{np.allclose})   &= \langle \mathsf{false},\ \mathsf{None},\ \mathsf{false},\ \mathsf{true}\rangle
+\end{align*}
+These effects drive the $\Points$ and $\Dirty$ transfer: \texttt{np.array} allocates a fresh object;
+\texttt{append} performs a strong update on the receiver's element row; the pure calls leave $\Dirty$ untouched.
+
+\section*{(i) Minimal Persistent State (Loop Head)}
+At the loop head, the candidate persistent roots are the live locals.
+Reachability under $\Points$ from those roots, \emph{pruned by $\Dirty$}, yields the minimal set that must survive a crash.
+\begin{align*}
+\Live &= \{\texttt{i},\ \texttt{centroids},\ \texttt{clusters}\}\\
+\text{Recomputed each iteration: } &\texttt{clusters} \Rightarrow \text{exclude (dead on next iteration).}\\
+\text{Persist: } &\{\texttt{i},\ \texttt{centroids}\}\ \text{and all heap reachable from }\texttt{centroids}.
+\end{align*}
+Instrumentation places \verb|commit(centroids)| at loop end and relies on the loop driver to restore \texttt{i}.
