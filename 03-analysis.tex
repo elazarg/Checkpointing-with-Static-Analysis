@@ -89,11 +89,11 @@ We model the heap as a finite set of \emph{abstract objects} $\mathcal{O}$, wher
     \item \emph{Allocation site objects} created at specific program locations. If line 5 creates a list, all lists created there share one abstract object..
     \item Objects of \emph{Immutable types} that do not alias other objects. For example, all integer objects whose value is not precisely known share the same abstract object.
 \end{itemize}
-Each object has \emph{fields} $\mathcal{F}$ representing its attributes, dictionary keys, or sequence elements. Since tracking every list index separately would be prohibitive, we use a wildcard field $\star$ to represent all indices collectively.
+Each object has \emph{fields} $\mathcal{K}$ representing its attributes, dictionary keys, or sequence elements. Since tracking every list index separately would be prohibitive, we use a wildcard field $\star$ to represent all indices collectively.
 
 \subsection{Map Domains}
 Our type, pointer and dirty analysis domains follow a common pattern: they are maps from keys to values, similar to Python dictionaries but with a default value for missing keys. This uniformity simplifies both the implementation and the theory.
-When an instruction updates a map entry, we face a choice. If we know exactly which key is being written (no aliasing), we can perform a \emph{strong update} that replaces the old value. But if multiple keys might be affected, we must perform a \emph{weak update} that combines the old and new values conservatively. For example, if \texttt{x} might point to one of two objects, then \texttt{x.f = 5} must weakly update both objects' fields.
+When an instruction updates a map entry, we face a choice. If we know exactly which key is being written (no aliasing), we can perform a \emph{strong update} that replaces the old value. But if multiple keys might be affected, we must perform a \emph{weak update} that combines the old and new values conservatively. For example, if \texttt{x} might point to one of two objects, then \texttt{x.k = 5} must weakly update both objects' fields.
 
 At control-flow join points (where paths merge), we combine information from both branches by taking the union of possibilities. This ensures soundness: if a field might be dirty on either path, it's marked dirty after the join. The same map framework works whether we're tracking pointers between objects, dirty fields, or type information; only the type of values in the map changes.
 
@@ -113,7 +113,7 @@ Type ($T$) &
 Pointer ($P$) &
   $P:\mathcal O\to(\mathcal F\to \mathcal P(\mathcal O))$.
   Pointer graph.&
-  (i) Field targets $P[o][f]$; (ii) reachability $Reach(R,P)$. &
+  (i) Field targets $P[o][k]$; (ii) reachability $Reach(R,P)$. &
   Roots, Effects, immutability. \\
 \addlinespace
 Dirty ($D$) &
@@ -148,18 +148,10 @@ We rely on library interface files, similar in spirit to the type stubs used by 
 \end{itemize}
 
 \subsection{Dirty Domain}
-The \emph{dirty} domain maps each object to the set of fields written since the last checkpoint.
+The \emph{dirty} domain maps each object to the set of fields written since the last checkpoint:
+\[D : \mathcal{O} \to \mathcal{P}(\mathcal{O})\]
 An update marks the corresponding field as dirty; deletions are treated as writes.
 The domain itself does not decide which dirty objects must be checkpointed; this decision is deferred until pointer reachability and liveness are taken into account.
-
-\subsection{Pointer Domain}
-The \emph{pointer domain} models the shape of the heap as a map
-\[
-P : \mathcal{O} \to (\mathcal{F} \to \mathcal{P}(\mathcal{O}))
-\]
-where $P[o][f]$ is the set of abstract objects that may be stored in field $f$ of object $o$.
-The inner map has default value $\emptyset$ for any field not explicitly present.
-
 
 \begin{figure}[t]
 \centering
@@ -204,56 +196,36 @@ The inner map has default value $\emptyset$ for any field not explicitly present
 \label{fig:objgraph}
 \end{figure}
 
-\paragraph{Transfer.}
-On an instruction that stores a reference into a field --- for example \texttt{x.f = y} --- we first resolve the set of possible source objects $S$ for $y$ and the set of possible target objects $T$ for $x$.
-For each $t \in T$, we update $P[t][f]$ with $S$.
-If $t$ is known to be the only object bound to $x$ (no aliasing), we perform a \emph{strong update}:
-\[
-P[t][f] \leftarrow S.
-\]
-If aliasing is possible, we perform a \emph{weak update}:
-\[
-P[t][f] \leftarrow P[t][f] \cup S.
-\]
-Reads, such as \texttt{y = x.f}, do not change $P$ but are resolved by looking up $\bigcup_{t \in T} P[t][f]$.
+\subsection{Pointer Domain}
 
-\paragraph{Join and Subsumption.}
-The join $P_1 \sqcup P_2$ is computed pointwise over objects and fields, taking the union of target sets.
-Subsumption $P_1 \sqsubseteq P_2$ holds if $P_1[o][f] \subseteq P_2[o][f]$ for all $o \in \mathcal{O}$ and $f \in \mathcal{F}$.
+The pointer domain tracks which objects each field might reference, maintaining a map \[P : \mathcal{O} \to (\mathcal{K} \to \mathcal{P}(\mathcal{O}))\] where $P[o][k]$ represents possible values of field $k$ in object $o$. This domain determines aliasing --- whether multiple references point to the same object --- which governs update precision throughout the analysis.
 
-\paragraph{Reachability.}
-Given a set of \emph{root objects} $R \subseteq \mathcal{O}$ (live fields of \texttt{LOCALS}), the set of \emph{reachable objects} $\mathsf{Reach}(R, P)$ is the smallest set containing $R$ and closed under:
-\[
-o \in \mathsf{Reach}(R, P) \wedge o' \in P[o][f] \implies o' \in \mathsf{Reach}(R, P).
-\]
-We use liveness to prune the roots $R$ before reachability is computed, ensuring that dead variables do not keep their objects alive.
+\paragraph{Field Operations.}
+Reading field $k$ from objects $O$ returns $\bigcup_{o \in O} P[o][k]$---the union of all possible values. Writing performs either a \emph{strong update} (replacing the old value) when the target is unique and unaliased, or a \emph{weak update} (accumulating possibilities) otherwise.
 
-\paragraph{Field and attribute access.}
-For $x.f$, the pointer domain yields possible receivers; their rows are inspected:
+For containers with dynamic indexing, the wildcard field $\star$ represents all possible indices. Reading \texttt{obj[i]} consults both the specific index and $\star$; writing updates both to maintain soundness.
+
+\paragraph{Object Allocation.}
+New abstract objects arise from three sources:
 \begin{itemize}
-  \item If all agree on the field type, that type is returned.
-  \item If types disagree, their join is returned.
-  \item If the field is missing, join with the residual row's default (often \texttt{any}) and mark as possibly failing.
+\item \emph{Explicit allocation} (for example \textsf{Bind}) creates fresh objects at specific program points
+\item \emph{Effect-guided allocation} when the type domain's $\mathsf{new}$ effect indicates a method creates objects  
+\item \emph{Immutable representatives} for constants, preventing spurious aliasing through shared values
 \end{itemize}
 
-% \paragraph{Example: partial application and update.}
-% Consider:
-% \[
-% f : \forall T,U.\; (0:T, 1:U) \to T
-% \]
-% Calling $f$ with an \texttt{int} yields a residual $(0:U) \to \texttt{int}$.  
-% Calling this residual with a \texttt{str} then yields a residual  $() \to \texttt{int}$; finally, retrieving the result yields an \texttt{int}.  
-% Similarly, \texttt{list.append} with an \texttt{int} argument refines the element type from unknown to \texttt{int}.
+\paragraph{Effect Application.}
+Method calls apply effects from the type domain:
+\begin{itemize}
+\item $\mathsf{new}$: Allocate a fresh object at the call site (instruction location). Objects sharing allocation site are merged together.
+\item $\mathsf{points\_to\_args}$: Wire edges from result to arguments (e.g., the set constructor \texttt{\{a,b\}})
+\item $\mathsf{update}(arg)$: Modify argument $arg$ of the receiver, coordinating with dirty tracking
+\item $\mathsf{bound\_method}$: Track method-to-receiver binding for indirect calls
+\end{itemize}
 
-% \paragraph{Precision and limits.}
-% The type system can:
-% \begin{enumerate}
-%   \item Identify an overapproximation of the set of heap locations an operation may modify.
-%   \item Exclude immutable structures from checkpoints.
-%   \item Refine container element types across updates.
-% \end{enumerate}
-% Precision loss occurs when joins force widening to \texttt{any} (e.g., differing field types, many unknowns, or unknown attribute names).  
-% Dynamic features such as monkey--patching, dynamic imports, or metaclass manipulation are excluded from the target subset.
+The domain traces through bound method objects to find actual receivers, enabling precise tracking even when methods are stored in variables.
+
+\paragraph{Precision Through Types.}
+The type domain's \emph{monomorphization} property---whether an object has a precise, non-union type---determines update strength. Only monomorphic, unaliased objects permit strong updates that refine types; otherwise, the analysis must conservatively accumulate possibilities. This interplay between type precision and pointer precision is fundamental to the analysis's effectiveness.
 
 \subsection{Domain Interactions}
 The domains refine each other with directed information flow:
@@ -266,6 +238,8 @@ The domains refine each other with directed information flow:
 These interactions improve precision by removing impossible states before they can pollute other domains.
 
 \subsection{Transfer Functions}
-For each instruction, the transfer function updates only the affected keys in each domain according to the instruction's semantics.
-Weak updates are applied when aliasing is possible, and joins are used when merging control-flow paths.
-The set of checkpoint roots at loop boundaries is obtained by intersecting live roots with reachable dirty objects.
+For each instruction, the transfer function updates only the affected keys in each domain according to the instruction's semantics. Weak updates are applied when aliasing is possible, and joins are used when merging control-flow paths.
+
+
+\subsection{Minimal Persistent Set and Instrumentation}
+TODO.

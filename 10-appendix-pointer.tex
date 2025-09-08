@@ -7,7 +7,7 @@
 \centering
 \textbf{Pointer Domain ($P$)}
 \begin{gather*}
-P \in \mathcal{P} = \mathcal{O} \to (\mathcal{F} \to 2^{\mathcal{O}}) | \bot_\mathcal{P} \\[0.3em]
+P \in \mathcal{P} = \mathcal{O} \to (\mathcal{K} \to 2^{\mathcal{O}}) | \bot_\mathcal{P} \\[0.3em]
 P_1 \sqsubseteq P_2 \iff \forall o.\; P_1[o] \subseteq P_2[o] \\[0.3em]
 (P_1 \sqcup P_2)[o] = P_1[o] \cup P_2[o] \\
 \end{gather*}
@@ -27,7 +27,7 @@ T_1 \sqsubseteq T_2 \iff \forall o.\; T_1[o] \leq: T_2[o] \\[0.3em]
 \centering
 \textbf{Dirty Domain ($D$)}
 \begin{gather*}
-D \in \mathcal{D} = \mathcal{O} \to 2^{\mathcal{F}} | \bot_\mathcal{D} \\[0.3em]
+D \in \mathcal{D} = \mathcal{O} \to 2^{\mathcal{K}} | \bot_\mathcal{D} \\[0.3em]
 D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 (D_1 \sqcup D_2)[o] = D_1[o] \cup D_2[o]
 \end{gather*}
@@ -79,15 +79,15 @@ Abstract objects \(\mathcal{O}\) include
     \item scopes ---\tLOCALS, \tGLOBALS.
 \end{enumerate}
 
-Fields \(\mathcal{F}\) are keys from the IR:
+Fields \(\mathcal{K}\) are keys from the IR:
 \(\mathsf{name}(s)\), \(\mathsf{index}(n)\), \(\mathsf{both}(n,s)\), and \(\star\) (wildcard).
 
 \paragraph{Abstract domains (cf.\ Fig.~\ref{fig:abstract-domains}).}
 The analysis state is \(\Sigma=(P,T,D)\) where
 \[
-P:\mathcal{O}\to\mathcal{F}\to 2^{\mathcal{O}},\qquad
+P:\mathcal{O}\to\mathcal{K}\to 2^{\mathcal{O}},\qquad
 T:\mathcal{O}\to \mathit{TypeExpr},\qquad
-D:\mathcal{O}\to 2^{\mathcal{F}}.
+D:\mathcal{O}\to 2^{\mathcal{K}}.
 \]
 We use componentwise orders and joins; \(\bot_{\mathcal{P}}[o][f]=\emptyset\),
 \(\bot_{\mathcal{T}}[o]=\bot_{\mathrm{Type}}\), \(\bot_{\mathcal{D}}[o]=\emptyset\).
@@ -269,7 +269,7 @@ Roots at \(l\) are
 \(R_{l,i}=\{\,P[\mathtt{LOCALS}][\mathsf{name}(x)] \mid x\in \mathsf{Live}_{l,i}\,\}\).
 Reachability is the least fixed point
 \[
-\mathsf{Reach}(R,P)=\mu X.\ R\ \cup\ \{\,o' \mid \exists\,o\in X,\, f\in\mathcal{F}.\ o'\in P[o][f] \,\}.
+\mathsf{Reach}(R,P)=\mu X.\ R\ \cup\ \{\,o' \mid \exists\,o\in X,\, f\in\mathcal{K}.\ o'\in P[o][f] \,\}.
 \]
 Abstract GC restricts to \(S=\mathsf{Reach}(R_{l,i},P)\):
 \[
