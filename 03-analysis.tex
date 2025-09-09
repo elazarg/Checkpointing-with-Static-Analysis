@@ -402,7 +402,7 @@ Method calls apply effects from the type domain:
 \end{wrapfigure}
 \begin{example}[Pointer-domain effect of \texttt{X[sample_i]-centroids}]
 
-The pointer domain takes from the type information that subtraction is \tnew; allocates a fresh object \loc{34} at the call site; updates $S[\$5\smlmapsto\loc{34}]$; The heap $H$ is unchanged, since the type of the bound method at $\$7$ (\loc{33}) carries no \tupdate effect.
+The pointer domain takes from the type information that subtraction has the effect \tnew. It then allocates a fresh object \loc{34} corresponding the call site, and updates $S[\$5\smlmapsto\loc{34}]$. The heap $H$ is unchanged, since the type of the bound method at $\$7$ (\loc{33}) carries no \tupdate effect.
 \end{example}
 %
 
@@ -425,10 +425,10 @@ These interactions improve precision by removing impossible states before they c
 For each instruction, the transfer function updates only the affected keys in each domain according to the instruction's semantics. Weak updates are applied when aliasing is possible, and joins are used when merging control-flow paths.
 
 
-\subsection{Minimal Persistent Set and Instrumentation}
+\section{Program Instrumentation}
 \label{sec:min-persist}
 
-The final step of \spyte is to instrument the target function so it performs minimal checkpoint at the end of each iteration, and soundly recovers after failure. Our goal is to persist exactly those locals needed to (i) resume at the head after a crash and (ii) re-execute the next iteration with the same future observable behavior. The output of the last stage of the analysis is therefore a set of local variable names.
+The final step of \spyte is to instrument the target function so it performs minimal checkpoint at the end of each iteration, and soundly recovers after failure. Our goal is to persist exactly those locals needed to (i) resume at the loop head after a crash and (ii) re-execute the next iteration with the same future observable behavior. The output of the last stage of the analysis is therefore a set of local variable names.
 
 \paragraph{Inputs and timing.}
 For a loop head, we use:
@@ -436,17 +436,22 @@ For a loop head, we use:
 (ii) the heap and dirty summaries at the back-edge source (end of the body), just before control returns to the loop entry.
 
 \paragraph{Persistence criterion.}
-A local is persisted if it either (a) was rebound during the body (a write to \tLOCALS), or (b) its current value reaches a heap object written during the body. Immutable objects are never added to $D$ by the type/effect domain.
+A local variable is persisted if it either (a) was rebound during the body (a write to \tLOCALS), or (b) its current value reaches a heap object that is dirty, indicating that it may have been written to during the execution of the body.
+The type/effect domain makes certain that immutable objects, in particular, are never marked as dirty, and therefore variables referring to them need not be persisted.
 
 \paragraph{Why this is sufficient.}
 If a local's binding changed, persisting the name preserves the value needed at the next head.
 If its value reaches an object marked dirty, persisting the local recursively (using \eg pickle) preserves modified region.
 Over-approximation in liveness, pointer or dirty can only enlarge the persistent state, preserving safety.
 
-\subsubsection{Instrumentation.}
+\subsection{Checkpoint Injection}
+
 (i) on normal execution, at the tail of the body before the back edge, commit exactly the locals in the persistent set in a fixed order;
 (ii) on recovery, restore the loop index and the local variables and resume at loop header. Aliases are handled by the pickling mechanism.
 Parameter objects are treated like any other heap objects and are persisted only if some local selected by the criterion reaches them recursively.
+\si{this is not written so clearly}
 
-\paragraph{Example.}
+\begin{example}
 In the k-means outer loop we find that the only live local that either changes binding or reaches modified heap state across iterations is \texttt{centroids}. The instrumented loop therefore commits just \texttt{centroids} at end of each iteration, and restores it together with the loop index on recovery.
+\si{show the analysis result that supports this reasoning}
+\end{example}
