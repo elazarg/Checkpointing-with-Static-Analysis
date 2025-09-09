@@ -24,7 +24,7 @@ i ::= \;&\hspace{6pt} \$d = \$s & \text{// copy assignment} \\
 \section{Analysis}
 \label{sec:analysis}
 
-Our framework is a flow-sensitive abstract interpretation~\cite{cousot1977abstract} that computes invariants at each program point using four cooperating domains: \emph{liveness}, \emph{dirty}, \emph{pointer}, and \emph{types}. \emph{Liveness} predicts future variable uses; \emph{dirty} tracks heap mutations; \emph{pointer} captures aliasing; and \emph{types} propagate static type information and function type and effect annotations. Cross-domain exchange is summarized in~\autoref{tab:contracts}. We present components in dependency order: the intermediate representation and its informal semantics; liveness; the object and memory model; and the specialized domains. \autoref{fig:overview} summarizes the pipeline, from Python source and IR, through the cooperating domains, to the invariants used for checkpoint minimization.
+Our framework is a flow-sensitive abstract interpretation~\cite{cousot1977abstract} that computes invariants at each program point using four cooperating domains: \emph{liveness}, \emph{dirty}, \emph{pointer}, and \emph{types}. \emph{Liveness} predicts future variable uses; \emph{dirty} tracks heap mutations; \emph{pointer} captures aliasing; and \emph{types} propagate static type information and function type and effect annotations. Cross-domain exchange is summarized in~\autoref{tab:contracts}. We present a simple \emph{stack} domain separately for convenience, though it may be thought of as part of the pointer domain. We present components in dependency order: the intermediate representation and its informal semantics; liveness; the object and memory model and the stack domain; and the specialized domains. \autoref{fig:overview} summarizes the pipeline, from Python source and IR, through the cooperating domains, to the invariants used for checkpoint minimization.
 
 \subsection{Intermediate Representation}
 \spyte analyzes Python programs by first converting them to a simplified
@@ -92,10 +92,34 @@ We model the heap as a finite set of \emph{abstract objects} $\mathcal{O}$, wher
 Each object has \emph{fields} $\mathcal{K}$ representing its attributes, dictionary keys, or sequence elements. Since tracking every list index separately would be prohibitive, we use a wildcard field $\star$ to represent all indices collectively.
 
 \subsection{Map Domains}
-Our type, pointer and dirty analysis domains follow a common pattern: they are maps from keys to values, similar to Python dictionaries but with a default value for missing keys. This uniformity simplifies both the implementation and the theory.
-When an instruction updates a map entry, we face a choice. If we know exactly which key is being written (no aliasing), we can perform a \emph{strong update} that replaces the old value. But if multiple keys might be affected, we must perform a \emph{weak update} that combines the old and new values conservatively. For example, if \texttt{x} might point to one of two objects, then \texttt{x.k = 5} must weakly update both objects' fields.
+Our type, pointer and dirty analysis domains follow a common pattern: they are maps from keys to values, similar to Python dictionaries but with a default (``bottom'') value for missing keys. This uniformity simplifies both the implementation and the theory.
+%%%
+A map domain $\mathcal{K}\to\mathcal{V}$ is constructed from a \emph{key set} $\mathcal{K}$ and \emph{value lattice} $\mathcal{V}$.
+The map domain itself forms a lattice, whose order relation is 
+$x\sqsubseteq y \iff \forall k,x[k]\sqsubseteq_{\smlV}y[k]$.
+The top and bottom values of the map domain are
+$\top=\{k\smlmapstox\top_{\smlV}\mid k\in\mathcal{K}\}$
+and
+$\bot=\{k\smlmapstox\bot_{\smlV}\mid k\in\mathcal{K}\}$.
+The \emph{join} ($\sqcup$) and \emph{meet} ($\sqcap$) lattice operators are similarly defined pointwise.
 
-At control-flow join points (where paths merge), we combine information from both branches by taking the union of possibilities. This ensures soundness: if a field might be dirty on either path, it's marked dirty after the join. The same map framework works whether we're tracking pointers between objects, dirty fields, or type information; only the type of values in the map changes.
+The map-domain layer provides some convenience in the description of abstract semantics.
+An instruction typically updates one or more map entries;
+%%%
+an update can be a \emph{strong update} (denoted $m[k\smlmapsto v']$), meaning that it overwrites the old value,
+or a \emph{weak update} (denoted $m\sqcup \{k\smlmapsto v'\}$) that
+combines the old and new values conservatively (using $\sqcup_{\smlV}$).
+
+At control-flow join points (where paths merge), we combine information from both branches by taking the union of possibilities. This ensures soundness: \eg, if a field \emph{might} be dirty on \emph{either} path, it is marked dirty after the join. The same map framework works whether we are tracking pointers between objects, dirty fields, or type information; only the range of values in the map changes.
+
+\subsubsection*{Abstract Stack} The abstract stack domain $S$ is a simple map domain, mapping stack indices $\$i$ (``registers'') to the set of objects they may hold:
+\[S : \mathds{N} \to \powerset(\mathcal{O})\]
+%
+where $\powerset(\mathcal{O})$ is a \emph{power-set lattice} ordered by ${\sqsubseteq}={\subseteq}$ with ${\sqcup}={\cup}$.
+The order relation and join operator of $S$ are constructed via the map-domain
+directive above.
+
+Operationally, for each instruction the stack domain does two things: first it lifts the stack variables read by the instruction, so that instead of referring to the stack each refers to the objects it might hold. Second, it asks the pointer domain for the result of the instruction and stores it in the target stack index (when such a target variable exists). Conceptually this domain can be considered as part of the pointer domain, but we use it independently. In the following, we always discuss instructions as referring to objects directly.\si{todo reword or remove}
 
 \begin{table}[t]
 \centering
@@ -105,19 +129,19 @@ At control-flow join points (where paths merge), we combine information from bot
 \textbf{Domain} & \textbf{Abstract State} & \textbf{Observables (to others)} & \textbf{Depends on} \\
 \midrule
 Type ($T$) &
-  $T:\mathcal O\to \mathcal \mathcal{T}$
+  $T:\mathcal O\to \mathcal \mathsf{Type}$
   Type of object, global modules. &
   Immutability, effects, call and access operations. &
   Pointer reachability to restrict receivers; library stubs. \\
 \addlinespace
 Pointer ($P$) &
-  $P:\mathcal O\to(\mathcal F\to \mathcal P(\mathcal O))$.
+  $P:\mathcal O\to(\mathcal K\to \mathcal P(\mathcal O))$.
   Pointer graph.&
   (i) Field targets $P[o][k]$; (ii) reachability $Reach(R,P)$. &
   Roots, Effects, immutability. \\
 \addlinespace
 Dirty ($D$) &
-  $D:\mathcal O\to \mathcal P(\mathcal F)$ (fields written). &
+  $D:\mathcal O\to \mathcal P(\mathcal K)$ (fields written). &
   Set of dirty fields per object. &
   Effects,  immutability. \\
 \bottomrule
@@ -127,81 +151,189 @@ Dirty ($D$) &
 \end{table}
 
 \subsection{Type and Effect Domain}
-Our type domain models Python values using a set of constructs chosen to match the subset of Python we target: literals, nominal classes, structural protocols, callable signatures, parametric polymorphism with variadic type parameters, and the special \texttt{any} type for unknown values. We do not model nominal subtyping (superclasses), since we've found no need to do so in our domain.
+The type and effect domain tracks the type of each abstract object, maintaining a map \[T : \tO \to (\tK \to \tType)\] 
+
+$\mathsf{Type}$ models Python values using a collection of constructs chosen to match the subset of Python we target: literals, nominal classes, structural protocols, callable signatures, parametric polymorphism with variadic type parameters, and the special \texttt{any} type for unknown values. We do not model nominal subtyping (superclasses), since we've found no need to do so in our domain.\si{nonono}
 
 \paragraph{Call checking and binding.}
-Calls are split at the IR level into three or four consecutive steps: (pure) overload resolution, binding of the selected callable to its arguments (allocating a bound callable object), and calling the call object: applying its effect and returning the return value.~\footnote{Caveat: like most contemporary type analyses, we do not track dimensionality of numpy's ndarrays (but see \cite{liu2020type}). Unfortunately, this means the analysis cannot distinguish between subscriptions that return an float and subscriptions and subscriptions that return a slice of an ndarray. We therefore use simple \texttt{get\_float()} helpers for the former --- a form of type annotations required from the programmer.}
+Calls are split at the IR level into three or four consecutive steps: (pure) overload resolution, binding of the selected callable to its arguments (allocating a bound callable object), and calling the call object: applying its effect and returning the return value.~\footnote{Caveat: like most contemporary type analyses, we do not track dimensionality of numpy's \textsf{ndarrays} (but see \cite{liu2020type}). Unfortunately, this means the analysis cannot distinguish between subscriptions that return a \textsf{float} and subscriptions that return a slice of an \textsf{ndarray} (which is an object). We therefore use simple \texttt{get\_float()} helpers for the former---a form of type annotations required from the programmer.
+\si{can this be pushed up to ``effect annotations'' in language features?}}
 
 \subsubsection{Effects} annotate functions with heap interactions:
 \begin{itemize}
-  \item \textbf{\texttt{new}}: allocates a fresh object.
-  \item \textbf{\texttt{points\_to\_args}}: the \texttt{new} objects points to the arguments passed to it. This fits list/set/tuple/dict constructors.
-  \item \textbf{\texttt{bound\_method}} tells the pointer domain the method points from \texttt{self} to the argument.
-  \item \textbf{\texttt{update}}: modifies or refines a specific field, possibly changing its type. This is very common in methods, and it tells the dirty domain to count the relevant arguments as dirty. Note: Type-changing updates are only applied when the receiver is unaliased and monomorphic, preventing unsound refinements across aliases. The analysis aborts when this is not the case.
+  \item \tnew: allocates a fresh object.
+  \item \tptstoargs: the \tnew objects points to the arguments passed to it. This fits list/set/tuple/dict constructors.
+  \item \tboundmeth tells the pointer domain the method points from \texttt{self} to the argument.
+  \item \tupdate: modifies or refines a specific field, possibly changing its type. This is very common in methods, and it tells the dirty domain to count the relevant arguments as dirty. Note: Type-changing updates are only applied when the receiver is unaliased and monomorphic, preventing unsound refinements across aliases. The analysis aborts when this is not the case.
 \end{itemize}
 
-We rely on library interface files, similar in spirit to the type stubs used by existing Python type checkers, that declare function effects:
+We rely on library interface files, similar to the type stubs used by existing Python type checkers, that (in addition to types) declare function effects:
 
 \begin{itemize}
-  \item Factory functions, such as \texttt{numpy.zeros()} are marked with \textbf{\texttt{new}}, producing a fresh abstract object.
-  \item Methods like \texttt{list.append} are annotated with \textbf{\texttt{update(type, index)}}, recording both type refinement of fields and marking arguments dirty in the pointer/dirty domains.
+  \item Factory functions, such as \texttt{numpy.zeros()} are marked with \tnew, producing a fresh abstract object.
+  \item Methods like \texttt{list.append} are annotated with $\tupdate(type, index)$, recording both type refinement of fields and marking arguments dirty in the pointer/dirty domains.
 \end{itemize}
 
 \subsection{Dirty Domain}
 The \emph{dirty} domain maps each object to the set of fields written since the last checkpoint:
-\[D : \mathcal{O} \to \mathcal{P}(\mathcal{O})\]
-An update marks the corresponding field as dirty; deletions are treated as writes.
-The domain itself does not decide which dirty objects must be checkpointed; this decision is deferred until pointer reachability and liveness are taken into account.
+\[D : \tO \to \powerset(\tK)\]
+
+An update marks the corresponding field as dirty; deletions are treated as writes. 
+Tracking fields is needed specifically for the \tLOCALS and \tGLOBALS objects, to identify which local/global variables have been directly assigned to.
+For other objects, field sensitivity is not crucial (our implementation ignores it),
+but we describe it uniformly for presentation purposes.
+
+\begin{example}
+Consider the assignment statement to the right,
+occurring in the inner loop of \autoref{lst:code-kmeans}.
+\si{todo check placement}
+\end{example}
+
+\bgroup
+\setlength\intextsep{-10pt}
+\begin{wrapfigure}{r}{0.3\textwidth}
+\begin{tikzpicture}[>=stealth,
+  every node/.style={inner sep=1pt}]
+
+\node(l19) { \loc{19} };
+\node(l21)[right=0.5 of l19] { \loc{21} };
+\node(l31)[below=0.5 of l19] { \loc{31} };
+\node(s4)[left=0.2 of l31] { \$4 };
+\node(locals)[left=0.4 of l19, yshift=3mm] { \small \tLOCALS };
+
+\draw[->] (locals) -- node[anchor=-150,yshift=2pt]{\tiny clusters} (l19);
+\draw[->] (l19) -- node[above,xshift=-1pt]{\small$\star$} (l21);
+\draw[->] (s4) -- (l31);
+\draw[->] (l31.north east) -- node[anchor=150,inner sep=0]{\tiny self} (l21.south west);
+
+\node(ir)[above=0.5 of l19]{
+$\begin{array}{@{}l@{}}
+  \quad \vdots \qquad \vdots \\
+  \$4 = \tGetAttr(\$3, \texttt{append}) \\
+  \$4 = \tBind(\$4, {\scriptstyle[\ldots]}) \\
+  \$3 = \tCall(\$4)
+ \end{array}$
+};
+\node(pycode)[above=0.1 of ir]{
+\lstinline|clusters[r].append(sample_i)|
+};
+\end{tikzpicture}
+\vspace{5pt}
+\end{wrapfigure}
+
+%
+In \spytecode, the call to \lstinline|append| is embodied
+in the instruction $\$3 = \tCall(\$4)$.
+Prior to the $\tCall$, a bound-function object (\loc{31}) is
+constructed via $\tGetAttr$/$\tBind$ instructions, with a field
+\lstinline|self| referring to the receiver object (\loc{21}).
+%Assume the dirty state (just before $\tCall$) of:
+%$D = \big\{\tLOCALS\smlmapsto\{\textrm{clusters}\}, 
+%      (\loc{31})\smlmapsto\top\big\}$.
+
+In order to update $D$, the dirty analysis needs information from the pointer\si{todo ref} and type\si{todo ref} domains.
+From the pointer domain, it needs to know about the path $\$4\to\loc{31} \to \loc{21}$
+as shown in the figure;
+From the type domain, it needs to know the \emph{effects}
+associated with the type of $\loc{31}$.
+The type of $\loc{31}$ corresponds to \texttt{list.append},
+which has the \tupdate effect.
+Based on that information, the abstract semantics of
+$\tCall(\$4)$ is $\lambda D.~D\sqcup\{\loc{21}\smlmapsto\top\}$ (the key \loc{21} is taken from the pointer path, and $\top$ is based on the \tupdate
+effect).
+
 
 \begin{figure}[t]
 \centering
 
 \begin{tikzpicture}[
-  box/.style={rectangle, rounded corners=3pt, draw, thick, fill=blue!8,
-              text width=15mm, inner xsep=3mm, inner ysep=2mm, align=left},
-  env/.style={ellipse, draw, thick, fill=blue!8,
+  box/.style={rectangle, rounded corners=3pt, draw,
+              inner xsep=3mm, inner ysep=2mm, align=left},
+  obox/.style={box,text width=15mm},
+  env/.style={ellipse, draw,
               inner xsep=4mm, inner ysep=1.5mm, align=center},
-  edge/.style={-Stealth, thick},
+  edge/.style={-Stealth},
   elabel/.style={sloped, midway, fill=white, inner sep=1pt, font=\footnotesize}
 ]
 
-% Stack environment
-\node[env] (stack) {S};
-
 % Locals environment
-\node[box, below=18mm of stack] (locals) {LOCALS};
+\node[box] (locals) {\tLOCALS};
 
 % Heap objects
 \matrix (M) [matrix of nodes,
-             nodes=box,
-             row sep=7mm,
+             nodes=obox,
+             row sep=5mm,
              column sep=18mm,
              right=20mm of locals] {
   \node (loc22)  {\texttt{Loc 22}\\\footnotesize Iterator[int]}; & \\[-1mm]
-  \node (loc179) {\texttt{Loc 179}\\\footnotesize list[list[int]]}; &
-  \node (loc212) {\texttt{Loc 212}\\\footnotesize list[int]}; \\[-1mm]
+  \node (loc19) {\texttt{Loc 19}\\\footnotesize list[list[int]]}; &
+  \node (loc21) {\texttt{Loc 21}\\\footnotesize list[int]}; \\[-1mm]
   \node (paramX) {\texttt{param X}\\\footnotesize ndarray}; & \\[-1mm]
-  \node (loc540) {\texttt{Loc 540}\\\footnotesize ndarray}; & \\
+  \node (loc40) {\texttt{Loc 40}\\\footnotesize ndarray}; & \\
 };
 
+\node(s1)[left=of loc22] { \$1 };
+
 % Edges
-\draw[edge] (stack) -- (loc22) node[elabel,above] {$\$1$};
-\draw[edge] (locals) -- (loc179) node[elabel,above] {clusters};
-\draw[edge] (loc179) -- (loc212) node[elabel,above] {\texttt{*}};
+\draw[edge] (s1) -- (loc22);
+\draw[edge] (locals) -- (loc19) node[elabel,above] {clusters};
+\draw[edge] (loc19) -- (loc21) node[elabel,above] {$\star$};
 \draw[edge] (locals) -- (paramX) node[elabel,above] {X};
-\draw[edge] (locals) -- (loc540) node[elabel,above] {centroids};
+\draw[edge] (locals) -- (loc40) node[elabel,above] {centroids};
 
 \end{tikzpicture}
-\caption{Points-to graph of the k-means code at the end of the loop body}
+\caption{Object graph of the k-means code at the end of the loop body, annotated with types.}
 \label{fig:objgraph}
 \end{figure}
 
 \subsection{Pointer Domain}
 
-The pointer domain tracks which objects each field might reference, maintaining a map \[P : \mathcal{O} \to (\mathcal{K} \to \mathcal{P}(\mathcal{O}))\] where $P[o][k]$ represents possible values of field $k$ in object $o$. This domain determines aliasing --- whether multiple references point to the same object --- which governs update precision throughout the analysis.
+The pointer domain tracks object references from variables
+and fields, maintaining two map domains:
+
+\[
+\begin{array}{@{}l@{}}
+  S : \tN \to \powerset(\tO) \\
+  H : \tO \to (\tK \to \powerset(\tO))
+\end{array}
+\]
+
+$S$ is the abstract stack, which was already mentioned above.
+$S[i]$ represents a set of objects that may be referenced
+by stack variable $\$i$.
+$H$ is the abstract heap: $H[o][k]$ is a set of objects that
+may be referenced by field $k$ of object $o$.
+Recall that, as explained above, each heap object $o\in\tO$
+is an abstract \emph{summary object}, which may correspond
+to many concrete objects at runtime;
+hence, every abstract state $S,H$ represents infinitely
+many concrete memory states.
+Pointer analysis is a standard technique used in compilers
+to determine possible aliasing of pointers, so we do not
+delve too much into the abstract semantics of individual
+instructions.
+This subsection is included for completeness and, especially,
+to explain the ways in which pointer analysis interacts with
+the other analyses.
+
 
 \paragraph{Field Operations.}
-Reading field $k$ from objects $O$ returns $\bigcup_{o \in O} P[o][k]$---the union of all possible values. Writing performs either a \emph{strong update} (replacing the old value) when the target is unique and unaliased, or a \emph{weak update} (accumulating possibilities) otherwise.
+The semantics of explicit field accesses 
+$\mathsf{GetAttr}(\$o, k)$/$\mathsf{SetAttr}(\$o, k, \$v)$
+involve looking up the set of objects $S[o]$ that may be
+referred to by $\$o$.
+For \tGetAttr, it generates the abstract value
+$\bigsqcup_{p \in S[o]} H[p][k]$.
+For \tSetAttr, it updates $H[p]$ for \emph{all} of $p\in S[o]$.
+If $S[o]$ is known to address a single concrete object (that is, if it is a singleton set of a singleton object, such as
+$\{\tLOCALS\}$),
+the semantics would be a strong update
+$H[p\smlmapsto \mbox{\small $S[v]$}]$.
+Otherwise, it would be a weak update,
+$H\sqcup\{p\smlmapsto \mbox{\small $S[v]$}\mid p\in \mbox{\small $S[o]$}\}$.
+
+\tGetAttr/\tSetAttr
+Reading field $k$ from objects $O$ returns ---the union of all possible values. If the object does not have a key, the operation is forwarded to the type system. Writing performs either a \emph{strong update} (replacing the old value) when the target is unique and unaliased, or a \emph{weak update} (accumulating possibilities) otherwise.
 
 For containers with dynamic indexing, the wildcard field $\star$ represents all possible indices. Reading \texttt{obj[i]} consults both the specific index and $\star$; writing updates both to maintain soundness.
 
@@ -209,23 +341,75 @@ For containers with dynamic indexing, the wildcard field $\star$ represents all 
 New abstract objects arise from three sources:
 \begin{itemize}
 \item \emph{Explicit allocation} (for example \textsf{Bind}) creates fresh objects at specific program points
-\item \emph{Effect-guided allocation} when the type domain's $\mathsf{new}$ effect indicates a method creates objects  
+\item \emph{Effect-guided allocation} when the type domain's $\tnew$ effect indicates a method creates objects  
 \item \emph{Immutable representatives} for constants, preventing spurious aliasing through shared values
 \end{itemize}
 
 \paragraph{Effect Application.}
 Method calls apply effects from the type domain:
 \begin{itemize}
-\item $\mathsf{new}$: Allocate a fresh object at the call site (instruction location). Objects sharing allocation site are merged together.
-\item $\mathsf{points\_to\_args}$: Wire edges from result to arguments (e.g., the set constructor \texttt{\{a,b\}})
-\item $\mathsf{update}(arg)$: Modify argument $arg$ of the receiver, coordinating with dirty tracking
-\item $\mathsf{bound\_method}$: Track method-to-receiver binding for indirect calls
+\item \tnew: Allocate a fresh object at the call site (instruction location). Objects sharing allocation site are merged together.
+\item \tptstoargs: Wire edges from result to arguments (e.g., the set constructor \texttt{\{a,b\}})
+\item $\tupdate(T, arg)$: Modify argument receiver to point to the argument $arg$, changing its type to $T$, coordinating with dirty tracking and types. Updates annotated with $*arg$ instead means updating to point to the same elements pointed to by $arg$. 
+\item \tboundmeth: Track method-to-receiver binding for indirect calls
 \end{itemize}
+
+\begin{wrapfigure}{r}{0.35\linewidth}
+\centering
+\begin{tikzpicture}[>=stealth,
+  node distance=6mm and 8mm,
+  every node/.style={inner sep=1pt},
+  elabel/.style={midway, fill=white, inner sep=1pt, font=\scriptsize}]
+
+% --- BEFORE ---
+\node (headerB) at (-2,3.4) {\footnotesize\textbf{Before}};
+\node (localsB) at (0,3.4) {\small \tLOCALS};
+\node (loc10B)  [below left =7mm and 8mm of localsB] {\loc{10}};
+\node (loc32B)  [below right=7mm and 8mm of localsB] {\loc{32}};
+\node (s6B)     [below =5mm of loc10B] {$\$6$};
+\node (s5B)     [below =5mm of loc32B] {$\$5$};
+\draw[->] (localsB) -- node[elabel,above]{\scriptsize centroids} (loc10B);
+\draw[->] (localsB) -- node[elabel,above]{\scriptsize \(X[\star]\)} (loc32B);
+\draw[->] (s6B) -- (loc10B);
+\draw[->] (s5B) -- (loc32B);
+
+% --- IR (center) ---
+\node[inner sep=2pt, font=\scriptsize\ttfamily, below=2 of localsB,
+      align=left, text width=40mm] (ir)
+{$\begin{array}{@{}l@{}}
+\multicolumn{1}{c}{\mbox{\lstinline|X[sample_i] - centroids|}} \\
+\quad \vdots \qquad \vdots \\
+\$7=\tLookupDunder(\texttt{\_\_sub\_\_},[\$5,\$6]) \\
+\$7=\tResolveOverload(\$7,[\$5,\$6]) \\
+\$7=\tBind(\$7,[\$5,\$6]) \;\  (\text{\scriptsize site }\loc{33}) \\
+\$5=\tCall(\$7) \;\;\;\ \,  \qquad \qquad  (\text{\scriptsize site }\loc{34})
+\end{array}$};
+
+% --- AFTER ---
+\node (localsA) [below= 2mm of ir] {\small \tLOCALS};
+\node (headerA) [left = 1.25cm of localsA] {\footnotesize\textbf{After}};
+\node (loc10A)  [below left =7mm and 8mm of localsA] {\loc{10}};
+\node (loc32A)  [below right=7mm and 8mm of localsA] {\loc{32}};
+\node (loc34A)  [below=7mm of localsA]               {\loc{34}};
+\node (s6A)     [below =5mm of loc10A] {$\$6$};
+\node (s5A)     [below =5mm of loc34A] {$\$5$};
+\draw[->] (localsA) -- node[elabel,above]{\scriptsize centroids} (loc10A);
+\draw[->] (localsA) -- node[elabel,above]{\scriptsize \(X[\star]\)} (loc32A);
+\draw[->] (s6A) -- (loc10A);
+\draw[->] (s5A) -- (loc34A);
+
+\end{tikzpicture}%
+\end{wrapfigure}
+\begin{example}[Pointer-domain effect of \texttt{X[sample_i]-centroids}]
+
+The pointer domain takes from the type information that subtraction is \tnew; allocates a fresh object \loc{34} at the call site; updates $S[\$5\smlmapsto\loc{34}]$; The heap $H$ is unchanged, since the type of the bound method at $\$7$ (\loc{33}) carries no \tupdate effect.
+\end{example}
+%
 
 The domain traces through bound method objects to find actual receivers, enabling precise tracking even when methods are stored in variables.
 
 \paragraph{Precision Through Types.}
-The type domain's \emph{monomorphization} property---whether an object has a precise, non-union type---determines update strength. Only monomorphic, unaliased objects permit strong updates that refine types; otherwise, the analysis must conservatively accumulate possibilities. This interplay between type precision and pointer precision is fundamental to the analysis's effectiveness.
+The type domain's \emph{monomorphization} property---whether an object has a precise, non-union type---determines update strength. Only monomorphic, unaliased objects permit updates that refine types; otherwise, the analysis must conservatively accumulate possibilities. This interplay between type precision and pointer precision is fundamental to the analysis's effectiveness.
 
 \subsection{Domain Interactions}
 The domains refine each other with directed information flow:
@@ -242,4 +426,27 @@ For each instruction, the transfer function updates only the affected keys in ea
 
 
 \subsection{Minimal Persistent Set and Instrumentation}
-TODO.
+\label{sec:min-persist}
+
+The final step of \spyte is to instrument the target function so it performs minimal checkpoint at the end of each iteration, and soundly recovers after failure. Our goal is to persist exactly those locals needed to (i) resume at the head after a crash and (ii) re-execute the next iteration with the same future observable behavior. The output of the last stage of the analysis is therefore a set of local variable names.
+
+\paragraph{Inputs and timing.}
+For a loop head, we use:
+(i) Live \tLOCALS at entry to the loop (liveness), and
+(ii) the heap and dirty summaries at the back-edge source (end of the body), just before control returns to the loop entry.
+
+\paragraph{Persistence criterion.}
+A local is persisted if it either (a) was rebound during the body (a write to \tLOCALS), or (b) its current value reaches a heap object written during the body. Immutable objects are never added to $D$ by the type/effect domain.
+
+\paragraph{Why this is sufficient.}
+If a local's binding changed, persisting the name preserves the value needed at the next head.
+If its value reaches an object marked dirty, persisting the local recursively (using \eg pickle) preserves modified region.
+Over-approximation in liveness, pointer or dirty can only enlarge the persistent state, preserving safety.
+
+\subsubsection{Instrumentation.}
+(i) on normal execution, at the tail of the body before the back edge, commit exactly the locals in the persistent set in a fixed order;
+(ii) on recovery, restore the loop index and the local variables and resume at loop header. Aliases are handled by the pickling mechanism.
+Parameter objects are treated like any other heap objects and are persisted only if some local selected by the criterion reaches them recursively.
+
+\paragraph{Example.}
+In the k-means outer loop we find that the only live local that either changes binding or reaches modified heap state across iterations is \texttt{centroids}. The instrumented loop therefore commits just \texttt{centroids} at end of each iteration, and restores it together with the loop index on recovery.

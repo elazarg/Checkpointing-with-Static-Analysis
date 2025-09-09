@@ -26,10 +26,10 @@ def kmeans(X:np.ndarray, k:int, niters:int):
 \end{lstlisting}
 };
 \node(pseudo)[right=0 of py.north east,
-anchor=north west, scale=0.7] {
+anchor=north west, scale=0.8] {
 \begin{minipage}{9cm}
 \begin{algorithmic}
-\Function{kmeans}{$X$, $k$, $n$}
+\Function{k-means}{$X$, $k$, $n$}
 \State $\mathit{centroids} \gets \textrm{choose}~
   \{C\subseteq X \mid |C|=k\}$
 \Loop ~(max $n$ iterations)
@@ -49,24 +49,48 @@ anchor=north west, scale=0.7] {
 \end{minipage}
 };
 
-\node[below=0 of pseudo] {
-\includegraphics[width=3.7cm]{gfx/ex-dataflow.png}
+\node[below=0 of pseudo,inner sep=0,yshift=2mm] {
+  \begin{tikzpicture}[>=stealth,
+        every node/.style={font=\sffamily,inner sep=2pt}]
+    \node(centroids) {centroids};
+    \node(X)[above right=0.3 of centroids] {X};
+    \node(v)[below right=0.3 of centroids] {v};
+    \node(r)[below=0.2 of v] {r};
+    \node(clusters)[below=0.3 of r,inner ysep=1pt] {\rule[-.2\baselineskip]{0pt}{.5\baselineskip} clusters};
+    \node(new-centroids)[below=0.3 of clusters,inner ysep=1pt] 
+         {new\_centroids};
+    \draw[->] (X) edge[out=190,in=45] (centroids);
+    \draw[->] (centroids) edge[out=-45,in=170] (v);
+    \draw[->] (X) edge[out=-45,in=45] (v);
+    \draw[->] (v) -- (r);
+    \draw[->] (r) -- (clusters);
+    \draw[->] (clusters) -- (new-centroids);
+    \draw[->] (new-centroids)
+      edge[out=180,in=-115] (centroids.-160);
+  \end{tikzpicture}
 };
 \end{tikzpicture}
 \caption{\label{lst:code-kmeans}
-K-Means clustering with $k$ clusters.}
+K-Means clustering with $k$ clusters, implemented in Python using \lstinline|numpy|. \hspace{0.5em}To the right:\\
+\strut\qquad algorithm pseudo-code (for reference and as a reading aid), and a data-flow diagram of the program.}
 \end{figure}
 
 \subsection{Running Example: K-Means Clustering}
 \label{sec:running-example}
 
-We illustrate our checkpointing approach using the classical \emph{K-Means clustering} algorithm~\cite{macqueen1967multivariate}. This widely used iterative method, partitions a dataset into $k$ clusters by repeatedly reassigning points to the nearest centroid and updating centroids as the mean of their assigned points.
+We illustrate our checkpointing approach using the classical \emph{K-Means clustering} algorithm~\cite{macqueen1967multivariate}.
+Clustering is a classical machine learning problem defined as partitioning a set $X$ of data points (real-valued vectors) into $k$ clustered subsets.
+The K-Means algorithm works by finding $k$ points, called
+\emph{centroids}, where the $i$'th cluster consists of all points in $X$ that are closer to the $i$'th centroid that
+to all other centroids.
+This widely used iterative method, starting with a random set of centroids and repeatedly, gradually, improving the solution until the process converges.
 
+\smallskip
 Each iteration proceeds as follows:
 \begin{enumerate}
-    \item \textbf{Cluster assignment:} Each data point is assigned to its nearest centroid.
-    \item \textbf{Centroid update:} New centroids are computed as the mean of each cluster.
-    \item \textbf{Convergence check:} If centroids have not significantly changed, the algorithm halts.
+    \item \textbf{Cluster assignment:} assign each data point to its nearest centroid, forming $k$ clusters.
+    \item \textbf{Centroid update:} compute new centroids as the mean of each cluster.
+    \item \textbf{Convergence check:} if centroids have not significantly changed from previous iteration, the algorithm terminates.
 \end{enumerate}
 
 This style of computation is a natural fit for checkpointing: each iteration overwrites the previous cluster assignments and recomputes temporary data structures from scratch. Only the \texttt{centroids} array must persist across iterations. However, conventional checkpointing tools like CRIU or VM-based snapshots indiscriminately capture the full resident memory---including all temporary arrays and internal buffers---leading to high storage and I/O overhead.
@@ -74,32 +98,47 @@ This style of computation is a natural fit for checkpointing: each iteration ove
 Our system avoids this inefficiency by identifying the \emph{minimal} state necessary to resume execution after a crash. It does so through a static analysis pipeline that combines:
 \begin{itemize}
     \item \textbf{Liveness analysis} to determine which variables are needed for future execution.
-    \item \textbf{Points-to analysis} to track object references and heap structure.
-    \item \textbf{Dirty analysis} to identify memory locations that were actually modified.
+    \item \textbf{Points-to analysis} to track object references and heap structure, in order to map memory
+location that are reachable from each variable.
+    \item \textbf{Dirty analysis} to identify which memory locations are actually being modified thoughout the execution.
 \end{itemize}
-Applied to K-Means, the analysis concludes that only the centroid array is both live and dirty at the loop head. All other objects---including the \texttt{clusters} data structure, distance computations, and scratch space---are either recomputed or dead.
+
+Program variables that are both \textbf{live} and from which \textbf{dirty} memory locations are \textbf{reachable}
+are marked for inclusion in the snapshot.
+In the case of K-Means, the only variable that has both of these properties is \lstinline|centroids|.
+All other variables---the input \lstinline|X|, the \lstinline|clusters| data structure, distance vectors \lstinline|v|, and other intermediate computed values---are either dead or unchanged.
 
 \begin{figure}[t]
+\newcommand\blk[1]{%
+  \tikz[baseline=(a.base)]
+  \node(a)[draw, dashed, dash pattern=on 2pt off 1pt, minimum height=15pt] {\# #1}; }
+\newcommand\lstrut{%
+  \rule[-.3\baselineskip]{0pt}{1.1\baselineskip}}
 \centering
 \begin{lstlisting}[language=python]
-# initialization unchanged
-with Loader(__file__, locals()) as transaction:
-    if transaction:
-        [centroids] = transaction.move()
-    for i in transaction.iterate(range(iters)):
-        # Loop body unchanged
-        transaction.commit(centroids)
-# finalization unchanged
+t = spyte.restore()   # recover saved transaction, if any
+(*@\blk{initialization}@*)
+t (*@$>\!>$@*) [centroids]
+for i in t.iter(range(niters)):
+  (*@\blk{\lstrut loop body}@*)
+  t (*@$<\!<$@*) [centroids]
+(*@\blk{finalization}@*)
 \end{lstlisting}
-\caption{Automatic checkpoint injection at the loop header.}
+\caption{Automatic checkpoint injection for the k-means loop.}
 \label{fig:checkpoint-injection}
 \end{figure}
 
-As shown in \autoref{fig:checkpoint-injection}, our instrumentation wraps the loop with a lightweight transactional API. This enables recovery after a crash by restoring execution to the loop head with the correct value of \texttt{i} and \texttt{centroids}, without persisting irrelevant data. It is technically possible to make the instrumentation less syntactically intrusive, but the intention is to make it clear to the developer what the instrumentation does.
+Following these conclusions derived from the analysis, \spyte generates an instrumented version of the function
+with injected checkpointing operations, shown in \autoref{fig:checkpoint-injection}.
+A transaction object \lstinline|t| encapsulates the checkpoint API (it is shown here in pseudo-code form to keep the presentation clean and free of distracting implementation details).
+The key point is the store operation \lstinline|t|$<\!<$\lstinline|[centroids]|, which updates the snapshot (on disk) with the current value of \lstinline|centroids|, which,
+as explained above, is the only variable marked during the analysis phase.
+In addition, the transaction keeps track of the iteration counter \lstinline|i|, which is required for resumption if the program crashes and needs to re-run starting from the \lstinline|i|'th iteration.
+
 
 \paragraph{Language Features and Implementation Twists}
 
-Although K-Means is conceptually simple, its Python implementation highlights several challenges for static analysis in a dynamic language. In particular:
+Although K-Means is conceptually simple, its Python implementation highlights several challenges for static analysis in a dynamic language. \si{these sentences use a mixture of terms: features, challenges, general properties. needs cleanup} In particular:
 \begin{itemize}
     \item \textbf{Generic data structures.} The variable \texttt{clusters} is a list of lists of integers. In order to enable type-checking and proper tracking of its structure, we require the use of explicit type constructors such as \texttt{list[int]()}. This ensures that our analysis can infer a meaningful and consistent type.
     \item \textbf{Side effects.} Function calls such as \texttt{xs.append(y)} mutate nested list. Our dirty analysis correctly tracks such effects to determine whether the object needs to be persisted. However, in this case, \texttt{clusters} is reconstructed every iteration and does not need to be saved.

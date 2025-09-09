@@ -79,8 +79,8 @@ Instrumentation places \verb|commit(centroids)| at the loop end and restores \ve
 \section*{Type/Effect Highlights}
 We rely on a small effect library:
 \begin{itemize}
-\item \texttt{np.array}: $E.\mathsf{new}=\mathsf{true}$, result does not alias arguments.
-\item \texttt{list.append}: $E.\mathsf{update}=\{\wild\}$ marks the wildcard field of the receiver’s element row.
+\item \texttt{np.array}: $E.\tnew=\mathsf{true}$, result does not alias arguments.
+\item \texttt{list.append}: $E.\tupdate=\{\wild\}$ marks the wildcard field of the receiver’s element row.
 \item \texttt{np.mean}: pure; \texttt{np.allclose}: pure.
 \end{itemize}
 These effects guide $\Points$ and $\Dirty$ updates and avoid conservative retention of temporary arrays.

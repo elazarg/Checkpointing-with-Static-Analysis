@@ -99,7 +99,7 @@ After \texttt{centroids = new\_centroids}, we \emph{rebind} the local root:
 \(\Points'[\LOCALS][\name{centroids}] \leftarrow \Points[\LOCALS][\name{new\_centroids}]\).
 
 \section*{(h) Effects (Library Facts)}
-We use a compact effect tuple $E = \langle \mathsf{new},\,\mathsf{update},\,\mathsf{points\_to\_args},\,\mathsf{pure}\rangle$:
+We use a compact effect tuple $E = \langle \tnew,\,\tupdate,\,\tptstoargs,\,\mathsf{pure}\rangle$:
 \begin{align*}
 E(\texttt{np.array})      &= \langle \mathsf{true},\ \mathsf{None},\ \mathsf{false},\ \mathsf{false}\rangle\\
 E(\texttt{list.append})   &= \langle \mathsf{false},\ \{\wild\},\ \mathsf{false},\ \mathsf{false}\rangle\\

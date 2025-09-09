@@ -3,7 +3,7 @@
 \centering
 \begin{tabular}{l|r|c|c|c}
 \toprule
-\textbf{Benchmark} & \textbf{Spyte} & \textbf{Locals} & \textbf{\PROCDIFF} & \textbf{\VMDIFF} \\
+\textbf{Benchmark} & \textbf{\spyte} & \textbf{Locals} & \textbf{\PROCDIFF} & \textbf{\VMDIFF} \\
 \midrule
 \texttt{noploop} & 72 & \begin{tabular}{@{}r@{}}75\\{\footnotesize 1.04$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}\textbf{14}\\{\footnotesize 0.19$\times$}\end{tabular} & \begin{tabular}{@{}r@{}}17966\\{\footnotesize 249.52$\times$}\end{tabular} \\
 \midrule
@@ -55,7 +55,7 @@ The use of TCP to trigger VM-level checkpoints may introduce a nontrivial fixed 
 
 \subsection{Checkpoint Size Comparison}
 
-\autoref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both Locals checkpointing and simulated Process- and VM-level methods. "Instr" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory differentials at the process and virtual machine levels respectively.
+\autoref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both Locals checkpointing and simulated Process- and VM-level methods. "\spyte" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory differentials at the process and virtual machine levels respectively.
 
 For the \texttt{noploop} benchmark, our analysis incurs a fixed overhead (iterator) that exceeds 
 the minimal state changes, making process-level diffing more efficient. This represents a limitation for programs with very small persistent state.

@@ -571,18 +571,18 @@ where keys $\langle i\rangle$ and $\langle \mathrm{"\_\_getitem\_\_"}\rangle$ fo
 \label{sec:effects}
 An effect $\epsilon^\#$ is a tuple
 \[
-\epsilon^\# = (\mathsf{new},\ \mathsf{update},\ \mathsf{points\_to\_args},\ \mathsf{bound\_method})
+\epsilon^\# = (\tnew,\ \tupdate,\ \tptstoargs,\ \tboundmeth)
 \]
 where:
 \begin{itemize}
-  \item $\mathsf{new} \in \{\mathsf{true},\mathsf{false}\}$ indicates allocation of a new object.
-  \item $\mathsf{update} \in \mathcal{T}^?_{\rho}$ is an optional row type $\rho$ of updated fields.
-  \item $\mathsf{points\_to\_args} \in \{\mathsf{true},\mathsf{false}\}$ indicates whether the result may point to arguments (used for aliasing).
-  \item $\mathsf{bound\_method} \in \{\mathsf{true},\mathsf{false}\}$ marks bound methods produced by attribute access.
+  \item $\tnew \in \{\mathsf{true},\mathsf{false}\}$ indicates allocation of a new object.
+  \item $\tupdate \in \mathcal{T}^?_{\rho}$ is an optional row type $\rho$ of updated fields.
+  \item $\tptstoargs \in \{\mathsf{true},\mathsf{false}\}$ indicates whether the result may point to arguments (used for aliasing).
+  \item $\tboundmeth \in \{\mathsf{true},\mathsf{false}\}$ marks bound methods produced by attribute access.
 \end{itemize}
 
 Effects form a finite product lattice $(\mathcal{E}, \sqsubseteq_{\mathcal{E}}, \sqcup_{\mathcal{E}}, \sqcap_{\mathcal{E}}, \top_{\mathcal{E}}, \bot_{\mathcal{E}})$.  
-Joins are computed pointwise over Boolean components, and via an optional-type join $\sqcup^?$ for the $\mathsf{update}$ component:
+Joins are computed pointwise over Boolean components, and via an optional-type join $\sqcup^?$ for the $\tupdate$ component:
 \[
 \tau_1^? \sqcup^? \tau_2^? =
 \begin{cases}
@@ -591,7 +591,7 @@ Joins are computed pointwise over Boolean components, and via an optional-type j
 None & \text{if neither defined}.
 \end{cases}
 \]
-If the $\mathsf{update}$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from \autoref{fig:auxiliary-defs}.
+If the $\tupdate$ component is a row type $\rho$, its join is computed using the $\rho$-join rules from \autoref{fig:auxiliary-defs}.
 
 \subsubsection*{Decidability}
 The fragment used in this paper admits a syntax-directed, terminating subtyping procedure. Rows are finite, records use width/depth subtyping, functions are contravariant in parameters and covariant in results, overloads are finite, and effects are compared by strict equality rather than via a subeffect lattice. There is no nominal class subtyping and, crucially, no subtyping rule that crosses $\forall$-quantifiers (quantification is handled by instantiation/binding rather than by subtyping). The subtyping algorithm decreases a well-founded size measure on types/rows at every rule (fieldwise checks, list traversals, and result recursion), so subtyping terminates and is therefore decidable. This yields decidable limited type inference for the targeted Python subset. 

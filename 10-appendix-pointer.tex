@@ -59,7 +59,7 @@ Instruction–level effects (allocation at \textsf{Bind}, \textsf{ConstructTuple
 \textsf{ConstructDict}, \textsf{Call}, and iteration in \textsf{Unpack}) are interpreted here.
 Callable \emph{invocation} effects come from the type system
 (\autoref{sec:appendix-typesystem}) as an effect triple
-\(\epsilon^\#=(\mathsf{new},\mathsf{update},\mathsf{points\_to\_args})\) and are translated to
+\(\epsilon^\#=(\tnew,\tupdate,\tptstoargs)\) and are translated to
 heap updates by the transfer functions below.
 
 \subsection{Notation and State}
@@ -115,7 +115,7 @@ We use two auxiliary resolvers:
 \[
 \mathsf{RetObjects}(l,i,\epsilon^\#,\overline{O_a}) =
 \begin{cases}
-\{\mathsf{Loc}(l)\} & \text{if }\epsilon^\#.\mathsf{new}=\mathsf{true}\\
+\{\mathsf{Loc}(l)\} & \text{if }\epsilon^\#.\tnew=\mathsf{true}\\
 \Big(\biguplus_k O_{a_k}\Big)\ \cup\ \{\mathsf{Ret}^\uparrow\} & \text{otherwise}
 \end{cases}
 \]
@@ -250,7 +250,7 @@ Effect(\$f)
 \\[0.2em]
 Invoke(P,T,D;\ \epsilon^\#,O_f,\overline{O_a},q)
   &\defeq\ \text{apply }\epsilon^\#\text{: allocate results (fresh site } Loc(q)\text{ if needed),}\\
-  &\qquad\text{propagate aliasing (}\star\text{ edges) when }\epsilon^\#.\textsf{points\_to\_args},\ \text{and perform field updates}\\
+  &\qquad\text{propagate aliasing (}\star\text{ edges) when }\epsilon^\#.\tptstoargs,\ \text{and perform field updates}\\
   &\qquad\text{on targets discovered by }Targets(P,O_f,\cdot)\text{ using } Upd \text{ and } UpdD; \text{ also update }T.
 \end{array}
 \end{align*}
