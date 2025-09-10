@@ -1,130 +1,169 @@
-\input{ir-lang}
+\begin{figure}[t]
+\centering
+\[
+\renewcommand{\arraystretch}{1.15}
+\begin{array}{l@{}ll}
+\multicolumn{3}{l}{\textbf{Instructions:}}\\
+i ::= \;&\hspace{6pt}\mathsf{Mov}(\$d,\$s) & \text{// } \$d := \$s \\
+      &\mid \tLoadConst(\$d,c) & \text{// } \$d := c \\
+      &\mid \tLoadLocal(\$d,x) & \text{// } \$d := \mathit{locals}[x] \\
+      &\mid \tLoadGlobal(\$d,x) & \text{// } \$d := \mathit{globals}[x] \\
+      &\mid \tSetLocal(x,\$s) & \text{// } \mathit{locals}[x] := \$s \\[0.6ex]
+      &\mid \tLookupDunder(\$d,op,\$a)  & \text{// pure: find \_\_op\_\_} \\
+      &\mid \tResolveOverload(\$d,\$f,\$a,\$k) & \text{// pure: choose static target} \\
+      &\mid \tBind(\$d,\$f,\$a,\$k) & \text{// effect: make bound callable} \\
+      &\mid \tConstructTuple(\$d,\overline{\$e}) & \text{// effect: allocate/populate tuple} \\
+      &\mid \tConstructDict(\$d,\overline{(\$k,\$v)}) & \text{// effect: allocate/populate dict} \\[0.6ex]
+      &\mid \tGetAttr(\$d,\$o,k) & \text{// } \$d := \$o.k; \text{effect on property access} \\
+      &\mid \tSetAttr(\$o,k,\$v) & \text{// } \$o.k := \$v; \text{effect}\\
+      &\mid \tUnpack(\overline{\$d},\$s) & \text{// unpack iterable; effect on iterable} \\
+      &\mid \tCall(\$d,\$f) & \text{// } \$d := \$f() \\[0.6ex]
+      &\mid \tAssumeEq(\$b,\$c) & \text{// continue iff } \$b = \$c \\
+      &\mid \tExit & \text{// terminate} \\[1.1ex]
 
-\begin{figure*}[p]
+\multicolumn{3}{l}{\textbf{Values:}}\\
+v ::= \;& \mathit{static}(sid) \mid \mathit{heap}(hid) & \\
+sid ::= \;& \mathit{func}(name) \mid \mathit{class}(name) \mid \mathit{const}(c) & \\
+hid ::= \;& \mathit{loc}(n) \mid \mathit{locals} \mid \mathit{globals} & \\[1.1ex]
+
+\multicolumn{3}{l}{\textbf{Field Keys:}}\\
+k ::= \;& \mathit{name}(s) \mid \mathit{index}(n) \mid \mathit{both}(n,s) & \\[1.1ex]
+
+\multicolumn{3}{l}{\textbf{Stores:}}\\
+\multicolumn{2}{l}{\sigma : \mathit{StaticID} \to \mathit{FieldKey} \rightharpoonup \mathit{StaticID}} & \text{// static store (closed)} \\
+\multicolumn{2}{l}{H : \mathit{HeapLoc} \to \mathit{FieldKey} \rightharpoonup \mathit{Value}} & \text{// mutable heap}
+\end{array}
+\]
+\caption{\spytecode syntax.}
+\label{fig:tac-syntax}
+\end{figure}
+
+
+\begin{figure}[p]
 \centering
 \begin{mathpar}
 
-\inferrule*[right=Mov]{
-  \rho(\$s) = v
+\inferrule*[lab=Mov]{
+   S(\$s) = v
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{Mov}(\$d, \$s)} \langle\rho[\$d \mapsto v], H\rangle
+  \langle S, H\rangle \xrightarrow{\tMov(\$d, \$s)} \langle S[\$d \mapsto v], H\rangle
 }
 
-\inferrule*[right=LoadConst]{
+\inferrule*[lab=LoadConst]{
   \mathit{static}(\mathit{const}(c)) = v
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{Const}(\$d, c)}
-  \langle\rho[\$d \mapsto v], H\rangle
+  \langle S, H\rangle \xrightarrow{\tLoadConst(\$d, c)}
+  \langle S[\$d \mapsto v], H\rangle
 }
 
-\inferrule*[right=LoadLocal]{
+\inferrule*[lab=LoadLocal]{
   H(\mathit{locals})(\mathit{name}(x)) = v
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{LoadLocal}(\$d, x)} \langle\rho[\$d \mapsto v], H\rangle
+  \langle S, H\rangle \xrightarrow{\tLoadLocal(\$d, x)} \langle S[\$d \mapsto v], H\rangle
 }
 
-\inferrule*[right=LoadGlobal]{
+\inferrule*[lab=LoadGlobal]{
   H(\mathit{globals})(\mathit{name}(x)) = v
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{LoadGlobal}(\$d, x)} \langle\rho[\$d \mapsto v], H\rangle
+  \langle S, H\rangle \xrightarrow{\tLoadGlobal(\$d, x)} \langle S[\$d \mapsto v], H\rangle
 }
 
-\inferrule*[right=SetLocal]{
-  \rho(\$s) = v \\
+\inferrule*[lab=SetLocal]{
+   S(\$s) = v \\
   H' = H[\mathit{locals} \mapsto H(\mathit{locals})[\mathit{name}(x) \mapsto v]]
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{SetLocal}(x, \$s)} \langle\rho, H'\rangle
+  \langle S, H\rangle \xrightarrow{\tSetLocal(x, \$s)} \langle S, H'\rangle
 }
 
-\inferrule*[right=LookupDunder]{
-  \rho(\overline{\$o}) = \overline{v} \\
+\inferrule*[lab=LookupDunder]{
+   S(\overline{\$o}) = \overline{v} \\
   \mathsf{get\_class}(\overline{v}) = \overline{c} \\
   \mathsf{dunder\_lookup}(m, [\overline{c}]) = f
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{LookupDunder}(\$d, m, \overline{\$o})}
-  \langle\rho[\$d \mapsto \mathit{static}(f)], H\rangle
+  \langle S, H\rangle \xrightarrow{\tLookupDunder(\$d, m, \overline{\$o})}
+  \langle S[\$d \mapsto \mathit{static}(f)], H\rangle
 }
 
-\inferrule*[right=ResolveOverload]{
-  \rho(\$f) = v_f \quad \rho(\$a) = a \quad \rho(\$k) = k \\
+\inferrule*[lab=ResolveOverload]{
+   S(\$f) = v_f \quad  S(\$a) = a \quad  S(\$k) = k \\
   \mathsf{overload}(H, v_f, a, k) = f \quad f \in \mathit{StaticID}
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{ResolveOverload}(\$d, \$f, \$a, \$k)}
-  \langle\rho[\$d \mapsto \mathit{static}(f)], H\rangle
+  \langle S, H\rangle \xrightarrow{\tResolveOverload(\$d, \$f, \$a, \$k)}
+  \langle S[\$d \mapsto \mathit{static}(f)], H\rangle
 }
 
-\inferrule*[right=Bind]{
-  \rho(\$f) = \mathit{static}(f) \quad \rho(\$a) = a \quad \rho(\$k) = k \\
-  \mathsf{bind}(H, f, a, k) = (b, H') \quad b \in \mathit{HeapLoc}
+\inferrule*[lab=Bind]{
+   S(\$f) = \mathit{static}(f) \quad  S(\$a) = a \quad  S(\$k) = k \\
+  \mathsf{bind}(H, f, a, k) = (b, H')
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{Bind}(\$d, \$f, \$a, \$k)}
-  \langle\rho[\$d \mapsto \mathit{heap}(b)], H'\rangle
+  \langle S, H\rangle \xrightarrow{\mathsf{Bind}(\$d, \$f, \$a, \$k)}
+  \langle S[\$d \mapsto \mathit{heap}(b)], H'\rangle
 }
 
-\inferrule*[right=ConstructTuple]{
-  \rho(\$e_1) = v_1 \;\cdots\; \rho(\$e_n) = v_n \\
+\inferrule*[lab=ConstructTuple]{
+   S(\$e_1) = v_1 \;\cdots\;  S(\$e_n) = v_n \\
   \mathsf{construct\_tuple}(H, [v_1,\ldots,v_n]) = (t, H') \quad t \in \mathit{HeapLoc}
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{ConstructTuple}(\$d, [\$e_1,\ldots,\$e_n])}
-  \langle\rho[\$d \mapsto \mathit{heap}(t)], H'\rangle
+  \langle S, H\rangle \xrightarrow{\tConstructTuple(\$d, [\$e_1,\ldots,\$e_n])}
+  \langle S[\$d \mapsto \mathit{heap}(t)], H'\rangle
 }
 
 % ConstructDict omitted for brevity
-% \inferrule*[right=ConstructDict]{
-%   \rho(\$k_1) = k_1 \;\rho(\$v_1) = v_1 \;\cdots\; \rho(\$k_n) = k_n \;\rho(\$v_n) = v_n \\
+% \inferrule*[lab=ConstructDict]{
+%    S(\$k_1) = k_1 \; S(\$v_1) = v_1 \;\cdots\;  S(\$k_n) = k_n \; S(\$v_n) = v_n \\
 %   \mathsf{construct\_dict}(H, [(k_1,v_1),\ldots,(k_n,v_n)]) = (d, H') \quad d \in \mathit{HeapLoc}
 % }{
-%   \langle\rho, H\rangle \xrightarrow{\mathsf{ConstructDict}(\$d, [(\$k_1,\$v_1),\ldots,(\$k_n,\$v_n)])}
-%   \langle\rho[\$d \mapsto \mathit{heap}(d)], H'\rangle
+%   \langle S, H\rangle \xrightarrow{\mathsf{ConstructDict}(\$d, [(\$k_1,\$v_1),\ldots,(\$k_n,\$v_n)])}
+%   \langle S[\$d \mapsto \mathit{heap}(d)], H'\rangle
 % }
 
-\inferrule*[right=GetAttr]{
-  \rho(\$o) = v \\
+\inferrule*[lab=GetAttr]{
+   S(\$o) = v \\
   \mathsf{attribute\_lookup}(H, v, f) = v'
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{GetAttr}(\$d, \$o, f)} \langle\rho[\$d \mapsto v'], H\rangle
+  \langle S, H\rangle \xrightarrow{\tGetAttr(\$d, \$o, f)} \langle S[\$d \mapsto v'], H\rangle
 }
 
-\inferrule*[right=SetAttr]{
-  \rho(\$o) = v_o \quad \rho(\$v) = v \\
+\inferrule*[lab=SetAttr]{
+   S(\$o) = v_o \quad  S(\$v) = v \\
   \mathsf{attribute\_assign}(H, v_o, f, v) = H'
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{SetAttr}(\$o, f, \$v)} \langle\rho, H'\rangle
+  \langle S, H\rangle \xrightarrow{\tSetAttr(\$o, f, \$v)} \langle S, H'\rangle
 }
 
 % Unpack omitted for brevity
-% \inferrule*[right=Unpack]{
-%   \rho(\$s) = v \\
+% \inferrule*[lab=Unpack]{
+%    S(\$s) = v \\
 %   \mathsf{unpack}(H, v, n) = ([v_1,\ldots,v_n], H') \\
-%   \rho' = \rho[\$d_1 \mapsto v_1] \cdots [\$d_n \mapsto v_n]
+%    S' =  S[\$d_1 \mapsto v_1] \cdots [\$d_n \mapsto v_n]
 % }{
-%   \langle\rho, H\rangle \xrightarrow{\mathsf{Unpack}([\$d_1,\ldots,\$d_n], \$s)} \langle\rho', H'\rangle
+%   \langle S, H\rangle \xrightarrow{\mathsf{Unpack}([\$d_1,\ldots,\$d_n], \$s)} \langle S', H'\rangle
 % }
 
-\inferrule*[right=Call]{
-  \rho(\$f) = f \\
+\inferrule*[lab=Call]{
+   S(\$f) = f \\
   \mathsf{apply}(H, f) = (v, H')
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{Call}(\$d, \$f)} \langle\rho[\$d \mapsto v], H'\rangle
+  \langle S, H\rangle \xrightarrow{\tCall(\$d, \$f)} \langle S[\$d \mapsto v], H'\rangle
 }
 
-\inferrule*[right=AssumeEq]{
-  \rho(\$b) = \rho(\$c)
+\inferrule*[lab=AssumeEq]{
+   S(\$b) =  S(\$c)
 }{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{AssumeEq}(\$b, \$c)} \langle\rho, H\rangle
+  \langle S, H\rangle \xrightarrow{\tAssumeEq(\$b, \$c)} \langle S, H\rangle
 }
 
-\inferrule*[right=Exit]{}{
-  \langle\rho, H\rangle \xrightarrow{\mathsf{Exit}} \langle\rho, H\rangle
+\inferrule*[lab=Exit]{}{
+  \langle S, H\rangle \xrightarrow{\tExit} \langle S, H\rangle
 }
 
 \end{mathpar}
 
 \vspace{0.5em}
 \textbf{Notes} Any premise may fail; failure terminates the current path.
-\caption{Small-step operational semantics.}
+\caption{Concrete operational semantics for \spytecode.}
 \label{fig:tac-semantics}
-\end{figure*}
+\end{figure}
 
 
 \newpage
@@ -149,12 +188,12 @@ We target Python programs executed by \emph{CPython}. CPython compiles to a stac
 
 A \spytecode program is a control-flow graph (CFG) whose nodes are basic blocks of \spytecode instructions. Blocks execute sequentially; edges encode control transfer. \spytecode itself does not carry explicit jump opcodes.
 
-Path conditions are modeled by \texttt{AssumeEq}: execution continues only if the condition holds; otherwise, the path terminates. Iteration can be expressed by testing and assuming on iterator sentinels (e.g., a distinguished \texttt{StopIteration} value), but exceptions are not modeled.
+Path conditions are modeled by \tAssumeEq: execution continues only if reference equality holds; otherwise, the path terminates. Iteration can be expressed by testing and assuming on iterator sentinels (e.g., a distinguished \texttt{StopIteration} value), but exceptions are not modeled.
 
 \subsection{Instruction Set and Memory Model}
 
 \paragraph{Values and Stores.}
-\spytecode distinguishes \emph{static} and \emph{heap} values. Static values refer to immutable entities (functions, classes, constants) in a closed static store $\sigma$; static objects may reference only other static objects. The mutable heap $H$ maps heap locations to field-keyed optional values. \texttt{locals} and \texttt{globals} are modeled as fixed heap locations.
+\spytecode distinguishes \emph{static} and \emph{heap} values. Static values refer to immutable entities (functions, classes, constants) in a closed static store $\sigma$; static objects may reference only other static objects. The mutable heap $H$ maps heap locations to field-keyed optional values. \tLOCALS and \tGLOBALS are modeled as fixed heap locations.
 
 \paragraph{Field keys.}
 A single key space is used for dictionary-like addressing:
@@ -167,38 +206,38 @@ $\mathit{both}(n,s)$ (positions with names, if needed).
 
 \smallskip
 \noindent\emph{Data movement.}
-\texttt{Mov}, \texttt{LoadConst}, \texttt{LoadLocal}, \texttt{LoadGlobal}, \texttt{SetLocal} move values between temporaries and named variables (the latter stored in \texttt{locals}/\texttt{globals}).
+\tMov, \tLoadConst, \tLoadLocal, \tLoadGlobal, \tSetLocal move values between temporaries and named variables (the latter stored in \tLOCALS/\tGLOBALS).
 
 \smallskip
 \noindent\emph{Special-method resolution (pure).}
-\texttt{LookupDunder} resolve special methods (e.g., \texttt{\_\_add\_\_}, \texttt{\_\_getitem\_\_}) based on static types and $\sigma$, returning a static function. These steps are side-effect free.
+\tLookupDunder resolve special methods (e.g., \texttt{\_\_add\_\_}, \texttt{\_\_getitem\_\_}) based on static types and $\sigma$, returning a static function. These steps are side-effect free.
 
 \smallskip
 \noindent\emph{Overload selection and binding.}
-\texttt{ResolveOverload} selects a static target for a call given a candidate callable and argument bundles; it is pure and may consult\~\$H\$ only to read metadata relevant to selection. \texttt{Bind} applies Python’s argument-binding rules and allocates a \emph{bound callable} in the heap; its effects are limited to constructing that bound object.
+\tResolveOverload selects a static target for a call given a candidate callable and argument bundles; it is pure and may consult $H$ only to read metadata relevant to selection. \tBind applies Python's argument-binding rules and allocates a \emph{bound callable} in the heap; its effects are limited to constructing that bound object.
 
 \smallskip
 \noindent\emph{Asymmetric collection constructors.}
-\texttt{ConstructTuple} and \texttt{ConstructDict} allocate and populate tuple and dictionary literals directly. These are modeled as first-class constructors rather than function calls. The asymmetry exists because bootstrapping these literals into \texttt{Call} requires pre-existing callable semantics for the very constructors being introduced.
+\tConstructTuple and \tConstructDict allocate and populate tuple and dictionary literals directly. These are modeled as first-class constructors rather than function calls. The asymmetry exists because bootstrapping these literals into \tCall requires pre-existing callable semantics for the very constructors being introduced.
 
 \smallskip
 \noindent\emph{Attribute access.}
-\texttt{GetAttr} and \texttt{SetAttr} encapsulate Python’s attribute protocol (instance dictionary, descriptors, inheritance). Attribute access is singled out because it does not reduce cleanly to a single special-method call in the general case.
+\tGetAttr and \tSetAttr encapsulate Python’s attribute protocol (instance dictionary, descriptors, inheritance). Attribute access is singled out because it does not reduce cleanly to a single special-method call in the general case.
 
 \smallskip
 \noindent\emph{Invocation and unpacking.}
-\texttt{Call} invokes a (possibly bound) callable and may allocate results. \texttt{Unpack} consumes an iterable and writes its elements to destinations; its effects are those of the underlying iterator protocol.
+\tCall invokes a (possibly bound) callable and may allocate results. \tUnpack consumes an iterable and writes its elements to destinations; its effects are those of the underlying iterator protocol.
 
 \smallskip
 \noindent\emph{Control.}
-\texttt{AssumeEq} (path filtering) and \texttt{Exit} (termination) complete the set.
+\tAssumeEq (path filtering) and \tExit (termination) complete the set.
 
 \paragraph{Allocation sites.}
-Heap allocation occurs only at \texttt{Bind} (for the bound callable object), \texttt{ConstructTuple}, \texttt{ConstructDict}, \texttt{Call} (result objects as required by the callee semantics), and any allocation internally performed by \texttt{Unpack}. Resolution instructions (\texttt{Lookup\*}) and attribute lookup are pure with respect to heap writes.
+Heap allocation occurs only at \tBind (allocating the bound callable object), \tConstructTuple, \tConstructDict, \tCall (result objects as required by the callee semantics), and any allocation internally performed by \tUnpack. Resolution instructions (\tLookupDunder and \tResolveOverload) and attribute lookup are pure with respect to heap writes.
 
 \subsection{Operational Semantics}
 
-Execution states are pairs $\langle \rho, H \rangle$ where $\rho$ maps temporaries to values and $H$ is the heap. The static store $\sigma$ is global and immutable. Each instruction defines a small-step transition from $\langle \rho, H \rangle$ to $\langle \rho', H' \rangle$. Helper functions capture opaque Python semantics:
+Execution states are pairs $\langle  S, H \rangle$ where $ S$ maps temporaries to values and $H$ is the heap. The static store $\sigma$ is global and immutable. Each instruction defines a small-step transition from $\langle  S, H \rangle$ to $\langle  S', H' \rangle$. Helper functions capture opaque Python semantics:
 \begin{itemize}
 \item $\mathsf{get\_class}(v) \to \text{StaticID}$,
 \item $\mathsf{dunder\_lookup}(m, [c_1,\ldots,c_k]) \to \text{StaticID}$,
@@ -214,26 +253,26 @@ Any failing premise (e.g., missing attribute, arity mismatch) terminates the cur
 
 Key properties:
 \begin{itemize}
-\item \emph{Purity of resolution.} \texttt{LookupDunder} and \texttt{ResolveOverload} do not mutate the heap.
-\item \emph{Bound-callable discipline.} \texttt{Bind} allocates only the bound callable and initializes its fields from the provided argument bundles; semantic effects of the call occur at \texttt{Call}.
-\item \emph{Literal construction.} \texttt{ConstructTuple} and \texttt{ConstructDict} allocate exactly one new object and populate its fields deterministically from inputs.
+\item \emph{Purity of resolution.} \tLookupDunder and \tResolveOverload do not mutate the heap.
+\item \emph{Bound-callable discipline.} \tBind allocates only the bound callable and initializes its fields from the provided argument bundles; semantic effects of the call occur at \tCall.
+\item \emph{Literal construction.} \tConstructTuple and \tConstructDict allocate exactly one new object and populate its fields deterministically from inputs.
 \item \emph{Static-store closure.} Static objects reference only static objects.
 \end{itemize}
 
 \subsection{Translation from CPython Bytecode}
 
-Translation preserves each bytecode’s stack effect while eliminating the operand stack. Simple loads/stores map to data-movement instructions. Operators and subscription lower to dunder lookup, optional overload selection, \texttt{Bind}, and \texttt{Call}. Attribute access uses \texttt{GetAttr}/\texttt{SetAttr}. Tuple and dictionary literals produced by \texttt{BUILD\_TUPLE}/\texttt{BUILD\_MAP} translate to \texttt{ConstructTuple}/\texttt{ConstructDict} without a trailing \texttt{Call}. List and set construction can be expressed via the regular call pipeline.
+Translation preserves each bytecode’s stack effect while eliminating the operand stack. Simple loads/stores map to data-movement instructions. Operators and subscription lower to dunder lookup, optional overload selection, \tBind, and \tCall. Attribute access uses \tGetAttr/\tSetAttr. Tuple and dictionary literals produced by \texttt{BUILD\_TUPLE}/\texttt{BUILD\_MAP} translate to \tConstructTuple/\tConstructDict without a trailing \tCall. List and set construction can be expressed via the regular call pipeline.
 
 \subsection{Design Decisions (scope and impact)}
 
 \paragraph{Uniform heap for namespaces.}
-Modeling \texttt{locals}/\texttt{globals} as ordinary heap objects avoids special-purpose rules for name binding and enables uniform reasoning about reads and writes. This affects all loads/stores but does not change observable Python behavior.
+Modeling \tLOCALS/\tGLOBALS as ordinary heap objects avoids special-purpose rules for name binding and enables uniform reasoning about reads and writes. This affects all loads/stores but does not change observable Python behavior.
 
 \paragraph{Separated resolution and invocation.}
 Splitting resolution from invocation isolates target identification from side effects. Analyses can reason about call targets and argument shapes before considering callee effects.
 
 \paragraph{Asymmetric literal construction.}
-Tuple and dict literals are introduced as dedicated constructors. This avoids circularity in defining their semantics via \texttt{Call} while still allowing other collections to be expressed through the standard call pipeline.
+Tuple and dict literals are introduced as dedicated constructors. This avoids circularity in defining their semantics via \tCall while still allowing other collections to be expressed through the standard call pipeline.
 
 \paragraph{Attribute access as a primitive.}
 Attribute access remains a dedicated instruction pair because it subsumes instance dictionaries, descriptors, and inheritance. Reducing it to a single special-method call would obscure these behaviors.

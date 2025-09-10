@@ -30,8 +30,9 @@
 \label{sec:evaluation}
 We evaluate our approach to program-guided checkpointing on four Python workloads: \texttt{noploop}, \texttt{pivoter}, \texttt{kmeans}, and \texttt{omp}. These benchmarks capture common iterative patterns in numerical computing and machine learning, with varying degrees of control complexity, memory reuse, and heap allocation behavior. In each, we insert checkpoint instrumentation at the head of the primary loop, allowing recovery from the beginning of any iteration. We measure the size of the persisted state after each checkpoint operation.
 
-\begin{itemize}
-    \item \textbf{noploop} is a degenerate \texttt{range} \texttt{for} loop with no meaningful computation or allocation except the iterator. It serves as a lower bound on checkpointing overhead. We run the loop for 100 steps.
+\begin{itemize}[leftmargin=*]
+    \item \textbf{noploop} is a degenerate  {\color{blue!50!black}
+\texttt{for}~\textrm{...}~\texttt{in}~\texttt{range}} loop with no meaningful computation or allocation except the iterator. It serves as a lower bound on checkpointing overhead. We run the loop for 100 steps.
 
     \item \textbf{pivoter} (26 LOC, 2 out of 7 relevant variables) performs clique enumeration over a sparse graph via depth-first search and backtracking. Program state is encoded in sets and counters. Input is a 100-node, 757-edge subgraph extracted from the Enron dataset. The algorithm requires $\sim 47,000$ steps to complete. Due to the computational cost of process- and VM-level checkpointing, we sample checkpoints every 50 or 51 steps (yielding 1,891 checkpoint pairs total), but measure memory differences between consecutive snapshots to estimate per-step deltas. This avoids the cost of capturing all 47,000 steps while maintaining fair comparison granularity.
 
@@ -42,7 +43,7 @@ We evaluate our approach to program-guided checkpointing on four Python workload
 
 All benchmarks use fixed data and identical loop structure across checkpointing configurations. Dataset selection was finalized before implementing or evaluating instrumentation.
 
-\begin{itemize}
+\begin{itemize}[leftmargin=*]
   \item \textbf{Locals}: Pickling (Python data serialization) all local variables (excluding parameters), regardless of whether they were modified or needed again.
   \item \textbf{\PROCDIFF}: We implemented process-level checkpointing using a custom tool that captures all writable memory regions by reading from \texttt{/proc/self/mem}. We initially attempted to use CRIU for process-level checkpointing, but found its memory overhead dominated the storage costs by orders of magnitude, making meaningful comparison impractical. 
   \item \textbf{\VMDIFF}: VM-level checkpointing based on snapshots and 64-byte memory diffing between iterations. The checkpoints are taken by triggering QEMU memory dumps via QMP commands over TCP.
@@ -55,7 +56,7 @@ The use of TCP to trigger VM-level checkpoints may introduce a nontrivial fixed 
 
 \subsection{Checkpoint Size Comparison}
 
-\autoref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both Locals checkpointing and simulated Process- and VM-level methods. "\spyte" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory differentials at the process and virtual machine levels respectively.
+\Cref{tab:checkpoint-sizes} reports the mean size in bytes of each checkpointing method after filtering. Our system consistently outperforms both Locals checkpointing and simulated Process- and VM-level methods. "\spyte" refers to the instrumented version produced by our static analysis-based checkpointing. "\PROCDIFF" and "\VMDIFF" refer to memory differentials at the process and virtual machine levels respectively.
 
 For the \texttt{noploop} benchmark, our analysis incurs a fixed overhead (iterator) that exceeds 
 the minimal state changes, making process-level diffing more efficient. This represents a limitation for programs with very small persistent state.

@@ -3,31 +3,43 @@
 \begin{figure*}[t]
 \centering
 
-\begin{minipage}[t]{0.32\textwidth}
+\begin{minipage}[t]{0.5\textwidth}
 \centering
-\textbf{Pointer Domain ($P$)}
+\textbf{Heap Domain ($H$)}
 \begin{gather*}
-P \in \mathcal{P} = \mathcal{O} \to (\mathcal{K} \to 2^{\mathcal{O}}) | \bot_\mathcal{P} \\[0.3em]
+H \in \mathcal{H} = \tO \to (\tK \to \powerset(\tO)) | \bot_\mathcal{H} \\[0.3em]
 P_1 \sqsubseteq P_2 \iff \forall o.\; P_1[o] \subseteq P_2[o] \\[0.3em]
 (P_1 \sqcup P_2)[o] = P_1[o] \cup P_2[o] \\
 \end{gather*}
 \end{minipage}%
 \hfill
-\begin{minipage}[t]{0.32\textwidth}
+\begin{minipage}[t]{0.5\textwidth}
+\centering
+\textbf{Stack Domain ($S$)}
+\begin{gather*}
+S \in \mathcal{S} = \tN \to \powerset(\tO) | \bot_\mathcal{S} \\[0.3em]
+S_1 \sqsubseteq S_2 \iff \forall i \in \tN.\; S_1[i] \subseteq S_2[i] \\[0.3em]
+(S_1 \sqcup S_2)[i] = S_1[i] \cup S_2[i]
+\end{gather*}
+\end{minipage}
+
+\vspace{1.5em}
+
+\begin{minipage}[t]{0.5\textwidth}
 \centering
 \textbf{Type Domain ($T$)}
 \begin{gather*}
-T \in \mathcal{T} = \mathcal{O} \to \mathit{TypeExpr} | \bot_\mathcal{T} \\[0.3em]
+T \in \mathcal{T} = \tO \to \mathit{TypeExpr} | \bot_\mathcal{T} \\[0.3em]
 T_1 \sqsubseteq T_2 \iff \forall o.\; T_1[o] \leq: T_2[o] \\[0.3em]
 (T_1 \sqcup T_2)[o] = T_1[o] \sqcup T_2[o]
 \end{gather*}
 \end{minipage}%
 \hfill
-\begin{minipage}[t]{0.32\textwidth}
+\begin{minipage}[t]{0.5\textwidth}
 \centering
 \textbf{Dirty Domain ($D$)}
 \begin{gather*}
-D \in \mathcal{D} = \mathcal{O} \to 2^{\mathcal{K}} | \bot_\mathcal{D} \\[0.3em]
+D \in \mathcal{D} = \tO \to \powerset(\tK) | \bot_\mathcal{D} \\[0.3em]
 D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 (D_1 \sqcup D_2)[o] = D_1[o] \cup D_2[o]
 \end{gather*}
@@ -37,9 +49,9 @@ D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 
 \noindent\textbf{Combined domain ($\Sigma$)}
 \begin{align*}
-\Sigma &= (P,T,D) \in \mathcal{P} \times \mathcal{T} \times \mathcal{D} | \bot_\Sigma\\[0.3em]
-\Sigma_1 \sqsubseteq \Sigma_2 &\iff P_1 \sqsubseteq P_2 \land T_1 \sqsubseteq T_2 \land D_1 \sqsubseteq D_2 \\[0.3em]
-\Sigma_1 \sqcup \Sigma_2 &= (P_1 \sqcup P_2,\; T_1 \sqcup T_2,\; D_1 \sqcup D_2)
+\Sigma &= (H,S,T,D) \in \mathcal{H} \times \mathcal{S} \times \mathcal{T} \times \mathcal{D} | \bot_\Sigma\\[0.3em]
+\Sigma_1 \sqsubseteq \Sigma_2 &\iff P_1 \sqsubseteq P_2 \land S_1 \sqsubseteq S_2 \land T_1 \sqsubseteq T_2 \land D_1 \sqsubseteq D_2 \\[0.3em]
+\Sigma_1 \sqcup \Sigma_2 &= (P_1 \sqcup P_2,\; S_1 \sqcup S_2,\; T_1 \sqcup T_2,\; D_1 \sqcup D_2)
 \end{align*}
 
 \caption{Abstract domains for heap analysis combining pointer tracking, type information, and mutation tracking.}
@@ -53,59 +65,49 @@ D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 \subsection{Scope and Goal}
 
 The pointer analysis abstracts heap shape, aliasing, and mutations over the \spytecode IR
-(\autoref{sec:appendix-tac-ir}) to support checkpointing. It is
+(\cref{sec:appendix-tac-ir}) to support checkpointing. It is
 flow-sensitive and intraprocedural along exception-free paths.
 Instruction–level effects (allocation at \textsf{Bind}, \textsf{ConstructTuple},
 \textsf{ConstructDict}, \textsf{Call}, and iteration in \textsf{Unpack}) are interpreted here.
 Callable \emph{invocation} effects come from the type system
-(\autoref{sec:appendix-typesystem}) as an effect triple
+(\cref{sec:appendix-typesystem}) as an effect triple
 \(\epsilon^\#=(\tnew,\tupdate,\tptstoargs)\) and are translated to
 heap updates by the transfer functions below.
 
 \subsection{Notation and State}
 
-We write basic blocks \(l\in L\) and instruction positions \(i\) within block \(l\), giving a
-program point \(l\).
-Variables are split into named locals \(\mathcal{V}_{\mathrm{named}}\) and stack stack variables
-\(\mathcal{V}_{\mathrm{stack}}=\{\$0,\$1,\ldots\}\).
+We write basic blocks \(l\in L\) and instruction positions \(i\) within block \(l\), giving a program point \(l\).
+Variables are split into named locals \(\mathcal{V}_{\mathrm{named}}\) and stack stack indices $\tN$.
 Let \(\mathsf{Live}_{l,i}\subseteq \mathcal{V}_{\mathrm{named}}\) be liveness at \(l\).
 
 \paragraph{Abstract objects and fields.}
-Abstract objects \(\mathcal{O}\) include
+Abstract objects \(\tO\) include
 \begin{enumerate}
-    \item \textsf{Loc}(l) --- allocation site.
-    \item \textsf{Param}(p) --- external input.
-    \item \textsf{Imm}($\tau$) --- immutable of type $\tau$.
+    \item \loc{l} --- allocation site.
+    \item \tParam p --- external input.
+    \item \tImm $\tau$ --- immutable of type $\tau$.
     \item scopes ---\tLOCALS, \tGLOBALS.
 \end{enumerate}
 
-Fields \(\mathcal{K}\) are keys from the IR:
+Fields \(\tK\) are keys from the IR:
 \(\mathsf{name}(s)\), \(\mathsf{index}(n)\), \(\mathsf{both}(n,s)\), and \(\star\) (wildcard).
 
 \paragraph{Abstract domains (cf.\ Fig.~\ref{fig:abstract-domains}).}
-The analysis state is \(\Sigma=(P,T,D)\) where
-\[
-P:\mathcal{O}\to\mathcal{K}\to 2^{\mathcal{O}},\qquad
-T:\mathcal{O}\to \mathit{TypeExpr},\qquad
-D:\mathcal{O}\to 2^{\mathcal{K}}.
-\]
-We use componentwise orders and joins; \(\bot_{\mathcal{P}}[o][f]=\emptyset\),
-\(\bot_{\mathcal{T}}[o]=\bot_{\mathrm{Type}}\), \(\bot_{\mathcal{D}}[o]=\emptyset\).
 
 \paragraph{Conventions.}
-We store named locals and stack variables as fields of roots:
-\(P[\mathtt{LOCALS}][\mathsf{name}(x)]\) for \(x\in\mathcal{V}_{\mathrm{named}}\),
-and \(S[\mathsf{index}(\$k)]\) for \(\$k\in\mathcal{V}_{\mathrm{stack}}\).
+We store named local variables as fields of roots:
+\(H[\mathtt{LOCALS}][\mathsf{name}(x)]\) for \(x\in\mathcal{V}_{\mathrm{named}}\),
+and \(S[\$k]\) for \(\$k\in\tN\).
 We write \(O_x\) for a set of objects and \(\biguplus\) for union over a family.
 
 \subsection{Auxiliary Updates}
 
 Weak/strong update on points-to:
 \[
-\mathsf{Upd}(P,O_{\mathrm{tgt}},f,O_{\mathrm{new}})=
+\mathsf{Upd}(H,O_{\mathrm{tgt}},f,O_{\mathrm{new}})=
 \begin{cases}
-\text{for the unique }o\in O_{\mathrm{tgt}}:~P[o][f]\leftarrow O_{\mathrm{new}} & \text{if }|O_{\mathrm{tgt}}|=1\\
-\text{for all }o\in O_{\mathrm{tgt}}:~P[o][f]\leftarrow P[o][f]\cup O_{\mathrm{new}} & \text{otherwise}
+\text{for the unique }o\in O_{\mathrm{tgt}}:~H[o][f]\leftarrow O_{\mathrm{new}} & \text{if }|O_{\mathrm{tgt}}|=1\\
+\text{for all }o\in O_{\mathrm{tgt}}:~H[o][f]\leftarrow H[o][f]\cup O_{\mathrm{new}} & \text{otherwise}
 \end{cases}
 \]
 Dirty update: \(\mathsf{UpdD}(D,O_{\mathrm{tgt}},f)\) adds \(f\) to \(D[o]\) for each \(o\in O_{\mathrm{tgt}}\).
@@ -115,176 +117,184 @@ We use two auxiliary resolvers:
 \[
 \mathsf{RetObjects}(l,i,\epsilon^\#,\overline{O_a}) =
 \begin{cases}
-\{\mathsf{Loc}(l)\} & \text{if }\epsilon^\#.\tnew=\mathsf{true}\\
+\{\loc{l}\} & \text{if }\epsilon^\#.\tnew=\mathsf{true}\\
 \Big(\biguplus_k O_{a_k}\Big)\ \cup\ \{\mathsf{Ret}^\uparrow\} & \text{otherwise}
 \end{cases}
 \]
 (where \(\mathsf{Ret}^\uparrow\) is a distinguished summary return object),
 and a target resolver for effect updates that follows argument/receiver links on bound callables:
 \[
-\mathsf{Targets}(P, O_f, \text{slot}) \subseteq \mathcal{O}
+\mathsf{Targets}(H, O_f, \text{slot}) \subseteq \tO
 \quad\text{(slot is receiver or an argument index)}.
 \]
 
 \subsection{Transfer Functions for \spytecode}
 \label{subsec:transfers}
 
-The abstract state is a four-tuple \(\Sigma = (P,T,D,S)\) where \(P\) is the heap
-points-to map, \(T\) the object-type map, \(D\) the dirty-field map, and \(S\) the
-stack map for stack variables \(\$k\).
+The abstract state is a four-tuple \(\Sigma = (H,S,T,D)\) where \(H\) is the heap
+points-to map, \(S\) is the
+stack map, \(T\) the object-type map, \(D\) the dirty-field map.
 We write \(S[d \mapsto O]\) for functional update, and
 \(\biguplus\mathcal{X}\) for set union over a family \(\mathcal{X}\).
 Heap updates use
-\(\mathsf{Upd}(P,\ O_{\mathrm{tgt}},\ f,\ O_{\mathrm{new}})\)
+\(\mathsf{Upd}(H,\ O_{\mathrm{tgt}},\ f,\ O_{\mathrm{new}})\)
 (weak/strong update depending on \(|O_{\mathrm{tgt}}|\)),
 and dirty marks use
 \(\mathsf{UpdD}(D,\ O_{\mathrm{tgt}},\ f)\).
-Let \(\mathsf{Loc}(l)\) denote the allocation site at instruction index \(l\).
-Pure operations never mutate \(P\); the stack map \(S\) changes only for
+Let \(\loc{l}\) denote the allocation site at instruction index \(l\).
+Pure operations never mutate \(H\); the stack map \(S\) changes only for
 instructions that assign to a stack .
 \subsection{Transfer Functions for \spytecode}
 \label{subsec:transfers}
 
-The abstract state is a four-tuple \(\Sigma=(P,T,D,S)\) where \(P\) is the heap
+The abstract state is a four-tuple \(\Sigma=(H,S,T,D)\) where \(H\) is the heap
 points-to map, \(T\) the object-type map, \(D\) the dirty-field map, and \(S\)
-the stack map for stack variables.  Pure operations never mutate \(P\).  Only
+the stack map for stack variables.  Pure operations never mutate \(H\).  Only
 instructions that assign to a destination stack variable can mutate \(S\).
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\begin{align*}
-% ===================== A. DATA MOVEMENT / NAME ACCESS =====================
+\resizebox{\linewidth}{!}{$
+\setlength{\jot}{0.35em}% tighten vertical gaps between aligned rows
+\begin{aligned}
 &\textbf{(A) Data movement}\\
-&Trans^\#\big((P,T,D,S),\ Mov(\$d,\$s)\big)
-  = (P,\ T,\ D,\ S\llbracket d \mapsto S[s]\rrbracket)
+&Trans^\#\big((H,S,T,D),\mathsf{Mov}(\$d,\$s)\big)
+  = (H,\ S\llbracket d \mapsto S[s]\rrbracket,\ T,\ D)
 \\[0.6em]
-% ===================== B. PURE RESOLUTION =====================
 &\textbf{(B) Constant lookup}\\
-&Trans^\#\big((P,T,D,S),\ LoadConst(\$d,c)\big)
-  = (P,\ T,\ D,\ S\llbracket d \mapsto \{Imm(type(c))\}\rrbracket)
+&Trans^\#\big((H,S,T,D),\tLoadConst(\$d,c)\big)
+  = (H,\ S\llbracket d \mapsto \{\,\mathsf{Imm}(type(c))\,\}\rrbracket,\ T,\ D)
 \\
-&Trans^\#\big((P,T,D,S),\ LookupDunder(\$d,op,\$a)\big)=(P,T,D,S\llbracket d \mapsto lookup\_dunder(T, op, S[\overline{\$a}])\rrbracket)
+&Trans^\#\big((H,S,T,D),\tLookupDunder(\$d,op,\$a)\big)
+  =(H,S,T,D\llbracket d \mapsto \mathsf{lookup\_dunder}(T, op, S[\$a])\rrbracket)
 \\
-&Trans^\#\big((P,T,D,S),\ ResolveOverload(\$d,\$f,\$a,\$k)\big)=(P,T,D,S\llbracket d \mapsto resolve\_overload(T, m, S[\$a], S[\$k])\rrbracket)
+&Trans^\#\big((H,S,T,D),\tResolveOverload(\$d,\$f,\$a,\$k)\big)
+  =(H,S,T,D\llbracket d \mapsto \mathsf{resolve\_overload}(T, \,f, \,S[\$a], \,S[\$k])\rrbracket)
 \\[0.6em]
-% ===================== C. ATTRIBUTES (PURE W.R.T. HEAP) =====================
-&\textbf{(C) Attribute read and named variable access (pure w.r.t.\  heap)}\\
-&Trans^\#\big((P,T,D,S),\ GetAttr(\$d,\$o,f)\big)
-  = \big(P,\ T,\ D,\ S\llbracket d \mapsto Attr(P,S[o],f)\rrbracket\big)
+&\textbf{(C) Attribute read and named variable access (pure w.r.t.\ heap)}\\
+&Trans^\#\big((H,S,T,D),\tGetAttr(\$d,\$o,f)\big)
+  = \big(H,\ S\llbracket d \mapsto \mathsf{Attr}(H,S[o],f)\rrbracket,\ T,\ D\big)
 \\
-&Trans^\#\big((P,T,D,S),\ LoadLocal(\$d,x)\big)
-  = (P,\ T,\ D,\ S\llbracket d \mapsto P[LOCALS][name(x)]\rrbracket)
+&Trans^\#\big((H,S,T,D),\tLoadLocal(\$d,x)\big)
+  = (H,\ S\llbracket d \mapsto H[\tLOCALS][name(x)]\rrbracket,\ T,\ D)
 \\
-&Trans^\#\big((P,T,D,S),\ LoadGlobal(\$d,x)\big)
-  = (P,\ T,\ D,\ S\llbracket d \mapsto P[GLOBALS][name(x)]\rrbracket)
+&Trans^\#\big((H,S,T,D),\tLoadGlobal(\$d,x)\big)
+  = (H,\ S\llbracket d \mapsto H[\tGLOBALS][name(x)]\rrbracket,\ T,\ D)
 \\[0.6em]
-% ===================== D. ALLOCATION SCHEMATA =====================
 &\textbf{(D) Allocation schemata (allocate \& wire, then write stack)}\\
-&Trans^\#\big((P,T,D,S),\ ConstructTuple(\$d,\overline{\$e}),\ q\big)
-  = \big(P',\ T',\ D,\ S\llbracket d \mapsto \{\,Loc(q)\,\}\rrbracket\big)
+&Trans^\#\big((H,S,T,D),\tConstructTuple(\$d,\overline{\$e}),\ q\big)
+  = \big(H',\ S\llbracket d \mapsto \{\,\loc{q}\,\}\rrbracket,\ T',\ D\big)
 \\[-0.1em]
-&\hspace{4.45cm}\text{where}\quad (P',T') \;\defeq\; AllocTuple(P,T,Loc(q),\ \langle S[\overline{\$e}]\rangle)
+&\hspace{4.45cm}\text{where}\quad
+  (H',T') \;\defeq\; \mathsf{AllocTuple}(H,T,\loc{q},\ \langle S[\overline{\$e}]\rangle)
 \\[0.25em]
-&Trans^\#\big((P,T,D,S),\ ConstructDict(\$d,\overline{(\$k,\$v)}),\ q\big)
-  = \big(P'',\ T'',\ D,\ S\llbracket d \mapsto \{\,Loc(q)\,\}\rrbracket\big)
+&Trans^\#\big((H,S,T,D),\tConstructDict(\$d,\overline{(\$k,\$v)}),\ q\big)
+  = \big(H'',S\llbracket d \mapsto \{\,\loc{q}\,\}\rrbracket,\ T'',\ D\ \big)
 \\[-0.1em]
-&\hspace{4.45cm}\text{where}\quad (P'',T'') \;\defeq\; AllocDict(P,T,Loc(q),\ \langle \overline{(S[\$k],S[\$v])}\rangle)
+&\hspace{4.45cm}\text{where}\quad
+  (H'',T'') \;\defeq\; \mathsf{AllocDict}(H,\langle \overline{(S[\$k],S[\$v])}\rangle, T,\loc{q})
 \\[0.25em]
-&Trans^\#\big((P,T,D,S),\ Bind(\$d,\$f,\$a,\$k),\ q\big)
-  = \big(P''',\ T''',\ D,\ S\llbracket d \mapsto \{\,Loc(q)\,\}\rrbracket\big)
+&Trans^\#\big((H,S,T,D),\tBind(\$d,\$f,\$a,\$k),\ q\big)
+  = \big(H''',\ S\llbracket d \mapsto \{\,\loc{q}\,\}\rrbracket,\ T''',\ D\big)
 \\[-0.1em]
-&\hspace{4.45cm}\text{where}\quad (P''',T''') \;\defeq\; AllocBind(P,T,Loc(q),\ S[a],\ S[k])
+&\hspace{4.45cm}\text{where}\quad
+  (H''',T''') \;\defeq\; \mathsf{AllocBind}(H,S[k],T,\loc{q},\ S[a])
 \\[0.6em]
-% ===================== E. SIDE-EFFECTING OPERATIONS =====================
 &\textbf{(E) Heap updates via fields and calls}\\
-&Trans^\#\big((P,T,D,S),\ SetLocal(x,\$s)\big)
-  = \big(Upd(P,\{LOCALS\},name(x),S[s]),\ T,\ D,\ S\big) \\
-&Trans^\#\big((P,T,D,S),\ Unpack(\overline{\$d},\$s)\big)
-  = \big(P,\ T,\ D,\ S'\big)
+&Trans^\#\big((H,S,T,D),\tSetLocal(x,\$s)\big)
+  = \big(Upd(H,\{\tLOCALS\},name(x),S[s]),\ S,\ T,\ D\big)
+\\
+&Trans^\#\big((H,S,T,D),\tUnpack(\overline{\$d},\$s)\big)
+  = \big(H,\ S',\ T,\ D\big)
 \qquad\text{where}\quad
-S'[d_j] \;\defeq\; Ind(P,S[s],j) \\
-&Trans^\#\big((P,T,D,S),\ SetAttr(\$o,f,\$v)\big)
-  = \big(Upd(P,S[o],name(f),S[v]),\ T,\ UpdD(D,S[o],name(f)),\ S\big)
+S'[d_j] \;\defeq\; Ind(H,S[s],j)
 \\
-&Trans^\#\big((P,T,D,S),\ Call(\$d,\$f),\ q\big)
-  = \big(P^\ast,\ T^\ast,\ D^\ast,\ S\llbracket d \mapsto O_{\mathrm{res}}\rrbracket\big)
+&Trans^\#\big((H,S,T,D),\tSetAttr(\$o,f,\$v)\big)
+  = \big(Upd(H,S[o],name(f),S[v]),\ S,\ T,\ UpdD(D,S[o],name(f))\big)
+\\
+&Trans^\#\big((H,S,T,D),\tCall(\$d,\$f),\ q\big)
+  = \big(H^\ast,\ S\llbracket d \mapsto O_{\mathrm{res}}\rrbracket,\ T^\ast,\ D^\ast\big)
 \\[-0.3em]
-&\hspace{4.45cm}\text{where}\quad (P^\ast,T^\ast,D^\ast,O_{\mathrm{res}})\ \defeq\ Invoke(P,T,D;\ Effect(\$f),\ S[f],\ Args(P,S[f],S),\ q)
+&\hspace{2.45cm}\text{where}\quad
+  \begin{aligned}[t]
+  (H^\ast,T^\ast,D^\ast,O_{\mathrm{res}})\ &\defeq\
+  \mathsf{Invoke}\big(H,T,D;\ \mathsf{Effect}(\$f),\\
+  &\quad S[f],\ \mathsf{Args}(H,S,S[f]),\ q\big)
+  \end{aligned}
 \\[0.6em]
-% ===================== F. CONTROL =====================
 &\textbf{(F) Control (no state change)}\\
-&Trans^\#\big((P,T,D,S),\ AssumeEq(\$b,\$c)\big)=(P,T,D,S),
-\\
-&Trans^\#\big((P,T,D,S),\ Exit\big)=(P,T,D,S)
-\end{align*}
-
+&Trans^\#\big((H,S,T,D),\tAssumeEq(\$b,\$c)\big)=(H,S,T,D),
+\quad
+Trans^\#\big((H,S,T,D),\tExit\big)=(H,S,T,D)
+\end{aligned}
+$}
 \caption{Abstract transformer \(Trans^\#\).
 Only destination-producing instructions write to the stack map \(S\).
-Heap \(P\) is mutated at allocation sites (\textsc{ConstructTuple}, \textsc{ConstructDict}, \textsc{Bind}), explicit writes (\textsc{SetLocal}, \textsc{SetAttr}), and via \textsc{Call} according to the effect summary \(\epsilon^\#\).
-Lookup/overload resolution is pure.}
+Heap \(H\) is mutated at allocation sites (\tConstructTuple, \tConstructDict, \tBind), explicit writes (\tSetLocal, \tSetAttr), and via \tCall according to \(\epsilon^\#\).
+\tLoadConst, \tLookupDunder and \tResolveOverload are pure.}
 \label{fig:tac-transfers}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\begin{align*}
-\begin{array}{ll}
-Attr(P,O,f) &\defeq\ \displaystyle\biguplus_{o\in O} P[o][name(f)]
-\\[0.2em]
-Ind(P,O,j) &\defeq\ \displaystyle\Big(\biguplus_{o\in O} P[o][index(j)]\Big)\ \cup\ \Big(\biguplus_{o\in O} P[o][\star]\Big)
-\\[0.2em]
-AllocTuple(P,T,t,\langle O_0,\ldots,O_{n-1}\rangle)
-  &\defeq\ \Big(P[t][index(j)] \supseteq O_j,\ P[t][\star]\supseteq O_j\ \forall j;\ \ T[t]\ \sqcup=\ TupleType(\langle O_j\rangle)\Big)
-\\[0.2em]
-AllocDict(P,T,d,\langle (K_m,V_m)\rangle_{m=1}^M)
-  &\defeq\ \Big(P[d][name(s)] \supseteq V_m\ \text{if } K_m=\{\,Imm(\texttt{str}(s))\,\};\ \ P[d][\star]\supseteq V_m\ \text{otherwise};\ \ T[d]\ \sqcup=\ DictType(\langle K_m,V_m\rangle)\Big)
-\\[0.2em]
-AllocBind(P,T,b,O_a,O_k)
-  &\defeq\ \Big(P[b][\texttt{"args"}]\supseteq O_a,\ P[b][\texttt{"kwargs"}]\supseteq O_k;\ \ T[b]\ \sqcup=\ ResidualCallableType(b)\Big)
-\\[0.2em]
-Args(P,O_f,S)
-  &\defeq\ \text{actual argument objects resolved from }S\text{ and binding edges hanging off }O_f
-\\[0.2em]
-Effect(\$f)
-  &\defeq\ \text{the effect summary }\epsilon^\#\text{ retrieved from the type component at }\$f
-\\[0.2em]
-Invoke(P,T,D;\ \epsilon^\#,O_f,\overline{O_a},q)
-  &\defeq\ \text{apply }\epsilon^\#\text{: allocate results (fresh site } Loc(q)\text{ if needed),}\\
+\resizebox{\linewidth}{!}{$
+\setlength{\arraycolsep}{0.35em}% tighter math columns
+\begin{aligned}
+\mathsf{Attr}(H,O,f) &\defeq \biguplus_{o\in O} H[o][name(f)] \\[0.2em]
+\mathsf{Ind}(H,O,j) &\defeq \Big(\biguplus_{o\in O} H[o][index(j)]\Big)\ \cup\ \Big(\biguplus_{o\in O} H[o][\star]\Big) \\[0.2em]
+\mathsf{AllocTuple}(H,T,t,\langle O_0,\ldots,O_{n-1}\rangle)
+  &\defeq \Big(H[t][index(j)] \supseteq O_j,\ H[t][\star]\supseteq O_j\ \forall j;\ T[t]\ \sqcup=\ \mathsf{TupleType}(\langle O_j\rangle)\Big) \\[0.2em]
+\mathsf{AllocDict}(H,T,d,\langle (K_m,V_m)\rangle_{m=1}^M)
+  &\defeq \Big(
+    \begin{aligned}[t]
+      &H[d][name(s)] \supseteq V_m &&\text{if } K_m=\{\,\mathsf{Imm}(\texttt{str}(s))\,\};\\
+      &H[d][\star]\supseteq V_m   &&\text{otherwise};\\
+      &T[d]\ \sqcup=\ \mathsf{DictType}(\langle K_m,V_m\rangle)
+    \end{aligned}
+  \Big) \\[0.2em]
+\mathsf{AllocBind}(H,T,b,O_a,O_k)
+  &\defeq \Big(H[b][\texttt{"args"}]\supseteq O_a,\ H[b][\texttt{"kwargs"}]\supseteq O_k;\ T[b]\ \sqcup=\ \mathsf{ResidualCallableType}(b)\Big) \\[0.2em]
+\mathsf{Args}(H,S,O_f)
+  &\defeq \text{actual argument objects resolved from }S\text{ and binding edges hanging off }O_f \\[0.2em]
+\mathsf{Effect}(\$f)
+  &\defeq \text{the effect summary }\epsilon^\#\text{ retrieved from the type component at }\$f \\[0.2em]
+\mathsf{Invoke}(H,T,D;\ \epsilon^\#,O_f,O_a,q)
+  &\defeq \text{apply }\epsilon^\#\text{: allocate results (fresh site } \loc{q}\text{ if needed),}\\
   &\qquad\text{propagate aliasing (}\star\text{ edges) when }\epsilon^\#.\tptstoargs,\ \text{and perform field updates}\\
-  &\qquad\text{on targets discovered by }Targets(P,O_f,\cdot)\text{ using } Upd \text{ and } UpdD; \text{ also update }T.
-\end{array}
-\end{align*}
-\caption{Helper definition for abstract transformer.}
+  &\qquad\text{on targets discovered by }Targets(H,O_f,\cdot)\text{ using } \mathsf{Upd} \text{ and } \mathsf{UpdD};\ \text{also update }T.
+\end{aligned}
+$}
+\caption{Helper definitions for abstract transformer.}
 \label{fig:tac-transfers-helpers}
-\end{figure*}
+\end{figure}
 
 \paragraph{Notes.}
-(i) \emph{Lookup purity.} Results of \(LookupDunder\)/\(ResolveOverload\) are static; we leave \(S\) unchanged and rely on the type component to constrain subsequent \(Bind/Call\).
-(ii) \emph{Binding vs.\ calling.} \(Bind\) allocates a bound-callable object \(b\) with explicit \texttt{args}/\texttt{kwargs} edges; \(Call\) interprets \(\epsilon^\#\) to allocate results, propagate aliasing, and perform effect-guided updates on receivers/arguments discovered via \(Targets\).
-(iii) \emph{Subscriptions.} Indexing sugar lowers to \(\_\_getitem\_\_\)/\(\_\_setitem\_\_\) and thus uses the same \(Bind/Call\) machinery.
+(i) \emph{Lookup purity.} Results of \tLookupDunder/\tResolveOverload are static; we leave $S$ unchanged and rely on the type component to constrain subsequent \tBind/\tCall.
+(ii) \emph{Binding vs.\ calling.} \tBind allocates a bound-callable object \(b\) with explicit \texttt{args}/\texttt{kwargs} edges; \tCall interprets \(\epsilon^\#\) to allocate results, propagate aliasing, and perform effect-guided updates on receivers/arguments discovered via \(Targets\).
+(iii) \emph{Subscriptions.} Indexing sugar lowers to \(\_\_getitem\_\_\)/\(\_\_setitem\_\_\) and thus uses the same \tBind/\tCall machinery.
 
 \subsection{Reachability, Pruning, and Dirty Roots}
 
 Roots at \(l\) are
-\(R_{l,i}=\{\,P[\mathtt{LOCALS}][\mathsf{name}(x)] \mid x\in \mathsf{Live}_{l,i}\,\}\).
+\(R_{l,i}=\{\,H[\mathtt{LOCALS}][\mathsf{name}(x)] \mid x\in \mathsf{Live}_{l,i}\,\}\).
 Reachability is the least fixed point
 \[
-\mathsf{Reach}(R,P)=\mu X.\ R\ \cup\ \{\,o' \mid \exists\,o\in X,\, f\in\mathcal{K}.\ o'\in P[o][f] \,\}.
+\mathsf{Reach}(R,H)=\mu X.\ R\ \cup\ \{\,o' \mid \exists\,o\in X,\, f\in\tK.\ o'\in H[o][f] \,\}.
 \]
-Abstract GC restricts to \(S=\mathsf{Reach}(R_{l,i},P)\):
+Abstract GC restricts to \(V=\mathsf{Reach}(R_{l,i},H)\):
 \[
-\mathsf{GC}(\Sigma,R_{l,i})=(P|_S,\ T|_S,\ D|_S).
+\mathsf{GC}(\Sigma,R_{l,i})=(H|_V,\ T|_V,\ D|_V).
 \]
 Dirty roots:
 \[
-\mathsf{DirtyRoots}(\Sigma,R_{l,i})=\big\{\, x\in \mathsf{Live}_{l,i}\ \big|\ \exists o\in \mathsf{Reach}(\{P[\mathtt{LOCALS}][\mathsf{name}(x)]\},P).\ D[o]\neq \emptyset \,\big\}.
+\mathsf{DirtyRoots}(\Sigma,R_{l,i})=\big\{\, x\in \mathsf{Live}_{l,i}\ \big|\ \exists o\in \mathsf{Reach}(\{H[\mathtt{LOCALS}][\mathsf{name}(x)]\},H).\ D[o]\neq \emptyset \,\big\}.
 \]
 
 \subsection{Soundness}
 
 Let \(\gamma\) map abstract states to sets of concrete heaps. Soundness requires:
 \[
-\forall \Sigma^\#=(P,T,D),\ \forall H\in \gamma(\Sigma^\#),\ \forall o,f.\quad H(o).f \in P[o][f].
+\forall \Sigma^\#=(H,S,T,D),\ \forall H\in \gamma(\Sigma^\#),\ \forall o,f.\quad H(o).f \in H[o][f].
 \]
 Whenever the concrete semantics performs a write \(o.f\leftarrow v\), the abstract transformer must
 mark \(f\in D[o]\). Monotonicity of transformers and the product lattice yields a standard

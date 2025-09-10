@@ -5,6 +5,8 @@
 \usepackage{amsfonts}
 \usepackage{dsfont}
 % \usepackage{amssymb} % acmart already loads it
+\usepackage[nameinlink]{cleveref}
+\usepackage{enumitem}
 \usepackage{booktabs}
 \usepackage{stmaryrd}
 \usepackage{xspace}
@@ -53,15 +55,15 @@
 \input{04-eval}
 \input{05-related}
 \input{06-conclusion}
+
+%\newpage
+\bibliographystyle{plainnat}
+\bibliography{references}
+
 \appendix
 \input{07-appendix-assumptions}
 \input{08-appendix-ir}
 \input{09-appendix-types}
 \input{10-appendix-pointer}
-\input{other/macros-kmeans}
-
-%\newpage
-\bibliographystyle{plain}
-\bibliography{references}
 
 \end{document}

@@ -5,16 +5,16 @@
 \renewcommand{\arraystretch}{1.15}
 \begin{array}{l@{}ll}
 i ::= \;&\hspace{6pt} \$d = \$s & \text{// copy assignment} \\
-      &\mid \$d = \mathsf{Const}(c) & \text{// load constant} \\
-      &\mid \$d = \mathsf{GetAttr}(\$o, k) & \text{// read: } \$d = \$o.k; \text{bind if method} \\
-      &\mid \mathsf{SetAttr}(\$o, k, \$v) & \text{// write: } \$o.k = \$v \\
+      &\mid \$d = \tLoadConst(c) & \text{// load constant} \\
+      &\mid \$d = \tGetAttr(\$o, k) & \text{// read: } \$d = \$o.k; \text{bind if method} \\
+      &\mid \tSetAttr(\$o, k, \$v) & \text{// write: } \$o.k = \$v \\
       &\mid \$d = \mathsf{Call}(\$g) & \text{// invoke potentially-bound call object } \$g() \\
-      &\mid \$d = \mathsf{LookupDunder}(op, \$a)  & \text{// find \_\_\textit{op}\_\_ method to call\si{op what}} \\
-      &\mid \$d = \mathsf{ResolveOverload}(\$f, \$a) & \text{// select unique function} \\
-      &\mid \$g = \mathsf{Bind}(\$f, \$a) & \text{// build bound call object for } \$f(\$a) \\
-      &\mid \mathsf{AssumeEq}(\$b, \$c) & \text{// continue iff reference-equal} \\
+      &\mid \$d = \tLookupDunder(op, \$a)  & \text{// find \_\_\textit{op}\_\_ method to call\si{op what}} \\
+      &\mid \$d = \tResolveOverload(\$f, \$a) & \text{// select unique function} \\
+      &\mid \$g = \tBind(\$f, \$a) & \text{// build bound call object for } \$f(\$a) \\
+      &\mid \tAssumeEq(\$b, \$c) & \text{// continue iff reference-equal} \\
       & \vdots & \vdots \\
-      &\mid \mathsf{Exit} & \text{// terminate}
+      &\mid \tExit & \text{// terminate}
 \end{array}
 \]
 \caption{\spytecode instruction syntax (mnemonic form).}
@@ -24,7 +24,7 @@ i ::= \;&\hspace{6pt} \$d = \$s & \text{// copy assignment} \\
 \section{Analysis}
 \label{sec:analysis}
 
-Our framework is a flow-sensitive abstract interpretation~\cite{cousot1977abstract} that computes invariants at each program point using four cooperating domains: \emph{liveness}, \emph{dirty}, \emph{pointer}, and \emph{types}. \emph{Liveness} predicts future variable uses; \emph{dirty} tracks heap mutations; \emph{pointer} captures aliasing; and \emph{types} propagate static type information and function type and effect annotations. Cross-domain exchange is summarized in~\autoref{tab:contracts}. We present a simple \emph{stack} domain separately for convenience, though it may be thought of as part of the pointer domain. We present components in dependency order: the intermediate representation and its informal semantics; liveness; the object and memory model and the stack domain; and the specialized domains. \autoref{fig:overview} summarizes the pipeline, from Python source and IR, through the cooperating domains, to the invariants used for checkpoint minimization.
+Our framework is a flow-sensitive abstract interpretation~\cite{cousot1977abstract} that computes invariants at each program point using four cooperating domains: \emph{liveness}, \emph{dirty}, \emph{pointer}, and \emph{types}. \emph{Liveness} predicts future variable uses; \emph{dirty} tracks heap mutations; \emph{pointer} captures aliasing; and \emph{types} propagate static type information and function type and effect annotations. Cross-domain exchange is summarized in~\cref{tab:contracts}. We present a simple \emph{stack} domain separately for convenience, though it can be thought of as part of the pointer domain. We present components in dependency order: the intermediate representation and its informal semantics; liveness; the object and memory model with the stack domain; the specialized analysis step identifying checkpointed variables; and finally, the code instrumentation. \Cref{fig:overview} summarizes the pipeline, from Python source through IR and the cooperating domains, to the invariants used for checkpoint minimization.
 
 \subsection{Intermediate Representation}
 \spyte analyzes Python programs by first converting them to a simplified
@@ -34,19 +34,19 @@ abstract interpretation by forcing an abstract stack into every domain. A prepro
 pass converts bytecode to \spytecode,\footnote{This is feasible for compiler-generated Python bytecode with well-formed stack discipline.}
 eliminating the operand stack and implicit temporaries in favor of explicit registers
 ($\$0, \$1, \ldots$). This makes dataflow and heap accesses explicit.
-An excerpt of the instructions of \spytecode is shown in \autoref{fig:tac-syntax-reduced}; a more complete
+An excerpt of the instructions of \spytecode is shown in \cref{fig:tac-syntax-reduced}; a more complete
 definition is included in the appendix.
 
 \paragraph{Control flow.}
 A \spytecode program is a nondeterministic control-flow graph with statically known edges.
-Branches are represented by conditional assumptions \textsf{AssumeEq}$(\$b, \$c)$:
+Branches are represented by conditional assumptions $\tAssumeEq(\$b, \$c)$:
 on failure, the path terminates. Both \texttt{return} and uncaught exceptions
-are lowered to \textsf{Exit}, allowing the analysis to reason about all paths
+are lowered to \tExit, allowing the analysis to reason about all paths
 without modeling dynamic exception propagation.
 
 \paragraph{Attribute access.}
-\textsf{SetAttr}$(\$o, k, \$v)$ writes field $k$ of the object in $\$o$ with the value in $\$v$.
-\textsf{GetAttr}$(\$d, \$o, k)$ resolves $k$ on $\$o$:
+$\tSetAttr(\$o, k, \$v)$ writes field $k$ of the object in $\$o$ with the value in $\$v$.
+$\tGetAttr(\$d, \$o, k)$ resolves $k$ on $\$o$:
 (1) if present in instance fields, assign that value to $\$d$;
 (2) otherwise look up $k$ in $\mathrm{class}(\$o)$; if the result is a function, return
 a bound callable with hidden \texttt{self} set to $\$o$, else return the value.
@@ -57,10 +57,10 @@ correspond to assignment/read of the named variable $k$.
 
 \paragraph{Calls.}
 Invocation is factored into distinct steps (arguments are assumed to be packed as a tuple
-$\$a$): (a) \textsf{LookupDunder}$(op,\$a)$ locates the special method
-for operator $op$; (b) \textsf{ResolveOverload}$(\$f,\$a)$ selects a static target among function overloads (which may be bound or unbound) based on argument classes;\footnote{While CPython has no first-class ``overload resolution'' step, it is included in the operational semantics of \spytecode to align better with how type checkers handle overloading. This is vital for the analysis of types and effects, later on.}
-(c) \textsf{Bind} forms an explicit bound call object $\$g$ capturing the callee and its
-argument binding; (d) \textsf{Call} consumes $\$g$, which must be callable with zero arguments (all arguments are already bound through a special $args$ field), producing the result in $\$d$ and applying the callee's type-annotated effects. This bound object is the anchor for
+$\$a$): (a) $\tLookupDunder(op,\$a)$ locates the special method
+for operator $op$; (b) $\tResolveOverload(\$f,\$a)$ selects a static target among function overloads (which may be bound or unbound) based on argument classes;\footnote{While CPython has no first-class ``overload resolution'' step, it is included in the operational semantics of \spytecode to align better with how type checkers handle overloading. This is vital for the analysis of types and effects, later on.}
+(c) \tBind forms an explicit bound call object $\$g$ capturing the callee and its
+argument binding; (d) \tCall consumes $\$g$, which must be callable with zero arguments (all arguments are already bound through a special $args$ field), producing the result in $\$d$ and applying the callee's type-annotated effects. This bound object is the anchor for
 pointer and effect tracking.
 
 \begin{figure}[t]
@@ -70,7 +70,7 @@ pointer and effect tracking.
     \label{fig:overview}
 \end{figure}
 
-In the rest of this section we describe the different analysis domains and their interactions. \autoref{tab:contracts} summarize what each domain provides.
+In the rest of this section we describe the different analysis domains and their interactions. \Cref{tab:contracts} summarize what each domain provides.
 
 \subsection{Liveness Analysis}
 \label{sec:liveness}
@@ -119,7 +119,7 @@ where $\powerset(\mathcal{O})$ is a \emph{power-set lattice} ordered by ${\sqsub
 The order relation and join operator of $S$ are constructed via the map-domain
 directive above.
 
-Operationally, for each instruction the stack domain does two things: first it lifts the stack variables read by the instruction, so that instead of referring to the stack each refers to the objects it might hold. Second, it asks the pointer domain for the result of the instruction and stores it in the target stack index (when such a target variable exists). Conceptually this domain can be considered as part of the pointer domain, but we use it independently. In the following, we always discuss instructions as referring to objects directly.\si{todo reword or remove}
+Operationally, for each instruction the stack domain does two things: first it lifts the stack variables read by the instruction, so that instead of referring to the stack each refers to the objects it might hold. Second, it asks the pointer domain for the result of the instruction and stores it in the target stack index (when such a target variable exists). Conceptually this domain can be considered as part of the pointer domain, but we sometimes use it independently. In the following, we always discuss instructions as referring to objects directly.\si{todo reword or remove}
 
 \begin{table}[t]
 \centering
@@ -129,19 +129,21 @@ Operationally, for each instruction the stack domain does two things: first it l
 \textbf{Domain} & \textbf{Abstract State} & \textbf{Observables (to others)} & \textbf{Depends on} \\
 \midrule
 Type ($T$) &
-  $T:\mathcal O\to \mathcal \mathsf{Type}$
+  $T:\tO\to \mathcal \mathsf{Type}$
   Type of object, global modules. &
   Immutability, effects, call and access operations. &
   Pointer reachability to restrict receivers; library stubs. \\
 \addlinespace
-Pointer ($P$) &
-  $P:\mathcal O\to(\mathcal K\to \mathcal P(\mathcal O))$.
-  Pointer graph.&
-  (i) Field targets $P[o][k]$; (ii) reachability $Reach(R,P)$. &
+Pointer ($P=(H,S)$) &
+  $H \tO \to(\tK \to \powerset(\tO)$.
+  Pointer graph. 
+  $S:\tN \to \powerset(\tO)$. Abstract Stack
+  &
+  (i) Field targets $H[o][k]$; (ii) reachability $Reach(R,H)$. &
   Roots, Effects, immutability. \\
 \addlinespace
 Dirty ($D$) &
-  $D:\mathcal O\to \mathcal P(\mathcal K)$ (fields written). &
+  $D:\tO\to \mathcal \powerset(\tK)$ (fields written). &
   Set of dirty fields per object. &
   Effects,  immutability. \\
 \bottomrule
@@ -185,7 +187,7 @@ but we describe it uniformly for presentation purposes.
 
 \begin{example}
 Consider the assignment statement to the right,
-occurring in the inner loop of \autoref{lst:code-kmeans}.
+occurring in the inner loop of \cref{lst:code-kmeans}.
 \si{todo check placement}
 \end{example}
 
@@ -242,6 +244,8 @@ Based on that information, the abstract semantics of
 $\tCall(\$4)$ is $\lambda D.~D\sqcup\{\loc{21}\smlmapsto\top\}$ (the key \loc{21} is taken from the pointer path, and $\top$ is based on the \tupdate
 effect).
 
+\egroup
+
 
 \begin{figure}[t]
 \centering
@@ -265,11 +269,11 @@ effect).
              row sep=5mm,
              column sep=18mm,
              right=20mm of locals] {
-  \node (loc22)  {\texttt{Loc 22}\\\footnotesize Iterator[int]}; & \\[-1mm]
-  \node (loc19) {\texttt{Loc 19}\\\footnotesize list[list[int]]}; &
-  \node (loc21) {\texttt{Loc 21}\\\footnotesize list[int]}; \\[-1mm]
+  \node (loc22)  {\loc 22\\\footnotesize Iterator[int]}; & \\[-1mm]
+  \node (loc19) {\loc 19\\\footnotesize list[list[int]]}; &
+  \node (loc21) {\loc 21\\\footnotesize list[int]}; \\[-1mm]
   \node (paramX) {\texttt{param X}\\\footnotesize ndarray}; & \\[-1mm]
-  \node (loc40) {\texttt{Loc 40}\\\footnotesize ndarray}; & \\
+  \node (loc40) {\loc 40\\\footnotesize ndarray}; & \\
 };
 
 \node(s1)[left=of loc22] { \$1 };
@@ -319,7 +323,7 @@ the other analyses.
 
 \paragraph{Field Operations.}
 The semantics of explicit field accesses 
-$\mathsf{GetAttr}(\$o, k)$/$\mathsf{SetAttr}(\$o, k, \$v)$
+$\tGetAttr(\$o, k)$/$\tSetAttr(\$o, k, \$v)$
 involve looking up the set of objects $S[o]$ that may be
 referred to by $\$o$.
 For \tGetAttr, it generates the abstract value
@@ -340,7 +344,7 @@ For containers with dynamic indexing, the wildcard field $\star$ represents all 
 \paragraph{Object Allocation.}
 New abstract objects arise from three sources:
 \begin{itemize}
-\item \emph{Explicit allocation} (for example \textsf{Bind}) creates fresh objects at specific program points
+\item \emph{Explicit allocation} (for example \tBind) creates fresh objects at specific program points
 \item \emph{Effect-guided allocation} when the type domain's $\tnew$ effect indicates a method creates objects  
 \item \emph{Immutable representatives} for constants, preventing spurious aliasing through shared values
 \end{itemize}
@@ -376,13 +380,13 @@ Method calls apply effects from the type domain:
 % --- IR (center) ---
 \node[inner sep=2pt, font=\scriptsize\ttfamily, below=2 of localsB,
       align=left, text width=40mm] (ir)
-{$\begin{array}{@{}l@{}}
-\multicolumn{1}{c}{\mbox{\lstinline|X[sample_i] - centroids|}} \\
-\quad \vdots \qquad \vdots \\
-\$7=\tLookupDunder(\texttt{\_\_sub\_\_},[\$5,\$6]) \\
-\$7=\tResolveOverload(\$7,[\$5,\$6]) \\
-\$7=\tBind(\$7,[\$5,\$6]) \;\  (\text{\scriptsize site }\loc{33}) \\
-\$5=\tCall(\$7) \;\;\;\ \,  \qquad \qquad  (\text{\scriptsize site }\loc{34})
+{$\begin{array}{@{}r@{~}l@{}}
+\multicolumn{2}{c}{\mbox{\lstinline|X[sample_i] - centroids|}} \\
+&\quad \vdots \qquad \vdots \\
+\lnn{31} & \$7=\tLookupDunder(\texttt{\_\_sub\_\_},[\$5,\$6]) \\
+\lnn{32} & \$7=\tResolveOverload(\$7,[\$5,\$6]) \\
+\lnn{33} & \$7=\tBind(\$7,[\$5,\$6])  \\
+\lnn{34} & \$5=\tCall(\$7)
 \end{array}$};
 
 % --- AFTER ---
@@ -400,16 +404,24 @@ Method calls apply effects from the type domain:
 
 \end{tikzpicture}%
 \end{wrapfigure}
-\begin{example}[Pointer-domain effect of \texttt{X[sample_i]-centroids}]
 
+%\example %}[Pointer-domain effect of \texttt{X[sample_i]-centroids}]
+
+
+\smallskip
+\textit{Example~%
+\stepcounter{theorem}%
+\theexample}
+%
 The pointer domain takes from the type information that subtraction has the effect \tnew. It then allocates a fresh object \loc{34} corresponding the call site, and updates $S[\$5\smlmapsto\loc{34}]$. The heap $H$ is unchanged, since the type of the bound method at $\$7$ (\loc{33}) carries no \tupdate effect.
-\end{example}
+%\end{example}
 %
 
 The domain traces through bound method objects to find actual receivers, enabling precise tracking even when methods are stored in variables.
 
 \paragraph{Precision Through Types.}
 The type domain's \emph{monomorphization} property---whether an object has a precise, non-union type---determines update strength. Only monomorphic, unaliased objects permit updates that refine types; otherwise, the analysis must conservatively accumulate possibilities. This interplay between type precision and pointer precision is fundamental to the analysis's effectiveness.
+\si{this is an important point so let us elaborate about it}
 
 \subsection{Domain Interactions}
 The domains refine each other with directed information flow:
@@ -421,8 +433,6 @@ The domains refine each other with directed information flow:
 \end{itemize}
 These interactions improve precision by removing impossible states before they can pollute other domains.
 
-\subsection{Transfer Functions}
-For each instruction, the transfer function updates only the affected keys in each domain according to the instruction's semantics. Weak updates are applied when aliasing is possible, and joins are used when merging control-flow paths.
 
 
 \section{Program Instrumentation}
@@ -446,7 +456,7 @@ Over-approximation in liveness, pointer or dirty can only enlarge the persistent
 
 \subsection{Checkpoint Injection}
 
-(i) on normal execution, at the tail of the body before the back edge, commit exactly the locals in the persistent set in a fixed order;
+(i) on normal execution, at the tail of the body before the back edge, commit exactly the locals in the persistent root set in a fixed order;
 (ii) on recovery, restore the loop index and the local variables and resume at loop header. Aliases are handled by the pickling mechanism.
 Parameter objects are treated like any other heap objects and are persisted only if some local selected by the criterion reaches them recursively.
 \si{this is not written so clearly}

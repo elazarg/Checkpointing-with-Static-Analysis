@@ -13,10 +13,10 @@ We use a simplified snapshot notation at selected program points $(\ell)$:
 \item $\Live\_\ell$ --- live named locals.
 \item $\Points\_\ell[o]\name{f}$ --- pointer edges from abstract object $o$ via field $f$.
 \item $\Dirty\_\ell[o]$ --- dirty fields of object $o$ since the last checkpoint.
-\item Objects: $\Loc(n)$ is an allocation site; distinguished roots are \LOCALS{} and \GLOBALS{}.
+\item Objects: $\loc n$ is an allocation site; distinguished roots are \LOCALS{} and \GLOBALS{}.
 \end{itemize}
 Fields use one key space: $\name{s}$ (attributes), $\idx{i}$ (indices), and wildcard $\wild$ for container elements.
-We abbreviate common sites from the trace: $\centroidsobj \triangleq \Loc(10)$ (initial \texttt{centroids} array), $\clustersobj \triangleq \Loc(179)$ (outer list-of-lists), $\innerlist \triangleq \Loc(212)$ (inner list), $\deltaarr \triangleq \Loc(304)$ (per-sample difference), $\normarr \triangleq \Loc(307)$ (vector of distances), and $\ypredobj \triangleq \Loc(616)$ (final labels buffer).
+We abbreviate common sites from the trace: $\centroidsobj \triangleq \loc 10$ (initial \texttt{centroids} array), $\clustersobj \triangleq \loc 179$ (outer list-of-lists), $\innerlist \triangleq \loc 212$ (inner list), $\deltaarr \triangleq \loc 304$ (per-sample difference), $\normarr \triangleq \loc 307$ (vector of distances), and $\ypredobj \triangleq \loc 616$ (final labels buffer).
 
 \section*{Waypoints in the Trace}
 We excerpt six points; identifiers refer to the original trace file.
@@ -63,7 +63,7 @@ Below, we show $(\Live_\ell, \Points_\ell, \Dirty_\ell)$ at four points. Substit
 \paragraph{(S4) After \texttt{new\_centroids} and \texttt{allclose} decision; then update.}
 \begin{align*}
 \Live &= \{\texttt{i},\ \texttt{centroids},\ \texttt{clusters},\ \texttt{new\_centroids}\}\\
-\Points[\LOCALS]\name{new\_centroids} &\ni \Loc(nc) \quad\text{(fresh array from \texttt{np.array})}\\
+\Points[\LOCALS]\name{new\_centroids} &\ni \loc nc \quad\text{(fresh array from \texttt{np.array})}\\
 \Dirty[\clustersobj] &\ni \wild\quad\text{(writes confined to rebuilt \texttt{clusters})}\\[0.25em]
 \text{If not converged: }&\ \ \Live=\{\texttt{i},\ \texttt{centroids}\}\ \text{and}\
 \Points[\LOCALS]\name{centroids} \leftarrow \Points[\LOCALS]\name{new\_centroids}.

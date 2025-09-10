@@ -12,14 +12,25 @@
 \newcommand\tGLOBALS{\texttt{GLOBALS}\xspace}
 
 \newcommand\tinstr[1]{\textsf{#1}\xspace}
+\newcommand\tMov{\tinstr{Mov}}
 \newcommand\tGetAttr{\tinstr{GetAttr}}
 \newcommand\tSetAttr{\tinstr{SetAttr}}
 \newcommand\tCall{\tinstr{Call}}
 \newcommand\tBind{\tinstr{Bind}}
 \newcommand\tLookupDunder{\tinstr{LookupDunder}}
 \newcommand\tResolveOverload{\tinstr{ResolveOverload}}
+\newcommand\tExit{\tinstr{Exit}}
+\newcommand\tLoadConst{\tinstr{LoadConst}}
+\newcommand\tLoadLocal{\tinstr{LoadLocal}}
+\newcommand\tSetLocal{\tinstr{SetLocal}}
+\newcommand\tLoadGlobal{\tinstr{LoadGlobal}}
+\newcommand\tAssumeEq{\tinstr{AssumeEq}}
+\newcommand\tUnpack{\tinstr{Unpack}}
+\newcommand\tConstructTuple{\tinstr{ConstructTuple}}
+\newcommand\tConstructDict{\tinstr{ConstructDict}}
 
-\newcommand\teffect[1]{\textsf{#1}\xspace}
+
+\newcommand\teffect[1]{\textsf{\color{purple!60!black}#1}\xspace}
 \newcommand\tnew{\teffect{new}}
 \newcommand\tupdate{\teffect{update}}
 \newcommand\tptstoargs{\teffect{points\_to\_args}}
@@ -38,6 +49,8 @@
 \newcommand{\tType}{\mathsf{Type}}
 \newcommand{\tLoc}{\texttt{\small Loc}}
 \newcommand{\loc}[1]{\textsf{\tLoc~{#1}}}
+\newcommand{\tParam}{\texttt{\small Param}\xspace}
+\newcommand{\tImm}{\texttt{\small Imm}\xspace}
 
 \newcommand\eg{\textit{e.g.}\xspace}
 
@@ -53,7 +66,12 @@
 
 
 \lstset{
-    escapeinside={(*@}{@*)}
+  numberstyle=\tiny\color{gray},
+  numbersep=5pt,
+  commentstyle={\color{green!50!black}},
+  escapeinside={(*@}{@*)}
 }
 
 \setlength\intextsep{0pt}
+
+\newcommand\lnn[1]{{\tiny\color{gray} #1}}

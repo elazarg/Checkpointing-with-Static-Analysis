@@ -1,11 +1,11 @@
 
 \begin{figure}[t]
 \begin{tikzpicture}
-\node(py)[scale=0.9,inner ysep=0] {
-\begin{lstlisting}[language=python]
+\node(py)[scale=0.9,inner ysep=0,inner xsep=3mm] {
+\begin{lstlisting}[language=python,numbers=left]
 import numpy as np
 
-def kmeans(X:np.ndarray, k:int, niters:int):
+def kmeans(X: np.ndarray, k: int, niters: int):
     # initialization
     centroids = X[np.random.choice(X.shape[0], k)]
     clusters = list[list[int]]()
@@ -17,7 +17,7 @@ def kmeans(X:np.ndarray, k:int, niters:int):
             r = np.linalg.norm(v, None, 1).argmin()
             clusters[r].append(sample_i)
         new_centroids = np.array([X[cluster].mean(0)
-                             for cluster in clusters])
+                           for cluster in clusters])
         if np.allclose(centroids, new_centroids):
             break
         centroids = new_centroids
@@ -26,7 +26,7 @@ def kmeans(X:np.ndarray, k:int, niters:int):
 \end{lstlisting}
 };
 \node(pseudo)[right=0 of py.north east,
-anchor=north west, scale=0.8] {
+anchor=north west, scale=0.85] {
 \begin{minipage}{9cm}
 \begin{algorithmic}
 \Function{k-means}{$X$, $k$, $n$}
@@ -44,12 +44,13 @@ anchor=north west, scale=0.8] {
     \State $\mathit{centroids} \gets \mathit{centroids}'$
   \EndIf
 \EndLoop
-\EndFunction
+\State \Return \ldots
+{\color{white} \EndFunction}
 \end{algorithmic}
 \end{minipage}
 };
 
-\node[below=0 of pseudo,inner sep=0,yshift=2mm] {
+\node[below=0 of pseudo,inner sep=0,yshift=3mm,scale=0.8,anchor=60] {
   \begin{tikzpicture}[>=stealth,
         every node/.style={font=\sffamily,inner sep=2pt}]
     \node(centroids) {centroids};
@@ -116,34 +117,49 @@ All other variables---the input \lstinline|X|, the \lstinline|clusters| data str
   \rule[-.3\baselineskip]{0pt}{1.1\baselineskip}}
 \centering
 \begin{lstlisting}[language=python]
-t = spyte.restore()   # recover saved transaction, if any
-(*@\blk{initialization}@*)
-t (*@$>\!>$@*) [centroids]
-for i in t.iter(range(niters)):
-  (*@\blk{\lstrut loop body}@*)
-  t (*@$<\!<$@*) [centroids]
-(*@\blk{finalization}@*)
+def kmeans(X: np.ndarray, k: int, niters: int):
+  t = spyte.restore()   # recover saved transaction, if any
+  (*@\blk{initialization}@*)
+  t (*@$>\!>$@*) [centroids]
+  for i in t.iter(range(niters)):
+    (*@\blk{\lstrut loop body}@*)
+    t (*@$<\!<$@*) [centroids]
+  (*@\blk{finalization}@*)
 \end{lstlisting}
 \caption{Automatic checkpoint injection for the k-means loop.}
 \label{fig:checkpoint-injection}
 \end{figure}
 
 Following these conclusions derived from the analysis, \spyte generates an instrumented version of the function
-with injected checkpointing operations, shown in \autoref{fig:checkpoint-injection}.
+with injected checkpointing operations, shown in \cref{fig:checkpoint-injection}.
 A transaction object \lstinline|t| encapsulates the checkpoint API (it is shown here in pseudo-code form to keep the presentation clean and free of distracting implementation details).
 The key point is the store operation \lstinline|t|$<\!<$\lstinline|[centroids]|, which updates the snapshot (on disk) with the current value of \lstinline|centroids|, which,
 as explained above, is the only variable marked during the analysis phase.
 In addition, the transaction keeps track of the iteration counter \lstinline|i|, which is required for resumption if the program crashes and needs to re-run starting from the \lstinline|i|'th iteration.
 
 
-\paragraph{Language Features and Implementation Twists}
+\subsubsection*{Python: the good parts}
 
-Although K-Means is conceptually simple, its Python implementation highlights several challenges for static analysis in a dynamic language. \si{these sentences use a mixture of terms: features, challenges, general properties. needs cleanup} In particular:
+The Python code in \cref{lst:code-kmeans} highlights
+several aspects of the ``structuredness'' of real-world 
+programs, in light of~\citet{bence2021unambiguity}.
+In particular:
 \begin{itemize}
-    \item \textbf{Generic data structures.} The variable \texttt{clusters} is a list of lists of integers. In order to enable type-checking and proper tracking of its structure, we require the use of explicit type constructors such as \texttt{list[int]()}. This ensures that our analysis can infer a meaningful and consistent type.
-    \item \textbf{Side effects.} Function calls such as \texttt{xs.append(y)} mutate nested list. Our dirty analysis correctly tracks such effects to determine whether the object needs to be persisted. However, in this case, \texttt{clusters} is reconstructed every iteration and does not need to be saved.
-    \item \textbf{Effect annotations.} For functions like \texttt{np.array} and \texttt{np.linalg.norm}, we rely on an internal library of effect annotations that describe whether a function allocates a new object, updates its arguments, or returns an alias. For example, \texttt{np.array} is treated as a constructor (``new''), while \texttt{np.mean} is considered pure. These annotations are essential for tracking heap mutations and avoiding conservative over-approximation.
-    \item \textbf{Control-flow simplification.} Because Python bytecode is complex, we translate it to a simplified intermediate representation for verification and analysis.
+  \item \textbf{Type annotations.} The inputs \lstinline|X|, \lstinline|k|, \lstinline|niters| are annotated with types.
+This is essential for distinguishing (mutable) objects from (immutable) primitive data.
+  \item \textbf{Generic data structures.} The variable \texttt{clusters} is a list of lists of integers. 
+While Python lists are heterogeneous, developers prefer and encourage the use of homogeneous types for list elements.
+To make such information usable by the analysis, \spyte
+expects that the developer annotate allocations of such
+generic types.
+This is done via the use of explicit type constructors
+such as \texttt{list[int]()} (line 9).
+This ensures that our analysis can infer a meaningful and consistent type.
+    \item \textbf{Effect annotations.} For functions like \lstinline|list.append|, \lstinline|np.array|, and \lstinline|np.linalg.norm|, we rely on an internal library of effect annotations that describe whether a function allocates a new object, updates its arguments, or returns an alias.
+For example, \lstinline|np.array| is treated as a constructor (the \tnew effect), while \lstinline|np.linalg.norm| is considered pure (has no effect).
+\lstinline|list.append| has an \tupdate effect, mutating the receiver object.
+These annotations are essential for tracking heap mutations and avoiding conservative over-approximation.
 \end{itemize}
 
-Despite the simplicity of the target algorithm, precise analysis demands careful handling of Python's typing and memory model. Our implementation supports this through a combination of expressiveness in the type domain and selective annotation of external APIs. The result is an end-to-end system that enables lightweight, high-frequency checkpointing with no manual specification of which variables to save.
+Despite the simplicity of the algorithm used in this running example, precise analysis of the Python implementation and its intricacies demands careful handling of Python's typing and memory model.
+Our implementation achieves this through a combination of expressiveness in the type domain and selective annotation of external APIs. The result is an end-to-end system that enables lightweight, high-frequency checkpointing with no manual specification of which variables to save.
