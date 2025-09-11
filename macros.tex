@@ -1,6 +1,6 @@
 
 \newif\ifdraft
-\drafttrue
+\draftfalse
 
 \newcommand\si[1]{{\color{purple}[SI: #1]}}
 \newcommand\el[1]{{\color{green}[EG: #1]}}
@@ -48,9 +48,11 @@
 
 \newcommand{\tType}{\mathsf{Type}}
 \newcommand{\tLoc}{\texttt{\small Loc}}
-\newcommand{\loc}[1]{\textsf{\tLoc~{#1}}}
 \newcommand{\tParam}{\texttt{\small Param}\xspace}
 \newcommand{\tImm}{\texttt{\small Imm}\xspace}
+
+\newcommand{\loc}[1]{\textsf{\tLoc~{#1}}}
+\newcommand{\param}[1]{\textsf{\tParam~{#1}}}
 
 \newcommand\eg{\textit{e.g.}\xspace}
 
@@ -66,6 +68,9 @@
 
 
 \lstset{
+  language=python,
+  basicstyle={\linespread{1.2}\ttfamily
+              \fontsize{9pt}{9pt}\selectfont},
   numberstyle=\tiny\color{gray},
   numbersep=5pt,
   commentstyle={\color{green!50!black}},

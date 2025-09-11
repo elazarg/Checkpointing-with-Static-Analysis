@@ -16,7 +16,7 @@ i ::= \;&\hspace{6pt}\mathsf{Mov}(\$d,\$s) & \text{// } \$d := \$s \\
       &\mid \tConstructDict(\$d,\overline{(\$k,\$v)}) & \text{// effect: allocate/populate dict} \\[0.6ex]
       &\mid \tGetAttr(\$d,\$o,k) & \text{// } \$d := \$o.k; \text{effect on property access} \\
       &\mid \tSetAttr(\$o,k,\$v) & \text{// } \$o.k := \$v; \text{effect}\\
-      &\mid \tUnpack(\overline{\$d},\$s) & \text{// unpack iterable; effect on iterable} \\
+      &\mid \tUnpack(\overline{\$d},\$s) & \text{// unpack iterator; effect on iterator} \\
       &\mid \tCall(\$d,\$f) & \text{// } \$d := \$f() \\[0.6ex]
       &\mid \tAssumeEq(\$b,\$c) & \text{// continue iff } \$b = \$c \\
       &\mid \tExit & \text{// terminate} \\[1.1ex]

@@ -23,7 +23,7 @@
   \ifdraft[redacted by \texttt{ifdraft}]\else
     \input{experiments/unifiedplots}
   \fi
-  \caption{Performance graphs.}
+  \caption{Snapshot size (of a single iteration) comparing different checkpointing methods across four benchmarked programs.}
 \end{figure*}
 
 \section{Evaluation}
@@ -34,11 +34,11 @@ We evaluate our approach to program-guided checkpointing on four Python workload
     \item \textbf{noploop} is a degenerate  {\color{blue!50!black}
 \texttt{for}~\textrm{...}~\texttt{in}~\texttt{range}} loop with no meaningful computation or allocation except the iterator. It serves as a lower bound on checkpointing overhead. We run the loop for 100 steps.
 
-    \item \textbf{pivoter} (26 LOC, 2 out of 7 relevant variables) performs clique enumeration over a sparse graph via depth-first search and backtracking. Program state is encoded in sets and counters. Input is a 100-node, 757-edge subgraph extracted from the Enron dataset. The algorithm requires $\sim 47,000$ steps to complete. Due to the computational cost of process- and VM-level checkpointing, we sample checkpoints every 50 or 51 steps (yielding 1,891 checkpoint pairs total), but measure memory differences between consecutive snapshots to estimate per-step deltas. This avoids the cost of capturing all 47,000 steps while maintaining fair comparison granularity.
+    \item \textbf{pivoter} (26 LOC, 2 out of 7 relevant variables) performs clique enumeration over a sparse graph via depth-first search and backtracking~\cite{jain2020power}. Program state is encoded in sets and counters. Input is a 100-node, 757-edge subgraph extracted from the Enron dataset. The algorithm requires $\sim 47,000$ steps to complete. Due to the computational cost of process- and VM-level checkpointing, we sample checkpoints every 50 or 51 steps (yielding 1,891 checkpoint pairs total), but measure memory differences between consecutive snapshots to estimate per-step deltas. This avoids the cost of capturing all 47,000 steps while maintaining fair comparison granularity.
 
-    \item \textbf{kmeans} (15 LOC, 1 out of 10 relevant variables) implements K-means clustering on synthetic data. Each iteration reassigns samples to centroids and updates them. Only the centroid array needs to persist. Data is generated using \texttt{sklearn.datasets.make\_blobs} with $n\_samples=1000$, $n\_features=2$, $k=5$. The algorithm completes in 20 steps.
+    \item \textbf{kmeans} (15 LOC, 1 out of 10 relevant variables) implements K-means clustering on synthetic data~\cite{macqueen1967multivariate}. Each iteration reassigns samples to centroids and updates them. Only the centroid array needs to persist. Data is generated using \texttt{sklearn.datasets.make\_blobs} with $n\_samples=1000$, $n\_features=2$, $k=5$. The algorithm completes in 20 steps.
 
-    \item \textbf{omp} (42 LOC, 2 out of 21 relevant variables) --- Orthogonal Matching Pursuit is a greedy feature selection algorithm. At each step, it selects the feature most correlated with the residual and retrains a regression model from scratch. The input is the \texttt{healthstudy} dataset with $k = 35$. The algorithm completes in 35 steps.
+    \item \textbf{omp} (42 LOC, 2 out of 21 relevant variables) --- Orthogonal Matching Pursuit is a greedy feature selection algorithm~\cite{Pati1993OMP, quinzan2022fast}. At each step, it selects the feature most correlated with the residual and retrains a regression model from scratch. The input is the \texttt{healthstudy} dataset with $k = 35$. The algorithm completes in 35 steps.
 \end{itemize}
 
 All benchmarks use fixed data and identical loop structure across checkpointing configurations. Dataset selection was finalized before implementing or evaluating instrumentation.

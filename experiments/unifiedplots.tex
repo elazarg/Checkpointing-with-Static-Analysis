@@ -59,7 +59,7 @@
     width=0.48\textwidth,
     height=0.35\textwidth,
     xlabel={$i$},
-    ylabel={Bytes},
+    ylabel={bytes},
     ymode=log,
     xtick=\empty,
     xticklabel=\pgfmathprintnumber{\tick},
@@ -85,7 +85,7 @@
 \begin{center}
 
 
-\pgfplotslegendfromname{grouplegend}
+%\pgfplotslegendfromname{grouplegend}
 % Define legend items here (OUTSIDE the plot):
 \begin{tikzpicture}
   \begin{axis}[
@@ -116,5 +116,5 @@
 
   \end{axis}
 \end{tikzpicture}
+%\end{comment}
 \end{center}
-\caption{Memory usage per checkpointing method across four benchmarked programs}

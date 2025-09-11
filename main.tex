@@ -20,7 +20,7 @@
 \usepackage{pgfplotstable}
 \usepgfplotslibrary{fillbetween}
 \usepackage{subcaption}
-\usetikzlibrary{arrows.meta,positioning,matrix,shapes,calc}
+\usetikzlibrary{arrows.meta,positioning,matrix,shapes,calc,external}
 \usepackage[scaled=.8]{beramono}
 \usepackage{svg}
 \usepackage{caption}
@@ -35,7 +35,8 @@
 \usepackage{algpseudocode}
 \usepackage{wrapfig}
 
-\lstset{basicstyle={\linespread{1.2}\ttfamily\fontsize{9pt}{9pt}\selectfont},language=python}
+\tikzexternalize
+\tikzset{external/prefix=foo/}
 
 \title{Selective Checkpointing for Numerical Python via~Static~Analysis}
 \author{}

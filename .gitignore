@@ -6,3 +6,9 @@
 .Makefile.d
 Makefile.conf
 *.cache
+*.swp
+
+/out
+/foo
+/svg-inkscape
+.DS_Store
