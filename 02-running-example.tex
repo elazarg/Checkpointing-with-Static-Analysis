@@ -72,7 +72,7 @@ anchor=north west, scale=0.85] {
 };
 \end{tikzpicture}
 \caption{\label{lst:code-kmeans}
-K-Means clustering with $k$ clusters, implemented in Python using \lstinline|numpy|. \hspace{0.5em}To the right:\\
+K-Means clustering with $k$ clusters, implemented in Python using NumPy. \hspace{0.5em}To the right:\\
 \strut\qquad algorithm pseudo-code (for reference and as a reading aid), and a data-flow diagram of the program.}
 \end{figure}
 
@@ -82,7 +82,7 @@ K-Means clustering with $k$ clusters, implemented in Python using \lstinline|num
 We illustrate our checkpointing approach using the classical \emph{K-Means clustering} algorithm~\cite{macqueen1967multivariate}.
 Clustering is a classical machine learning problem defined as partitioning a set $X$ of data points (real-valued vectors) into $k$ clustered subsets.
 The K-Means algorithm works by finding $k$ points, called
-\emph{centroids}, where the $i$'th cluster consists of all points in $X$ that are closer to the $i$'th centroid that
+\emph{centroids}, where the $i$-th cluster consists of all points in $X$ that are closer to the $i$-th centroid that
 to all other centroids.
 This widely used iterative method, starting with a random set of centroids and repeatedly, gradually, improving the solution until the process converges.
 
@@ -100,8 +100,8 @@ Our system avoids this inefficiency by identifying the \emph{minimal} state nece
 \begin{itemize}
     \item \textbf{Liveness analysis} to determine which variables are needed for future execution.
     \item \textbf{Points-to analysis} to track object references and heap structure, in order to map memory
-location that are reachable from each variable.
-    \item \textbf{Dirty analysis} to identify which memory locations are actually being modified thoughout the execution.
+locations that are reachable from each variable.
+    \item \textbf{Dirty analysis} to identify which memory locations are actually being modified throughout the execution.
 \end{itemize}
 
 Program variables that are both \textbf{live} and from which \textbf{dirty} memory locations are \textbf{reachable}
@@ -126,21 +126,21 @@ def kmeans(X: np.ndarray, k: int, niters: int):
     t (*@$<\!<$@*) [centroids]
   (*@\blk{finalization}@*)
 \end{lstlisting}
-\caption{Automatic checkpoint injection for the k-means loop.}
+\caption{Automatic checkpoint injection for the K-Means loop.}
 \label{fig:checkpoint-injection}
 \end{figure}
 
 Following these conclusions derived from the analysis, \spyte generates an instrumented version of the function
-with injected checkpointing operations, shown in \cref{fig:checkpoint-injection}.
+with injected checkpointing operations, shown in \Cref{fig:checkpoint-injection}.
 A transaction object \lstinline|t| encapsulates the checkpoint API (it is shown here in pseudo-code form to keep the presentation clean and free of distracting implementation details).
 The key point is the store operation \lstinline|t|$<\!<$\lstinline|[centroids]|, which updates the snapshot (on disk) with the current value of \lstinline|centroids|, which,
 as explained above, is the only variable marked during the analysis phase.
-In addition, the transaction keeps track of the iteration counter \lstinline|i|, which is required for resumption if the program crashes and needs to re-run starting from the \lstinline|i|'th iteration.
+In addition, the transaction keeps track of the iteration counter \lstinline|i|, which is required for resumption if the program crashes and needs to re-run starting from the \lstinline|i|-th iteration.
 
 
 \subsubsection*{Python: the good parts}
 
-The Python code in \cref{lst:code-kmeans} highlights
+The Python code in \Cref{lst:code-kmeans} highlights
 several aspects of the ``structuredness'' of real-world 
 programs, in light of~\citet{bence2021unambiguity}.
 In particular:
@@ -150,7 +150,7 @@ This is essential for distinguishing (mutable) objects from (immutable) primitiv
   \item \textbf{Generic data structures.} The variable \texttt{clusters} is a list of lists of integers. 
 While Python lists are heterogeneous, developers prefer and encourage the use of homogeneous types for list elements.
 To make such information usable by the analysis, \spyte
-expects that the developer annotate allocations of such
+expects that the developer annotates allocations of such
 generic types.
 This is done via the use of explicit type constructors
 such as \texttt{list[int]()} (line 9).

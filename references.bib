@@ -409,7 +409,7 @@ series = {SLE 2023}
 }
 
 @inproceedings{ancona2007rpython,
-  title={RPython: a step towards reconciling dynamically and statically typed OO languages},
+  title={{RP}ython: a step towards reconciling dynamically and statically typed OO languages},
   author={Ancona, Davide and Ancona, Massimo and Cuni, Antonio and Matsakis, Nicholas D},
   booktitle={Proceedings of the 2007 symposium on Dynamic languages},
   pages={53--64},
@@ -479,7 +479,7 @@ year={2022}
 
 @misc{pyre,
   title = {Pyre: A Performant Type Checker for Python},
-  author = {Meta (Facebook)},
+  author = {Meta},
   year = {2017--},
   howpublished = {\url{https://github.com/facebook/pyre-check}},
 }
@@ -611,33 +611,35 @@ year={2022}
 % Python/CPython references
 
 @misc{PEP484,
-  author = {Guido van Rossum and Jukka Lehtosalo and {\L}ukasz Langa},
-  title  = {{PEP} 484 -- Type Hints},
+  author       = {Guido van Rossum and Jukka Lehtosalo and {\L}ukasz Langa},
+  title        = {{PEP} 484 -- Type Hints},
   howpublished = {\url{https://peps.python.org/pep-0484/}},
-  year   = {2015},
-  note   = {Accessed 2025-08-20}
+  year         = {2015},
+  note         = {Accessed 2025-08-20}
 }
 
 @misc{PEP574,
-  author = {Antoine Pitrou},
-  title  = {{PEP} 574 -- Pickle protocol 5 with out-of-band data},
+  author       = {Antoine Pitrou},
+  title        = {{PEP} 574 -- Pickle protocol 5 with out-of-band data},
   howpublished = {\url{https://peps.python.org/pep-0574/}},
-  year   = {2019},
-  note   = {Accessed 2025-08-20}
+  year         = {2019},
+  note         = {Accessed 2025-08-20}
 }
 
 @misc{PythonDis,
   title        = {dis --- Disassembler for Python bytecode},
   howpublished = {\url{https://docs.python.org/3/library/dis.html}},
   note         = {CPython documentation, accessed 2025-08-20},
-  year         = {2025}
+  year         = {2025},
+  key          = {Python development team}
 }
 
 @misc{PythonPickleDocs,
   title        = {pickle --- Python object serialization},
   howpublished = {\url{https://docs.python.org/3/library/pickle.html}},
   note         = {CPython documentation, accessed 2025-08-20},
-  year         = {2025}
+  year         = {2025},
+  key          = {Python development team}
 }
 
 % Numerical/ML libraries actually used in evaluation (NumPy, scikit-learn)
@@ -682,19 +684,19 @@ year={2022}
 }
 
 @inproceedings{10.1007/978-3-540-30115-8_22,
-author = {Klimt, Bryan and Yang, Yiming},
-title = {The enron corpus: a new dataset for email classification research},
-year = {2004},
-isbn = {3540231056},
-publisher = {Springer-Verlag},
-address = {Berlin, Heidelberg},
-url = {https://doi.org/10.1007/978-3-540-30115-8_22},
-doi = {10.1007/978-3-540-30115-8_22},
-booktitle = {Proceedings of the 15th European Conference on Machine Learning},
-pages = {217–226},
-numpages = {10},
-location = {Pisa, Italy},
-series = {ECML'04}
+    author = {Klimt, Bryan and Yang, Yiming},
+    title = {The enron corpus: a new dataset for email classification research},
+    year = {2004},
+    isbn = {3540231056},
+    publisher = {Springer-Verlag},
+    address = {Berlin, Heidelberg},
+    url = {https://doi.org/10.1007/978-3-540-30115-8_22},
+    doi = {10.1007/978-3-540-30115-8_22},
+    booktitle = {Proceedings of the 15th European Conference on Machine Learning},
+    pages = {217–226},
+    numpages = {10},
+    location = {Pisa, Italy},
+    series = {ECML'04}
 }
 
 % Checkpointing/snapshot baselines
@@ -724,7 +726,17 @@ series = {ECML'04}
   title        = {{CRIU} --- Checkpoint/Restore in Userspace},
   howpublished = {\url{https://criu.org/}},
   note         = {Project documentation, accessed 2025-08-20},
-  year         = {2025}
+  year         = {2025},
+  key          = {CRIU development team}
+}
+
+@misc{corbet2011checkpoint,
+  author = {Corbet, Jonathan},
+  title = {Checkpoint/restart (mostly) in user space},
+  howpublished = {LWN.net},
+  month = {July},
+  year = {2011},
+  url = {https://lwn.net/Articles/452184/}
 }
 
 @article{Andrijauskas2024CRIUOSG,
@@ -742,28 +754,32 @@ series = {ECML'04}
   title        = {The Python Language Reference --- Data model},
   howpublished = {\url{https://docs.python.org/3/reference/datamodel.html}},
   note         = {Accessed 2025-08-20},
-  year         = {2025}
+  year         = {2025},
+  key          = {Python development team}
 }
 
 @misc{NumPyViewsDocs,
-  title        = {NumPy User Guide --- Copies and Views},
+  title        = {Num{P}y User Guide --- Copies and Views},
   howpublished = {\url{https://numpy.org/doc/stable/user/basics.copies.html}},
   note         = {Accessed 2025-08-20},
-  year         = {2025}
+  year         = {2025},
+  key          = {NumPy development team}
 }
 
 @misc{VMwareSnapshot,
-title = {VMware vSphere Snapshots: Performance and Best Practices - Performance Study},
-howpublished = {\url{https://www.vmware.com/docs/vsphere-vm-snapshots-perf}},
-note = {Accessed 2025-09-05},
-year = {2025}
+    title = {{VM}ware {vS}phere {S}napshots: Performance and Best Practices - Performance Study},
+    howpublished = {\url{https://www.vmware.com/docs/vsphere-vm-snapshots-perf}},
+    note = {Accessed 2025-09-05},
+    year = {2025},
+    key          = {VMware}
 }
 
 @misc{RedHatVMSnapshot,
-title = {RedHat Virtualization - Virtual Machine Snapshots},
-howpublished = {\url{https://docs.redhat.com/en/documentation/red_hat_virtualization/4.3/html/technical_reference/chap-virtual_machine_snapshots}},
-note = {Accessed 2025-09-05},
-year = {2025}
+    title = {Red{H}at Virtualization - Virtual Machine Snapshots},
+    howpublished = {\url{https://docs.redhat.com/en/documentation/red_hat_virtualization/4.3/html/technical_reference/chap-virtual_machine_snapshots}},
+    note = {Accessed 2025-09-05},
+    year = {2025},
+    key          = {RedHat development team}
 }
 
 @inproceedings{salis2021pycg,
@@ -775,7 +791,7 @@ year = {2025}
   organization={IEEE}
 }
 @inproceedings{hassan2018maxsmt,
-  title={MaxSMT-based type inference for Python 3},
+  title={Max{SMT}-based type inference for Python 3},
   author={Hassan, Mostafa and Urban, Caterina and Eilers, Marco and M{\"u}ller, Peter},
   booktitle={International Conference on Computer Aided Verification},
   pages={12--19},
@@ -804,7 +820,7 @@ year = {2025}
 }
 
 @inproceedings{ji2022compiler,
-  title={Compiler-Directed Incremental Checkpointing for Low Latency GPU Preemption},
+  title={Compiler-Directed Incremental Checkpointing for Low Latency {GPU} Preemption},
   author={Ji, Zhuoran and Wang, Cho-Li},
   booktitle={2022 IEEE International Parallel and Distributed Processing Symposium (IPDPS)},
   pages={751--761},

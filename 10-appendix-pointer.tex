@@ -65,12 +65,12 @@ D_1 \sqsubseteq D_2 \iff \forall o.\; D_1[o] \subseteq D_2[o] \\[0.3em]
 \subsection{Scope and Goal}
 
 The pointer analysis abstracts heap shape, aliasing, and mutations over the \spytecode IR
-(\cref{sec:appendix-tac-ir}) to support checkpointing. It is
+(\Cref{sec:appendix-tac-ir}) to support checkpointing. It is
 flow-sensitive and intraprocedural along exception-free paths.
 Instruction–level effects (allocation at \textsf{Bind}, \textsf{ConstructTuple},
 \textsf{ConstructDict}, \textsf{Call}, and iteration in \textsf{Unpack}) are interpreted here.
 Callable \emph{invocation} effects come from the type system
-(\cref{sec:appendix-typesystem}) as an effect triple
+(\Cref{sec:appendix-typesystem}) as an effect triple
 \(\epsilon^\#=(\tnew,\tupdate,\tptstoargs)\) and are translated to
 heap updates by the transfer functions below.
 
@@ -143,7 +143,7 @@ and dirty marks use
 \(\mathsf{UpdD}(D,\ O_{\mathrm{tgt}},\ f)\).
 Let \(\loc{l}\) denote the allocation site at instruction index \(l\).
 Pure operations never mutate \(H\); the stack map \(S\) changes only for
-instructions that assign to a stack .
+instructions that assign to a stack.
 \subsection{Transfer Functions for \spytecode}
 \label{subsec:transfers}
 

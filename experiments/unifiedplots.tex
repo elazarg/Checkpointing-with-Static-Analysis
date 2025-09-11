@@ -58,12 +58,12 @@
     },
     width=0.48\textwidth,
     height=0.35\textwidth,
-    xlabel={$i$},
+    xlabel={iteration},
     ylabel={bytes},
     ymode=log,
-    xtick=\empty,
-    xticklabel=\pgfmathprintnumber{\tick},
-    xtick distance=1,
+    %xtick=\empty,
+    xticklabel={\tiny\pgfmathprintnumber{\tick}},
+    %xtick distance=1,
     % ymin=9,
     % ymax=3e8,
     grid=major,
@@ -96,20 +96,20 @@
       legend style={draw=none, /tikz/every even column/.append style={column sep=1em}}
     ]
 
+    \addlegendimage{line legend, black, dashed}
+    \addlegendentry{\VMDIFF\;Average\qquad\quad\ }
+
+    \addlegendimage{line legend, black}
+    \addlegendentry{\PROCDIFF\;Average\qquad\quad\ }
+
+    \addlegendimage{only marks, mark=diamond*, mark options={blue}}
+    \addlegendentry{Locals}
+    
     \addlegendimage{area legend, fill=black!15, draw=none}
     \addlegendentry{\VMDIFF\;min--max band}
 
     \addlegendimage{area legend, fill=gray!30, draw=none}
     \addlegendentry{\PROCDIFF\;min--max band}
-
-    \addlegendimage{only marks, mark=diamond*, mark options={blue}}
-    \addlegendentry{Locals}
-    
-    \addlegendimage{line legend, black, dashed}
-    \addlegendentry{\VMDIFF\;Average}
-
-    \addlegendimage{line legend, black}
-    \addlegendentry{\PROCDIFF\;Average}
 
     \addlegendimage{only marks, mark=asterisk, mark options={red}}
     \addlegendentry{\spyte}

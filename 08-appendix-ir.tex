@@ -76,11 +76,11 @@ k ::= \;& \mathit{name}(s) \mid \mathit{index}(n) \mid \mathit{both}(n,s) & \\[1
 }
 
 \inferrule*[lab=LookupDunder]{
-   S(\overline{\$o}) = \overline{v} \\
+   S(\$a) = \overline{v} \\
   \mathsf{get\_class}(\overline{v}) = \overline{c} \\
   \mathsf{dunder\_lookup}(m, [\overline{c}]) = f
 }{
-  \langle S, H\rangle \xrightarrow{\tLookupDunder(\$d, m, \overline{\$o})}
+  \langle S, H\rangle \xrightarrow{\tLookupDunder(\$d, m, \$a)}
   \langle S[\$d \mapsto \mathit{static}(f)], H\rangle
 }
 
