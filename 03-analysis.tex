@@ -36,8 +36,8 @@ abstract interpretation by forcing an abstract stack into every domain. A prepro
 pass converts bytecode to \spytecode,\footnote{This is feasible for compiler-generated Python bytecode with well-formed stack discipline.}
 eliminating the operand stack and implicit temporaries in favor of explicit registers
 ($\$0, \$1, \ldots$). This makes dataflow and heap accesses explicit.
-An excerpt of the instructions of \spytecode is shown in \Cref{fig:tac-syntax-reduced}; a more complete
-definition is included in the appendix.
+An excerpt of the instructions of \spytecode is shown in \Cref{fig:tac-syntax-reduced}.
+%; a more complete definition is included in the appendix.
 
 \paragraph{Control flow.}
 A \spytecode program is a nondeterministic control-flow graph with statically known edges.
@@ -48,27 +48,32 @@ without modeling dynamic exception propagation.
 
 \paragraph{Attribute access.}
 $\tSetAttr(\$o, k, \$v)$ writes field $k$ of the object in $\$o$ with the value in $\$v$.
-$\tGetAttr(\$d, \$o, k)$ resolves $k$ on $\$o$:
-(1) if present in instance fields, assign that value to $\$d$;
-(2) otherwise look up $k$ in $\mathrm{class}(\$o)$; if the result is a function, return
+Reading is done with
+$\$d = \tGetAttr(\$o, k)$, which is a bit more involved:
+(1) if $k$ is present in instance fields of $\$o$, assign that value to $\$d$;
+(2) otherwise look up $k$ in the \emph{class}
+of $\$o)$; if the result is a function, return
 a bound callable with hidden \texttt{self} set to $\$o$, else return the value.
-We do not model Python's full MRO or the general descriptor protocol; the sole
-exception is \texttt{property}, modeled by immediately invoking its; this case makes the instruction effectful.
+Python's method resolution (MRO) define various rules governing the access of attributes.
+\spyte does not model all of them,
+but it does support \lstinline|@property|,
+modeled as a call to the getter.
 When $\$o \in \{\tLOCALS, \tGLOBALS\}$, \tSetAttr/\tGetAttr
-correspond to assignment/read of the named variable $k$.
+correspond to assignment/read of the local/global named variable $k$.
 
 \paragraph{Calls.}
 Invocation is factored into distinct steps (arguments are assumed to be packed as a tuple
 $\$a$): (a) $\tLookupDunder(op,\$a)$ locates the special method
-for operator $op$; (b) $\tResolveOverload(\$f,\$a)$ selects a static target among function overloads (which may be bound or unbound) based on argument classes;\footnote{While CPython has no first-class ``overload resolution'' step, it is included in the operational semantics of \spytecode to align better with how type checkers handle overloading. This is vital for the analysis of types and effects, later on.}
+for operator $op$; (b) $\tResolveOverload(\$f,\$a)$ selects a static target among function overloads (which may be bound or unbound) based on argument classes;\footnote{While Python has no first-class ``overload resolution'' step, it is included in the operational semantics of \spytecode to align better with how type checkers handle overloading. This is vital for the analysis of types and effects, later on.}
 (c) \tBind forms an explicit bound call object $\$g$ capturing the callee and its
 argument binding; (d) \tCall consumes $\$g$, which must be callable with zero arguments (all arguments are already bound through a special $args$ field), producing the result in $\$d$ and applying the callee's type-annotated effects. This bound object is the anchor for
 pointer and effect tracking.
 
 \begin{figure}[t]
     \centering
-    \includesvg[width=\textwidth, inkscapelatex=false]{gfx/analysis-flowchart}
-    \caption{Analysis pipeline. Python source is compiled to bytecode, lowered to \spytecode, and analyzed in three interacting domains, and finally instrumented.}
+    \small
+    \includesvg[width=\textwidth, inkscapelatex=true]{gfx/analysis-flowchart}
+    \caption{Analysis pipeline. Python source is compiled to bytecode, lowered to \spytecode, analyzed in four interacting domains, and finally instrumented.}
     \label{fig:overview}
 \end{figure}
 
@@ -87,12 +92,15 @@ With the IR defined and live variables identified, we now turn to the core analy
 \subsection{Objects and Fields}
 We model the heap as a finite set of \emph{abstract objects} $\tO$, where each object represents a potential allocation point in the program. There are four kinds:
 \begin{itemize}
-    \item \emph{Scope}: \tLOCALS and \tGLOBALS. Those are accessed only using their corresponding instructions.
-    \item \emph{Parameter objects} representing function arguments passed from callers.
-    \item \emph{Allocation site objects} created at specific program locations. If line 5 creates a list, all lists created there share one abstract object.
+    \item \emph{Scopes}: \tLOCALS and \tGLOBALS. Objects representing the local and global variable scope,
+respectively.
+    \item \emph{Parameter objects} representing the main function's arguments that have been passed from it caller(s). (The callers themselves are not analyzed.)
+    \item \emph{Allocation site objects} are summary object representing a set of objects created at specific program locations. 
+Locations are addressed by \spytecode instruction index.
     \item Objects of \emph{Immutable types} that do not alias other objects. For example, all integer objects whose value is not precisely known share the same abstract object.
 \end{itemize}
-Each object has \emph{fields} $\tK$ representing its attributes, dictionary keys, or sequence elements. Since tracking every list index separately would be prohibitive, we use a wildcard field $\star$ to represent all indices collectively.
+
+An object is modeled using a set of \emph{fields} $\tK$ representing its attributes, dictionary keys, or sequence elements. Since tracking every list index separately would be prohibitive, we use a wildcard symbol $\star$ to represent all indices collectively.
 
 \subsection{Map Domains}
 Our type, pointer and dirty analysis domains follow a common pattern: they are maps from keys to values, similar to Python dictionaries but with a default (``bottom'') value for missing keys. This uniformity simplifies both the implementation and the theory.
@@ -127,28 +135,28 @@ Operationally, for each instruction the stack domain does two things: first it l
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{p{15mm}p{36mm}p{37mm}p{40mm}}
+\begin{tabular}{p{15mm}p{20mm}p{33mm}p{42mm}}
 \toprule
-\textbf{Domain} & \textbf{Abstract State} & \textbf{Observables (to others)} & \textbf{Depends on} \\
+\textbf{Domain} & \textbf{Abstract State} & \textbf{Observables} & \textbf{Depends on} \\
 \midrule
 Type ($T$) &
-  $T:\tO\to \mathcal \mathsf{Type}$
-  Type of object, global modules. &
+  Object types, modules. &
   Immutability, effects, call and access operations. &
-  Pointer reachability to restrict receivers; library stubs. \\
+  Reachability (to restrict receivers) \\
 \addlinespace
-Pointer ($P=(H,S)$) &
-  $H: \tO \to(\tK \to \powerset(\tO)$.
-  Pointer graph. 
-  $S:\tN \to \powerset(\tO)$. Abstract Stack
+Stack ($S$) & Stack objects
+  & Stack root objects & RHS evaluation of IR instructions \\
+\addlinespace
+Heap ($H$) &
+  Pointer graph
   &
-  (i) Field targets $H[o][k]$; (ii) reachability $Reach(R,H)$. &
-  Roots, Effects, immutability. \\
+  Named variables, field targets, reachability, bound functions &
+  Effects, immutability, stack roots \\
 \addlinespace
 Dirty ($D$) &
-  $D:\tO\to \mathcal \powerset(\tK)$ (fields written). &
-  Set of dirty fields per object. &
-  Effects,  immutability, arguments to bound functions. \\
+  Fields written &
+  Dirty fields per object &
+  Effects,  immutability, arguments to bound functions \\
 \bottomrule
 \end{tabular}
 \caption{Domain contracts: what each domain exposes and what it requires.}
@@ -163,21 +171,23 @@ The type and effect domain tracks the type of each abstract object, maintaining 
 $\mathsf{Type}$ models Python values using a collection of constructs chosen to match the subset of Python we target: literals, nominal classes, structural protocols, callable signatures, parametric polymorphism with variadic type parameters, and the special \texttt{any} type for unknown values. We omit nominal subtyping since NumPy's API design favors composition and structural subtyping over inheritance hierarchies.
 
 \paragraph{Call checking and binding.}
-Function calls are split at the IR level into three or four consecutive steps: (pure) overload resolution, binding of the selected callable to its arguments (allocating a bound callable object), and calling the call object: applying its effect and returning the return value. See \Cref{sec:appendix-assumptions} regarding typing subscription of NumPy \texttt{ndarray}s.
+Function calls are split at the IR level into three or four consecutive steps: (pure) overload resolution, binding of the selected callable to its arguments (allocating a bound callable object), and calling the call object: applying its effect and returning the return value. See \Cref{sec:assumptions} regarding typing subscription of NumPy \texttt{ndarray}s.
 
 \subsubsection{Effects} annotate functions with heap interactions:
 \begin{itemize}
   \item \tnew: allocates a fresh object.
   \item \tptstoargs: the \tnew object points to the arguments passed to it. This fits list/set/tuple/dict constructors.
-  \item \tboundmeth tells the pointer domain that the method points from \texttt{self} to the argument.
-  \item \tupdate: modifies or refines a specific field, possibly changing its type. This is very common in methods, and it tells the dirty domain to count the relevant arguments as dirty. Note: Type-changing updates are only applied when the receiver is unaliased and monomorphic, preventing unsound refinements across aliases. The analysis aborts when this is not the case.
+  \item \tboundmeth: informs the pointer domain that the generated value is a bound method with a field \texttt{self} pointing to the receiver object.
+  \item \tupdate: modifies or refines a specific field, possibly changing its type. This is very common in methods, such as \lstinline|list.append|, which add points-to references from the object to the argument,
+and also may affect the type of the elements in the list,
+based on the type of the added element.
 \end{itemize}
 
 We rely on library interface files, similar to the type stubs used by existing Python type checkers, that (in addition to types) declare function effects:
 
 \begin{itemize}
   \item Factory functions, such as \texttt{numpy.zeros()} are marked with \tnew, producing a fresh abstract object.
-  \item Methods like \texttt{list.append} are annotated with $\tupdate(type, index)$, recording both type refinement of fields and marking arguments dirty in the pointer/dirty domains.
+  \item Methods like \lstinline|list.append|, \lstinline|np.array|, \lstinline|np.flatten|, \etc, are annotated with $\tupdate(type, index)$, recording both type refinement of fields and marking arguments dirty in the pointer/dirty domains.
 \end{itemize}
 
 \subsection{Pointer Domain}
@@ -185,7 +195,7 @@ We rely on library interface files, similar to the type stubs used by existing P
 
 The pointer domain tracks object references from variables
 and fields, maintaining two map domains:
-
+%
 \[
 \begin{array}{@{}l@{}}
   S : \tN \to \powerset(\tO) \\
@@ -212,7 +222,9 @@ and fields, maintaining two map domains:
 \node (s6B)     [below =5mm of loc10B] {$\$6$};
 \node (s5B)     [below =5mm of loc32B] {$\$5$};
 \draw[->] (localsB) -- node[elabel,above]{\scriptsize centroids} (loc10B);
-\draw[->] (localsB) -- node[elabel,above]{\scriptsize \(X[\star]\)} (loc32B);
+\path (localsB) -- node(locXB)[pos=0.6,draw=white,fill,circle,inner sep=1pt] {} (loc32B);
+\draw[->] (localsB) -- node[elabel,above,sloped]{\scriptsize X} (locXB);
+\draw[->] (locXB) -- node[pos=0.4,elabel,above,sloped]{\scriptsize $\!\star$} (loc32B);
 \draw[->] (s6B) -- (loc10B);
 \draw[->] (s5B) -- (loc32B);
 
@@ -241,7 +253,9 @@ and fields, maintaining two map domains:
 \node (s6A)     [below =5mm of loc10A] {$\$6$};
 \node (s5A)     [below =5mm of loc34A] {$\$5$};
 \draw[->] (localsA) -- node[elabel,above]{\scriptsize centroids} (loc10A);
-\draw[->] (localsA) -- node[elabel,above]{\scriptsize \(X[\star]\)} (loc32A);
+\path (localsA) -- node(locXA)[pos=0.6,draw=white,fill,circle,inner sep=1pt] {} (loc32A);
+\draw[->] (localsA) -- node[elabel,above,sloped]{\scriptsize X} (locXA);
+\draw[->] (locXA) -- node[elabel,above,sloped]{\scriptsize $\!\star$} (loc32A);
 \draw[->] (s6A) -- (loc10A);
 \draw[->] (s5A) -- (loc34A);
 
@@ -274,6 +288,16 @@ and fields, maintaining two map domains:
 
 \node(after)[framed,
   fit=(locals) (l19) (l21) (l31) (s4)] {};
+
+\def\blob#1#2{\draw[red,fill=red!40!gray,rounded corners=#1*3mm] (#2) +($(0:#1*2+#1*2*rnd)$)
+\foreach \a in {20,30,...,350} {  -- +($(\a: #1*2+#1*2*rnd)$) } -- cycle;}
+
+\node(bb)[at=(l21),xshift=7mm,yshift=5mm] {};
+\draw[-{Classical TikZ Rightarrow[length=1mm, 
+  width=1.7mm]},green!50!gray,thick]
+  (bb) edge[out=180,in=90,looseness=1.7] (l21.45);
+\blob{0.05}{bb}
+
 
 \node(ir)[above=1 of l19]{
 $\begin{array}{@{}l@{}}
@@ -412,7 +436,9 @@ The domains refine each other with directed information flow:
 These interactions improve precision by removing impossible states before they can pollute other domains.
 
 \subsection{Assumptions}
-The soundness of our analysis relies on targeting a disciplined subset of Python, prohibiting dynamic code evaluation, and requiring that function calls be statically resolvable modulo overload resolution. Furthermore, we assume correctness of user-provided type and side-effect annotations. \Cref{sec:appendix-assumptions} lists our assumptions in more detail.
+\label{sec:assumptions}
+The soundness of our analysis relies on targeting a disciplined subset of Python, prohibiting dynamic code evaluation, and requiring that function calls be statically resolvable modulo overload resolution. Furthermore, we assume correctness of user-provided type and side-effect annotations.
+%\Cref{sec:appendix-assumptions} lists our assumptions in more detail.
 
 In handling numerical libraries, we make several simplifying trade-offs for tractability. The analysis does not model mutation through NumPy's view-based aliasing. Our type system is also dimensionality-agnostic (as is common among type checkers), which simplifies analysis but cannot distinguish between scalar and array values returned from slicing operations without additional user hints.
 

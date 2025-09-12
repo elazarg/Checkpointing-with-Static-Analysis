@@ -22,7 +22,7 @@
 \usepackage{subcaption}
 \usetikzlibrary{arrows.meta,positioning,matrix,shapes,calc,fit,external}
 \usepackage[scaled=.8]{beramono}
-\usepackage{svg}
+\usepackage[inkscapeversion=1]{svg}
 \usepackage{caption}
 \usepackage{mathpartir}
 \usepackage{subcaption}
@@ -33,11 +33,12 @@
 \usepackage{url}
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
-\usepackage{wrapfig}
 \usepackage{multirow}
 
 \tikzexternalize
-\tikzset{external/prefix=foo/}
+\tikzset{external/prefix=foo/,external/export=false}
+
+%\tikzexternaldisable
 
 \title{Selective Checkpointing for Numerical Python via~Static~Analysis}
 \author{}
