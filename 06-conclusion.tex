@@ -16,3 +16,7 @@ While our work demonstrates that classical static analyses can enable practical 
 \paragraph{Pluggable analyses for other transformations.} The framework can host additional domains beyond liveness, type, dirty and pointer analyses. For example, a numeric range analysis could determine when certain values remain within safe bounds and avoid checkpointing them altogether. A taint analysis could inform selective encryption of sensitive state. Similarly, incorporating loop dependence analysis might allow speculative reordering or batching of checkpoint writes.
 
 \paragraph{Integrating with performance‑oriented runtimes.} Finally, it would be valuable to evaluate our analyses in the context of alternative Python implementations (e.g., PyPy, Numba or a JIT‑enabled interpreter) and to study how heap analysis interacts with just‑in‑time compilation and garbage collection. Such integration could open the door to broader optimizations.
+
+\subsubsection*{\bf Data Availability}
+We provide the analysis code, analyzed code, data and scripts as open source to facilitate replication or future work, at 
+\url{https://anonymous.4open.science/r/spyte-E15D}.

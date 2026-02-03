@@ -3,7 +3,7 @@ Python powers much of modern numerical computing through libraries like NumPy an
 In this work we demonstrate leveraging static analysis information to perform lightweight program instrumentation, reducing storage writes by orders of magnitude compared to existing checkpointing approaches.
 
 Checkpointing is the task of capturing the program state at designated points to enable recovery of work done in case of failure. Unexpected faults in long-running or resource-intensive computations can lead to costly recomputation and lost work. Traditional checkpointing is typically implemented at the system level, treating applications as black boxes. Tools such as CRIU~\cite{corbet2011checkpoint} snapshot an entire Linux process, including memory, file descriptors, and registers. Virtual machine snapshots~\cite{VMwareSnapshot, RedHatVMSnapshot} go further, capturing the entire guest operating system state. While robust and language-agnostic, this approach is usually highly inefficient as it demands large amounts of data be written to storage---even when the checkpoint is done incrementally, and even when deduplicated~\cite{meyer2012study} and compressed~\cite{ferreira2013checkpoint}---
-because modern software uses volatile memory rather lavishly, 
+because modern software uses volatile memory extensively, 
 taking advantage of ever-growing fast RAM hardware.
 
 Application-level checkpointing offers an alternative: preserving only the program state that influences future computation. A naive approach might be capturing all reachable state from within the scope of the current program location. Capturing all reachable state is overly conservative. Much of the state is immutable or transient and not needed after resumption.  This naive approach might result in even worse performance than checkpointing the entire process incrementally.
@@ -18,12 +18,15 @@ Building on this framework, we introduce an analysis that identifies the subset 
 
 We evaluate the approach on realistic implementations of numerical algorithms: K-Means clustering~\cite{macqueen1967multivariate}, Orthogonal Matching Pursuit (OMP)~\cite{Pati1993OMP}, and clique enumeration (pivoter)~\cite{jain2020power}. These case studies confirm that static analysis techniques, carefully applied to structurally disciplined Python code, can yield major practical benefits.
 
+Our work is complementary to Numba~\cite{numba2015}, which accelerates Python's numeric code by specializing types, propagating shapes/strides, and fusing/parallelizing array kernels. While Numba optimizes execution, it does not maintain a persistent heap/alias model. In contrast, we perform points-to analysis using library-agnostic effect annotations to preserve the heap structure needed to identify and restore the minimal state after a restart. Numba's results motivate our premise that scientific Python is analyzable; \spyte supplies the missing heap-aware, effect-generic layer for checkpointing.
 
-\paragraph{Contributions}
+\subsubsection*{Contributions}
+\begin{samepage}
 \begin{enumerate}
 \item A reusable static analysis framework for well-typed, structured Python code satisfying certain structural assumptions.
 \item Specialized analysis and synthesis steps for checkpoint I/O minimization via \emph{minimal persistent root set} analysis.
 \item An empirical demonstration showing that semantically guided checkpointing is feasible and highly effective in practical, albeit constrained, Python workloads.
 \end{enumerate}
+\end{samepage}
 
 The remainder of the paper is organized as follows. In \Cref{sec:running-example} we present a running example based on the K-Means clustering algorithm to illustrate the challenges and opportunities for selective checkpointing in numerical Python code. \Cref{sec:analysis} describes our analysis framework in detail, including the intermediate representation, the design of the type and pointer domains, and the interaction between liveness, type, heap and dirty analyses. \Cref{sec:checkpoint-analysis} presents our specialized analysis for identifying variables to checkpoint and the instrumentation process. \Cref{sec:evaluation} evaluates our approach on several realistic workloads, comparing our synthesized checkpoints against naive and system-level baselines. \Cref{sec:related} discusses related work in static analysis for dynamic languages and checkpointing. We conclude in \Cref{sec:conclusion} with a summary of our contributions and directions for future work.

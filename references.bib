@@ -15,17 +15,6 @@
   year={1967}
 }
 
-@article{tropp2007signal,
-  title={Signal recovery from random measurements via orthogonal matching pursuit},
-  author={Tropp, Joel A and Gilbert, Anna C},
-  journal={IEEE Transactions on information theory},
-  volume={53},
-  number={12},
-  pages={4655--4666},
-  year={2007},
-  publisher={IEEE}
-}
-
 @inbook{10.1145/3445814.3446714,
 author = {Ustiugov, Dmitrii and Petrov, Plamen and Kogias, Marios and Bugnion, Edouard and Grot, Boris},
 title = {Benchmarking, Analysis, and Optimization of Serverless Function Snapshots},
@@ -479,7 +468,7 @@ year={2022}
 
 @misc{pyre,
   title = {Pyre: A Performant Type Checker for Python},
-  author = {Meta (Facebook)},
+  author = {Meta},
   year = {2017--},
   howpublished = {\url{https://github.com/facebook/pyre-check}},
 }
@@ -673,6 +662,23 @@ year={2022}
   year      = {1993},
   pages     = {40--44},
   publisher = {IEEE}
+}
+
+@inproceedings{numba2015,
+    author = {Lam, Siu Kwan and Pitrou, Antoine and Seibert, Stanley},
+    title = {Numba: a LLVM-based Python JIT compiler},
+    year = {2015},
+    isbn = {9781450340052},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/2833157.2833162},
+    doi = {10.1145/2833157.2833162},
+    booktitle = {Proceedings of the Second Workshop on the LLVM Compiler Infrastructure in HPC},
+    articleno = {7},
+    numpages = {6},
+    keywords = {compiler, Python, LLVM},
+    location = {Austin, Texas},
+    series = {LLVM '15}
 }
 
 @inproceedings{jain2020power,
@@ -869,4 +875,40 @@ year={2022}
   author={Quinzan, Francesco and Khanna, Rajiv and Hershcovitch, Moshik and Cohen, Sarel and Waddington, Daniel G and Friedrich, Tobias and Mahoney, Michael W},
   journal={arXiv preprint arXiv:2202.13718},
   year={2022}
+}
+
+@inproceedings{10.1145/1287624.1287638,
+author = {Xu, Guoqing and Rountev, Atanas and Tang, Yan and Qin, Feng},
+title = {Efficient checkpointing of java software using context-sensitive capture and replay},
+year = {2007},
+isbn = {9781595938114},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1287624.1287638},
+doi = {10.1145/1287624.1287638},
+abstract = {Checkpointing and replaying is an attractive technique that has been used widely at the operating/runtime system level to provide fault tolerance. Applying such a technique at the application level can benefit a range of software engineering tasks such as testing of long-running programs, automated debugging, and dynamic slicing. We propose a checkpointing/replaying technique for Java that operates purely at the language level, without the need for JVM-level or OS-level support. At the core of our approach are static analyses that select, at certain program points, a safe subset of the program state to capture and replay. Irrelevant statements before the checkpoint are eliminated using control-dependence-based slicing; the remaining statements together with the captured run-time values are used to indirectly recreate the call stack of the original program at the checkpoint. At the checkpoint itself and at certain subsequent program points, the replaying version restores parts of the program state that are necessary for execution of the surrounding method. Our experimental studies indicate that the proposed static and dynamic analyses have the potential to reduce significantly the execution time for replaying, with low run-time overhead for checkpointing.},
+booktitle = {Proceedings of the the 6th Joint Meeting of the European Software Engineering Conference and the ACM SIGSOFT Symposium on The Foundations of Software Engineering},
+pages = {85–94},
+numpages = {10},
+keywords = {checkpoint, replay},
+location = {Dubrovnik, Croatia},
+series = {ESEC-FSE '07}
+}
+
+@inproceedings{10.1145/1134760.1134771,
+author = {Cunei, Antonio and Vitek, Jan},
+title = {A new approach to real-time checkpointing},
+year = {2006},
+isbn = {1595933328},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1134760.1134771},
+doi = {10.1145/1134760.1134771},
+abstract = {The progress towards programming methodologies that simplify the work of the programmer involves automating, whenever possible, activities that are secondary to the main task of designing algorithms and developing applications. Automatic memory management, using garbage collection, and automatic persistence, using checkpointing, are both examples of mechanisms that operate behind the scenes, simplifying the work of the programmer. Implementing such mechanisms in the presence of real-time constraints, however, is particularly difficult.In this paper we review the behavior of traditional copy-on-write implementations of checkpointing in the context of real-time systems, and we show how such implementations may, in pathological cases, seriously impair the ability of the user code to meet its deadlines. We discuss the source of the problem, supply benchmarks, and discuss possible remedies. We subsequently propose a novel approach that does not rely on copy-on-write and that, while more expensive in terms of CPU time overhead, is unaffected by pathological user code. We also describe our implementation of the proposed solution, based on the Ovm RTSJ Java Virtual Machine, and we discuss our experimental results.},
+booktitle = {Proceedings of the 2nd International Conference on Virtual Execution Environments},
+pages = {68–77},
+numpages = {10},
+keywords = {Java, checkpoint, real-time, virtual machine},
+location = {Ottawa, Ontario, Canada},
+series = {VEE '06}
 }

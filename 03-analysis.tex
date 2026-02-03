@@ -52,9 +52,9 @@ Reading is done with
 $\$d = \tGetAttr(\$o, k)$, which is a bit more involved:
 (1) if $k$ is present in instance fields of $\$o$, assign that value to $\$d$;
 (2) otherwise look up $k$ in the \emph{class}
-of $\$o)$; if the result is a function, return
+of $\$o$; if the result is a function, return
 a bound callable with hidden \texttt{self} set to $\$o$, else return the value.
-Python's method resolution (MRO) define various rules governing the access of attributes.
+Python's method resolution (MRO) defines various rules governing the access of attributes.
 \spyte does not model all of them,
 but it does support \lstinline|@property|,
 modeled as a call to the getter.
@@ -94,8 +94,8 @@ We model the heap as a finite set of \emph{abstract objects} $\tO$, where each o
 \begin{itemize}
     \item \emph{Scopes}: \tLOCALS and \tGLOBALS. Objects representing the local and global variable scope,
 respectively.
-    \item \emph{Parameter objects} representing the main function's arguments that have been passed from it caller(s). (The callers themselves are not analyzed.)
-    \item \emph{Allocation site objects} are summary object representing a set of objects created at specific program locations. 
+    \item \emph{Parameter objects} representing the main function's arguments that have been passed from its caller(s). (The callers themselves are not analyzed.)
+    \item \emph{Allocation site objects} are summary objects representing a set of objects created at specific program locations. 
 Locations are addressed by \spytecode instruction index.
     \item Objects of \emph{Immutable types} that do not alias other objects. For example, all integer objects whose value is not precisely known share the same abstract object.
 \end{itemize}
@@ -202,6 +202,45 @@ and fields, maintaining two map domains:
   H : \tO \to (\tK \to \powerset(\tO))
 \end{array}
 \]
+
+$S$ is the abstract stack, which was already mentioned above.
+$S[i]$ represents a set of objects that may be referenced
+by stack variable $\$i$.
+$H$ is the abstract heap: $H[o][k]$ is a set of objects that
+may be referenced by field $k$ of object $o$.
+Recall that, as explained above, each heap object $o\in\tO$
+is an abstract \emph{summary object}, which may correspond
+to many concrete objects at runtime;
+hence, every abstract state $S,H$ represents infinitely
+many concrete memory states.
+Pointer analysis is a standard technique used in compilers
+to determine possible aliasing of pointers, so we do not
+delve too much into the abstract semantics of individual
+instructions.
+This subsection is included for completeness and, especially,
+to explain the ways in which pointer analysis interacts with
+the other analyses.
+
+
+\paragraph{Field Operations.}
+The semantics of explicit field accesses 
+$\tGetAttr(\$o, k)$/$\tSetAttr(\$o, k, \$v)$
+involve looking up the set of objects $S[o]$ that may be
+referred to by $\$o$.
+For \tGetAttr, it generates the abstract value
+$\bigsqcup_{p \in S[o]} H[p][k]$.
+For \tSetAttr, it updates $H[p]$ for \emph{all} of $p\in S[o]$.
+If $S[o]$ is known to address a single concrete object (that is, if it is a singleton set of a singleton object, such as
+$\{\tLOCALS\}$),
+the semantics would be a strong update
+$H[p\smlmapsto \mbox{\small $S[v]$}]$.
+Otherwise, it would be a weak update,
+$H\sqcup\{p\smlmapsto \mbox{\small $S[v]$}\mid p\in \mbox{\small $S[o]$}\}$.
+
+\tGetAttr/\tSetAttr
+Reading field $k$ from objects $O$ returns the union of all possible values. If the object does not have a key, the operation is forwarded to the type system. Writing performs either a \emph{strong update} (replacing the old value) when the target is unique and unaliased, or a \emph{weak update} (accumulating possibilities) otherwise.
+
+For containers with dynamic indexing, the wildcard field $\star$ represents all possible indices. Reading \texttt{obj[i]} consults both the specific index and $\star$; writing updates both to maintain soundness.
 
 
 \begin{figure}[t]
@@ -316,46 +355,6 @@ $\begin{array}{@{}l@{}}
 \end{minipage}
 \end{figure}
 
-
-$S$ is the abstract stack, which was already mentioned above.
-$S[i]$ represents a set of objects that may be referenced
-by stack variable $\$i$.
-$H$ is the abstract heap: $H[o][k]$ is a set of objects that
-may be referenced by field $k$ of object $o$.
-Recall that, as explained above, each heap object $o\in\tO$
-is an abstract \emph{summary object}, which may correspond
-to many concrete objects at runtime;
-hence, every abstract state $S,H$ represents infinitely
-many concrete memory states.
-Pointer analysis is a standard technique used in compilers
-to determine possible aliasing of pointers, so we do not
-delve too much into the abstract semantics of individual
-instructions.
-This subsection is included for completeness and, especially,
-to explain the ways in which pointer analysis interacts with
-the other analyses.
-
-
-\paragraph{Field Operations.}
-The semantics of explicit field accesses 
-$\tGetAttr(\$o, k)$/$\tSetAttr(\$o, k, \$v)$
-involve looking up the set of objects $S[o]$ that may be
-referred to by $\$o$.
-For \tGetAttr, it generates the abstract value
-$\bigsqcup_{p \in S[o]} H[p][k]$.
-For \tSetAttr, it updates $H[p]$ for \emph{all} of $p\in S[o]$.
-If $S[o]$ is known to address a single concrete object (that is, if it is a singleton set of a singleton object, such as
-$\{\tLOCALS\}$),
-the semantics would be a strong update
-$H[p\smlmapsto \mbox{\small $S[v]$}]$.
-Otherwise, it would be a weak update,
-$H\sqcup\{p\smlmapsto \mbox{\small $S[v]$}\mid p\in \mbox{\small $S[o]$}\}$.
-
-\tGetAttr/\tSetAttr
-Reading field $k$ from objects $O$ returns the union of all possible values. If the object does not have a key, the operation is forwarded to the type system. Writing performs either a \emph{strong update} (replacing the old value) when the target is unique and unaliased, or a \emph{weak update} (accumulating possibilities) otherwise.
-
-For containers with dynamic indexing, the wildcard field $\star$ represents all possible indices. Reading \texttt{obj[i]} consults both the specific index and $\star$; writing updates both to maintain soundness.
-
 \paragraph{Object Allocation.}
 New abstract objects arise from three sources:
 \begin{itemize}
@@ -413,10 +412,10 @@ constructed via $\tGetAttr$/$\tBind$ instructions, with a field
 %$D = \big\{\tLOCALS\smlmapsto\{\textrm{clusters}\}, 
 %      (\loc{31})\smlmapsto\top\big\}$.
 
-In order to update $D$, the dirty analysis needs information from the pointer~\Cref{sec:pointer} and type~\Cref{sec:type} domains.
+In order to update $D$, the dirty analysis needs information from the pointer (\Cref{sec:pointer}) and type (\Cref{sec:type}) domains.
 From the pointer domain, it needs to know about the path $\$4\to\loc{31} \to \loc{21}$
 as shown in the figure;
-From the type domain, it needs to know the \emph{effects}
+from the type domain, it needs to know the \emph{effects}
 associated with the type of $\loc{31}$.
 The type of $\loc{31}$ corresponds to \texttt{list.append},
 which has the \tupdate effect.
@@ -556,4 +555,4 @@ Conversely, \texttt{centroids} is live and is in \(D[\tLOCALS]\) at the back-edg
 Therefore \(C_{\text{outer}}=\{\texttt{centroids}\}\).
 \end{example}
 
-This least-sufficient checkpoint under our abstraction—a single variable rather than the full program state—drives the savings quantified in \Cref{sec:evaluation}.
+This least-sufficient checkpoint under our abstraction---a single variable rather than the full program state---drives the savings quantified in \Cref{sec:evaluation}.
